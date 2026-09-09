@@ -1,0 +1,71 @@
+[project]
+name = "torre-de-londres"
+version = "1.0.0"
+description = "Resolvedor do problema da Torre de Londres com busca irrevogavel, backtracking e busca em largura"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+console = ["rich>=13"]
+dev = ["pytest>=8", "pytest-cov", "mypy>=1.11", "ruff>=0.6"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = true
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+explicit_package_bases = true
+namespace_packages = true
+strict = true
+warn_unreachable = true
+disallow_any_explicit = true
+disallow_any_generics = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_any_explicit = false
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+extend-exclude = ["agents", ".agents", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "PTH", "PERF", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["core", "libs", "runner", "config"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "--cov --cov-fail-under=95 --strict-markers"
+markers = ["slow: execucoes que varrem a matriz completa"]
+
+[tool.coverage.run]
+branch = true
+relative_files = true
+source = ["src", "main"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@abstractmethod",
+    "^\\s*\\.\\.\\.$",
+    "class .*\\(Protocol\\):",
+]

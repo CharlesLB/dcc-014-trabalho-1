@@ -1,0 +1,19 @@
+# Agents
+/agents
+/.agents
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# Ferramental
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Documentação fora do versionamento
+/docs

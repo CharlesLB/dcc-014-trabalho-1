@@ -1,0 +1,20 @@
+# Mantém espaçamento consistente entre editores/IDEs diferentes.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.py]
+indent_style = space
+indent_size = 4
+max_line_length = 88
+
+[*.{md,rst}]
+trim_trailing_whitespace = false   # markdown usa 2 espaços no fim p/ quebra
+
+[*.{toml,yaml,yml,json}]
+indent_style = space
+indent_size = 2

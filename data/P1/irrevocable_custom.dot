@@ -1,0 +1,34 @@
+digraph search {
+  label="P1 · irrevocable · custom · IMPASSE"; labelloc=t; fontname="Helvetica";
+  node [shape=box, style="rounded,filled", fontname="monospace", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+  n0 [label="#0\nH1[V,R] H2[A] H3[·]", fillcolor="#dbe9ff", color="#333333", penwidth=1];
+  n1 [label="#1\nH1[V] H2[A] H3[R]", fillcolor="#ffffff", color="#333333", penwidth=1];
+  n0 -> n1 [label="R2", color="#333333", fontcolor="#333333", penwidth=1];
+  n2 [label="#2\nH1[V] H2[A,R] H3[·]", fillcolor="#ffffff", color="#333333", penwidth=1];
+  n1 -> n2 [label="R6", color="#333333", fontcolor="#333333", penwidth=1];
+  n3 [label="#3\nH1[·] H2[A,R] H3[V]", fillcolor="#ffffff", color="#333333", penwidth=1];
+  n2 -> n3 [label="R2", color="#333333", fontcolor="#333333", penwidth=1];
+  n4 [label="#4\nH1[R] H2[A] H3[V]", fillcolor="#ffffff", color="#333333", penwidth=1];
+  n3 -> n4 [label="R3", color="#333333", fontcolor="#333333", penwidth=1];
+  n5 [label="#5\nH1[R] H2[A,V] H3[·]", fillcolor="#ffffff", color="#333333", penwidth=1];
+  n4 -> n5 [label="R6", color="#333333", fontcolor="#333333", penwidth=1];
+  n6 [label="#6\nH1[·] H2[A,V] H3[R]", fillcolor="#f7c6c6", color="#333333", penwidth=1];
+  n5 -> n6 [label="R2", color="#333333", fontcolor="#333333", penwidth=1];
+  p1_R5 [label="R5", shape=plaintext, style=solid, fontcolor="#999999", fontsize=8];
+  n1 -> p1_R5 [style=dotted, color="#999999", arrowhead=none];
+  p2_R4 [label="R4", shape=plaintext, style=solid, fontcolor="#999999", fontsize=8];
+  n2 -> p2_R4 [style=dotted, color="#999999", arrowhead=none];
+  p2_R3 [label="R3", shape=plaintext, style=solid, fontcolor="#999999", fontsize=8];
+  n2 -> p2_R3 [style=dotted, color="#999999", arrowhead=none];
+  p3_R5 [label="R5", shape=plaintext, style=solid, fontcolor="#999999", fontsize=8];
+  n3 -> p3_R5 [style=dotted, color="#999999", arrowhead=none];
+  p4_R1 [label="R1", shape=plaintext, style=solid, fontcolor="#999999", fontsize=8];
+  n4 -> p4_R1 [style=dotted, color="#999999", arrowhead=none];
+  p5_R4 [label="R4", shape=plaintext, style=solid, fontcolor="#999999", fontsize=8];
+  n5 -> p5_R4 [style=dotted, color="#999999", arrowhead=none];
+  p6_R3 [label="R3", shape=plaintext, style=solid, fontcolor="#999999", fontsize=8];
+  n6 -> p6_R3 [style=dotted, color="#999999", arrowhead=none];
+  p6_R5 [label="R5", shape=plaintext, style=solid, fontcolor="#999999", fontsize=8];
+  n6 -> p6_R5 [style=dotted, color="#999999", arrowhead=none];
+}

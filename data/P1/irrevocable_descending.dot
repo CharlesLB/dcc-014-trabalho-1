@@ -1,0 +1,16 @@
+digraph search {
+  label="P1 · irrevocable · descending · IMPASSE"; labelloc=t; fontname="Helvetica";
+  node [shape=box, style="rounded,filled", fontname="monospace", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+  n0 [label="#0\nH1[V,R] H2[A] H3[·]", fillcolor="#dbe9ff", color="#333333", penwidth=1];
+  n1 [label="#1\nH1[V,R] H2[·] H3[A]", fillcolor="#ffffff", color="#333333", penwidth=1];
+  n0 -> n1 [label="R4", color="#333333", fontcolor="#333333", penwidth=1];
+  n2 [label="#2\nH1[V,R,A] H2[·] H3[·]", fillcolor="#f7c6c6", color="#333333", penwidth=1];
+  n1 -> n2 [label="R5", color="#333333", fontcolor="#333333", penwidth=1];
+  p1_R6 [label="R6", shape=plaintext, style=solid, fontcolor="#999999", fontsize=8];
+  n1 -> p1_R6 [style=dotted, color="#999999", arrowhead=none];
+  p2_R2 [label="R2", shape=plaintext, style=solid, fontcolor="#999999", fontsize=8];
+  n2 -> p2_R2 [style=dotted, color="#999999", arrowhead=none];
+  p2_R1 [label="R1", shape=plaintext, style=solid, fontcolor="#999999", fontsize=8];
+  n2 -> p2_R1 [style=dotted, color="#999999", arrowhead=none];
+}
