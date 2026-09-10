@@ -46,6 +46,20 @@ type State = tuple[Stack, Stack, Stack]
 
 
 class TransitionRule(Protocol):
+    """Um movimento: tira o disco do topo de uma haste e põe no topo de outra.
+
+        is_applicable(estado)  ->  posso mover agora? (origem tem disco e
+                                   destino tem espaço)
+        apply(estado)          ->  o estado que resulta do movimento
+
+    `apply` não mexe no estado recebido, devolve um novo -- por isso um nó da
+    árvore nunca perde a configuração que guardava. São seis regras fixas, R1
+    a R6, uma por par origem/destino, definidas em `moves.py`.
+
+    A busca não sabe o que é disco nem haste: ela só testa a regra, aplica a
+    que passou, e segue. Trocar o problema é trocar as regras, não o motor.
+    """
+
     @property
     def id(self) -> str: ...
 
