@@ -34,6 +34,12 @@ class _RunContext:
 
 
 class SearchAlgorithm(ABC):
+    """Motor compartilhado pelos três algoritmos de busca.
+
+    Visitar, gerar, podar, contar e registrar vivem aqui. Cada algoritmo
+    implementa só o próprio laço, em `_search`.
+    """
+
     name: ClassVar[str] = "abstract"
 
     def __init__(
@@ -57,6 +63,11 @@ class SearchAlgorithm(ABC):
         return self._max_iterations
 
     def solve(self, problem: Problem) -> SearchResult:
+        """Porta de entrada da busca.
+
+        Monta o contexto da execução, cronometra o `_search` do algoritmo
+        concreto e sela métricas, trace e caminho no resultado.
+        """
         context = _RunContext(problem=problem, root=self._tree.root(problem.initial))
         self._context = context
         context.metrics.count_generated(context.root.depth)
@@ -83,9 +94,16 @@ class SearchAlgorithm(ABC):
         )
 
     @abstractmethod
-    def _search(self, problem: Problem) -> Outcome: ...
+    def _search(self, problem: Problem) -> Outcome:
+        """O laço de cada algoritmo. A única coisa que eles não compartilham."""
+        ...
 
     def _applicable_rules(self, node: Node) -> tuple[TransitionRule, ...]:
+        """As regras que este nó pode usar, prontas para serem tentadas.
+
+        Faz os três passos em ordem: testa quais são aplicáveis, ordena pela
+        estratégia e poda as que repetiriam um estado.
+        """
         context = self._require_context()
         applicable: list[TransitionRule] = []
         for rule in self._tree.rules:
@@ -108,14 +126,25 @@ class SearchAlgorithm(ABC):
         return tuple(allowed)
 
     def _is_repetition(self, node: Node, successor: State) -> bool:
+        """A política de repetição: aqui, um estado já presente no caminho.
+
+        A busca em largura sobrescreve para usar o conjunto global de
+        fechados, que é uma poda mais forte.
+        """
         return path.contains_state(node, successor)
 
     def _require_context(self) -> _RunContext:
+        """O contexto da execução. Só existe durante o `solve`."""
         if self._context is None:
             raise SearchNotStartedError
         return self._context
 
     def _next_iteration(self) -> bool:
+        """Conta mais uma iteração e aplica o teto.
+
+        Devolve `False` quando o limite estourou, e aí a busca encerra em
+        LIMITE. Chame no topo do laço, antes de qualquer trabalho.
+        """
         context = self._require_context()
         if context.metrics.iterations >= self._max_iterations:
             context.trace.record(
@@ -128,6 +157,7 @@ class SearchAlgorithm(ABC):
         return True
 
     def _visit(self, node: Node) -> None:
+        """Só contabilidade: registra que o nó foi olhado. Uma vez por nó."""
         context = self._require_context()
         context.metrics.count_visited()
         context.trace.record(
@@ -135,6 +165,10 @@ class SearchAlgorithm(ABC):
         )
 
     def _expand(self, node: Node, rule: TransitionRule) -> Node:
+        """Aplica a regra e cria o nó filho.
+
+        É o único ponto do motor que faz a árvore crescer.
+        """
         context = self._require_context()
         child = self._tree.expand(node, rule)
         context.metrics.count_generated(child.depth)
@@ -144,6 +178,7 @@ class SearchAlgorithm(ABC):
         return child
 
     def _succeed(self, node: Node) -> Outcome:
+        """Guarda o nó objetivo, de onde o caminho solução é reconstruído."""
         context = self._require_context()
         context.goal_node = node
         context.trace.record(
@@ -152,6 +187,11 @@ class SearchAlgorithm(ABC):
         return Outcome.SUCCESS
 
     def _deadlock(self, node: Node) -> None:
+        """Só contabilidade: este nó nasceu sem saída.
+
+        Não encerra busca alguma. Quem decide o que fazer com o impasse é o
+        algoritmo: a irrevogável desiste, o backtracking retrocede.
+        """
         context = self._require_context()
         context.metrics.count_deadlock()
         context.trace.record(
@@ -159,6 +199,11 @@ class SearchAlgorithm(ABC):
         )
 
     def _backtrack(self, node: Node) -> None:
+        """Só contabilidade: um retrocesso aconteceu.
+
+        Nada é desfeito aqui. O retrocesso em si é o algoritmo deixando de
+        devolver o nó à pilha.
+        """
         context = self._require_context()
         context.metrics.count_backtrack()
         context.trace.record(
@@ -166,6 +211,7 @@ class SearchAlgorithm(ABC):
         )
 
     def _exhausted(self) -> Outcome:
+        """Fim de linha: nada mais a explorar e nenhum objetivo encontrado."""
         context = self._require_context()
         context.trace.record(
             iteration=context.metrics.iterations,
