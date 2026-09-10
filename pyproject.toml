@@ -17,6 +17,9 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 namespaces = true
 
+[tool.pyright]
+pythonVersion = "3.12"
+
 [tool.mypy]
 python_version = "3.12"
 mypy_path = "src"
