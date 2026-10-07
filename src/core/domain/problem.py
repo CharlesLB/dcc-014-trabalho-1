@@ -7,6 +7,10 @@ Cada carta define um objetivo a alcançar a partir dele.
 importação do módulo, não no meio de uma busca. O campo `initial` tem padrão para
 que testes montem cenários sintéticos sem tocar no catálogo.
 
+`all_goal_problems` monta uma carta sintética por estado do espaço (G01 a
+G36), todas a partir do mesmo inicial: é a bateria usada para comparar os
+algoritmos por média e mediana em vez de por uma carta só.
+
 Único ponto a alterar quando o conjunto de cartas muda: os testes usam
 propriedades relativas, nunca o literal do objetivo.
 """
@@ -18,6 +22,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 from core.domain.state import State, build_state, validate
+from core.domain.state_space import all_states
 from core.rules.domain.base import Disk
 
 GREEN = Disk.GREEN
@@ -62,3 +67,10 @@ def get_problem(problem_id: str) -> Problem:
         return PROBLEM_BY_ID[problem_id]
     except KeyError:
         raise UnknownProblemError(problem_id) from None
+
+
+def all_goal_problems(initial: State = INITIAL_STATE) -> tuple[Problem, ...]:
+    return tuple(
+        Problem(f"G{index:02d}", goal, initial=initial)
+        for index, goal in enumerate(all_states(), start=1)
+    )

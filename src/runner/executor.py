@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from core.algorithms.domain.registry import get_algorithm
-from core.domain.problem import Problem, get_problem
+from core.domain.problem import Problem, all_goal_problems, get_problem
 from core.rules.strategies.custom_order import CUSTOM, CustomOrderStrategy
 from core.rules.strategies.domain.base import ControlStrategy
 from core.rules.strategies.domain.registry import get_strategy
@@ -27,10 +27,12 @@ def run_problem(
 def run_matrix(
     request: ExecutionRequest,
 ) -> tuple[tuple[Problem, tuple[SearchResult, ...]], ...]:
-    return tuple(
-        (problem, run_problem(problem, request))
-        for problem in (get_problem(problem_id) for problem_id in request.problem_ids)
+    problems = (
+        all_goal_problems()
+        if request.all_goals
+        else tuple(get_problem(problem_id) for problem_id in request.problem_ids)
     )
+    return tuple((problem, run_problem(problem, request)) for problem in problems)
 
 
 def resolve_strategy(

@@ -47,6 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--algorithm", action="append", help=settings.HELP_ALGORITHM)
     group.add_argument("--strategy", action="append", help=settings.HELP_STRATEGY)
     group.add_argument("--all", action="store_true", help=settings.HELP_ALL)
+    group.add_argument("--all-goals", action="store_true", help=settings.HELP_ALL_GOALS)
     group.add_argument("--order", help=settings.HELP_ORDER)
     group.add_argument("--show-tree", action="store_true", help=settings.HELP_SHOW_TREE)
     group.add_argument(
@@ -103,6 +104,7 @@ def parse(argv: Sequence[str]) -> ExecutionRequest:
         list_only=namespace.list,
         show_help=namespace.help,
         verbose=namespace.verbose,
+        all_goals=namespace.all_goals,
         seed=None
         if namespace.seed is None
         else _positive_int("--seed", namespace.seed),

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from core.algorithms.backtracking import BacktrackingSearch
 from core.algorithms.irrevocable import IrrevocableSearch
-from core.domain.problem import Problem
+from core.domain.problem import Problem, all_goal_problems
 from core.domain.state import Peg, State
 from core.rules.strategies.domain.registry import STRATEGIES
 from core.search_tree.result import SearchResult
@@ -10,6 +10,7 @@ from core.search_tree.trace import Trace, TraceEvent
 from core.search_tree.tree import SearchTree
 from libs.outputs import console, state_render, theme, trace_render, tree_render
 from libs.outputs.formatter import ProblemReport, Report
+from libs.ranking.leaderboard import build_summary
 
 
 def _result(problem: Problem, strategy_name: str = "ascending") -> SearchResult:
@@ -136,3 +137,29 @@ def test_console_report_honours_the_display_flags(
     assert theme.TREE_HEADER in detailed
     assert theme.TRACE_HEADER in detailed
     assert theme.STATES_HEADER in detailed
+
+
+def _all_goals_report() -> Report:
+    results = tuple(
+        algorithm(SearchTree(), STRATEGIES[strategy]).solve(problem)
+        for problem in all_goal_problems()
+        for algorithm in (BacktrackingSearch, IrrevocableSearch)
+        for strategy in STRATEGIES
+    )
+    return Report(problems=(), summary=build_summary(results), summary_only=True)
+
+
+def test_summary_only_report_shows_stats_and_winners() -> None:
+    text = console.ConsoleFormatter().render(_all_goals_report())
+    assert theme.PROBLEM_HEADER not in text
+    assert theme.SUMMARY_LEGEND in text
+    assert theme.HIGHLIGHTS_HEADER in text
+    assert theme.ALL_STRATEGIES in text
+    assert " / " in text
+
+
+def test_winners_list_the_strategies_when_not_all_tie() -> None:
+    summary = _all_goals_report().summary
+    assert summary is not None
+    text = console.render_highlights(summary)
+    assert "backtracking (" in text

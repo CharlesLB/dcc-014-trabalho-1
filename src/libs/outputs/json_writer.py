@@ -7,7 +7,7 @@ from core.domain.state import Peg, State
 from core.search_tree.result import SearchResult
 from libs.outputs import theme
 from libs.outputs.formatter import ProblemReport, Report
-from libs.ranking.leaderboard import Leaderboard, Summary
+from libs.ranking.leaderboard import Leaderboard, Stat, Summary, SummaryRow
 
 type JsonValue = (
     str | int | float | bool | list["JsonValue"] | dict[str, "JsonValue"] | None
@@ -61,18 +61,40 @@ def _leaderboard_to_json(leaderboard: Leaderboard) -> JsonValue:
 
 
 def _summary_to_json(summary: Summary) -> JsonValue:
-    return [
-        {
-            "algoritmo": row.algorithm,
-            "estrategia": row.strategy,
-            "execucoes": row.runs,
-            "sucessos": row.successes,
-            "impasses": row.deadlocks,
-            "movimentos_medios": row.mean_moves,
-            "iteracoes_medias": round(row.mean_iterations, 2),
-        }
-        for row in summary.rows
-    ]
+    return {
+        "linhas": [
+            {
+                "algoritmo": row.algorithm,
+                "estrategia": row.strategy,
+                "execucoes": row.runs,
+                "sucessos": row.successes,
+                "impasses": row.deadlocks,
+                "movimentos": _stat_to_json(row.moves),
+                "custo": _stat_to_json(row.cost),
+                "iteracoes": _stat_to_json(row.iterations),
+                "nos_gerados": _stat_to_json(row.nodes_generated),
+            }
+            for row in summary.rows
+        ],
+        "melhores": [
+            {
+                "criterio": highlight.criterion,
+                "pela_media": [_row_label(row) for row in highlight.by_mean],
+                "pela_mediana": [_row_label(row) for row in highlight.by_median],
+            }
+            for highlight in summary.highlights
+        ],
+    }
+
+
+def _row_label(row: SummaryRow) -> JsonValue:
+    return {"algoritmo": row.algorithm, "estrategia": row.strategy}
+
+
+def _stat_to_json(stat: Stat | None) -> JsonValue:
+    if stat is None:
+        return None
+    return {"media": round(stat.mean, 2), "mediana": stat.median}
 
 
 def _result_to_json(result: SearchResult) -> JsonValue:

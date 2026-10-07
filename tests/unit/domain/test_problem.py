@@ -8,10 +8,11 @@ from core.domain.problem import (
     PROBLEMS,
     Problem,
     UnknownProblemError,
+    all_goal_problems,
     get_problem,
 )
 from core.domain.state import InvalidStateError, build_state, is_valid
-from core.domain.state_space import reachable_from
+from core.domain.state_space import all_states, reachable_from
 from core.rules.domain.base import Disk
 
 
@@ -62,3 +63,11 @@ def test_problem_rejects_invalid_goal() -> None:
 def test_problem_is_immutable() -> None:
     with pytest.raises(AttributeError):
         PROBLEMS[0].id = "PX"  # type: ignore[misc]
+
+
+def test_all_goal_problems_cover_the_state_space() -> None:
+    battery = all_goal_problems()
+    assert [problem.id for problem in battery][:2] == ["G01", "G02"]
+    assert len({problem.id for problem in battery}) == len(all_states())
+    assert {problem.goal for problem in battery} == set(all_states())
+    assert all(problem.initial == INITIAL_STATE for problem in battery)

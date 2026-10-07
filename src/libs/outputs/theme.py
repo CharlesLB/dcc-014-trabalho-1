@@ -75,15 +75,41 @@ SUMMARY_HEADERS: Final[tuple[str, ...]] = (
     "ESTRATÉGIA",
     "SUCESSOS",
     "IMPASSES",
-    "MOV. MÉDIO",
-    "ITER. MÉDIO",
+    "MOVIMENTOS",
+    "CUSTO",
+    "ITERAÇÕES",
+    "GERADOS",
 )
+
+SUMMARY_LEGEND: Final = (
+    "Cada métrica: média / mediana. Movimentos e custo contam só os sucessos."
+)
+
+HIGHLIGHTS_HEADERS: Final[tuple[str, ...]] = (
+    "CRITÉRIO",
+    "MELHOR PELA MÉDIA",
+    "MELHOR PELA MEDIANA",
+)
+
+HIGHLIGHTS_LEGEND: Final = (
+    "Menor valor vence. Só concorre quem tem o maior número de sucessos."
+)
+
+ALL_STRATEGIES: Final = "(todas)"
+
+CRITERION_LABELS: Final[Mapping[str, str]] = {
+    "moves": "Movimentos",
+    "cost": "Custo",
+    "iterations": "Iterações",
+    "nodes_generated": "Nós gerados",
+}
 
 TREE_HEADER: Final = "Árvore de busca"
 TRACE_HEADER: Final = "Passo a passo"
 STATES_HEADER: Final = "Estados do caminho solução"
 LEADERBOARD_HEADER: Final = "Placar"
 SUMMARY_HEADER: Final = "Resumo consolidado"
+HIGHLIGHTS_HEADER: Final = "Melhor por critério"
 PROBLEM_HEADER: Final = "PROBLEMA"
 INITIAL_STATE_HEADER: Final = "Posição inicial"
 GOAL_STATE_HEADER: Final = "Objetivo"

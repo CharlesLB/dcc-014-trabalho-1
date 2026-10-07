@@ -24,6 +24,7 @@ class ExecutionRequest:
     show_help: bool = False
     verbose: bool = False
     seed: int | None = None
+    all_goals: bool = False
 
     @property
     def execution_count(self) -> int:

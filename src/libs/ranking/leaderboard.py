@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from statistics import fmean
+from statistics import fmean, median
 
 from core.search_tree.outcome import Outcome
 from core.search_tree.result import SearchResult
@@ -30,19 +30,43 @@ class Leaderboard:
 
 
 @dataclass(frozen=True, slots=True)
+class Stat:
+    mean: float
+    median: float
+
+
+@dataclass(frozen=True, slots=True)
 class SummaryRow:
     algorithm: str
     strategy: str
     runs: int
     successes: int
     deadlocks: int
-    mean_moves: float | None
-    mean_iterations: float
+    moves: Stat | None
+    cost: Stat | None
+    iterations: Stat
+    nodes_generated: Stat
+
+
+@dataclass(frozen=True, slots=True)
+class Highlight:
+    criterion: str
+    by_mean: tuple[SummaryRow, ...]
+    by_median: tuple[SummaryRow, ...]
 
 
 @dataclass(frozen=True, slots=True)
 class Summary:
     rows: tuple[SummaryRow, ...]
+    highlights: tuple[Highlight, ...] = ()
+
+
+SUMMARY_CRITERIA: tuple[tuple[str, Callable[[SummaryRow], Stat | None]], ...] = (
+    ("moves", lambda row: row.moves),
+    ("cost", lambda row: row.cost),
+    ("iterations", lambda row: row.iterations),
+    ("nodes_generated", lambda row: row.nodes_generated),
+)
 
 
 def build_leaderboard(
@@ -72,7 +96,41 @@ def build_summary(results: Sequence[SearchResult]) -> Summary:
         _summarise(algorithm, strategy, group)
         for (algorithm, strategy), group in grouped.items()
     )
-    return Summary(rows=tuple(sorted(rows, key=_summary_key)))
+    return Summary(
+        rows=tuple(sorted(rows, key=_summary_key)), highlights=_highlights(rows)
+    )
+
+
+def _highlights(rows: Sequence[SummaryRow]) -> tuple[Highlight, ...]:
+    if not rows:
+        return ()
+    most = max(row.successes for row in rows)
+    contenders = [row for row in rows if row.successes == most]
+    highlights: list[Highlight] = []
+    for name, measure in SUMMARY_CRITERIA:
+        measured: list[tuple[SummaryRow, Stat]] = []
+        for row in contenders:
+            stat = measure(row)
+            if stat is not None:
+                measured.append((row, stat))
+        if not measured:
+            continue
+        best_mean = min(stat.mean for _, stat in measured)
+        best_median = min(stat.median for _, stat in measured)
+        highlights.append(
+            Highlight(
+                criterion=name,
+                by_mean=tuple(r for r, s in measured if s.mean == best_mean),
+                by_median=tuple(r for r, s in measured if s.median == best_median),
+            )
+        )
+    return tuple(highlights)
+
+
+def _stat(values: Sequence[int]) -> Stat | None:
+    if not values:
+        return None
+    return Stat(mean=fmean(values), median=float(median(values)))
 
 
 def _sorted_by_score(
@@ -92,28 +150,31 @@ def _sorted_by_score(
 def _summarise(
     algorithm: str, strategy: str, group: Sequence[SearchResult]
 ) -> SummaryRow:
-    successes = [result for result in group if result.outcome.is_success]
-    moves = [
-        result.solution_length
-        for result in successes
-        if result.solution_length is not None
-    ]
+    moves = [r.solution_length for r in group if r.solution_length is not None]
+    costs = [r.solution_cost for r in group if r.solution_cost is not None]
+    iterations = _stat([result.metrics.iterations for result in group])
+    generated = _stat([result.metrics.nodes_generated for result in group])
+    assert iterations is not None and generated is not None
     return SummaryRow(
         algorithm=algorithm,
         strategy=strategy,
         runs=len(group),
-        successes=len(successes),
+        successes=sum(result.outcome.is_success for result in group),
         deadlocks=sum(result.outcome is Outcome.DEADLOCK for result in group),
-        mean_moves=fmean(moves) if moves else None,
-        mean_iterations=fmean(result.metrics.iterations for result in group),
+        moves=_stat(moves),
+        cost=_stat(costs),
+        iterations=iterations,
+        nodes_generated=generated,
     )
 
 
-def _summary_key(row: SummaryRow) -> tuple[int, float, float, str, str]:
+def _summary_key(row: SummaryRow) -> tuple[int, float, float, float, str, str]:
+    no_solution = float(criteria.NO_SOLUTION)
     return (
         -row.successes,
-        row.mean_moves if row.mean_moves is not None else float(criteria.NO_SOLUTION),
-        row.mean_iterations,
+        row.moves.mean if row.moves is not None else no_solution,
+        row.moves.median if row.moves is not None else no_solution,
+        row.iterations.mean,
         row.algorithm,
         row.strategy,
     )

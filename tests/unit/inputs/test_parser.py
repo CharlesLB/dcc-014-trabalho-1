@@ -122,3 +122,8 @@ def test_help_text_is_in_portuguese() -> None:
     assert settings.USAGE_PREFIX in text
     assert settings.OPTIONS_TITLE in text
     assert "options:" not in text
+
+
+def test_all_goals_is_a_flag() -> None:
+    assert parse([]).all_goals is False
+    assert parse(["--all-goals"]).all_goals is True

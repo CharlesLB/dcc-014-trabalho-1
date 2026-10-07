@@ -36,6 +36,10 @@ HELP_STRATEGY: Final = "Estratégias de controle (repetível ou separado por ví
 HELP_ALL: Final = (
     "Produto cartesiano completo: todas as cartas, algoritmos e estratégias."
 )
+HELP_ALL_GOALS: Final = (
+    "Resolve todos os 36 estados finais possíveis a partir da posição inicial "
+    "e mostra só o resumo, com média e mediana de cada algoritmo e estratégia."
+)
 HELP_ORDER: Final = "Ordem das regras para a estratégia custom, ex.: R2,R4,R6,R1,R3,R5."
 HELP_SHOW_TREE: Final = "Renderiza a árvore de busca de cada execução."
 HELP_SHOW_TRACE: Final = (

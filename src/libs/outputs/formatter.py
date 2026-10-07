@@ -24,6 +24,7 @@ class Report:
     show_tree: bool = False
     show_trace: bool = False
     show_states: bool = False
+    summary_only: bool = False
 
 
 class Formatter(Protocol):

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from statistics import fmean, median
+
 import pytest
 
 from core.algorithms.domain.registry import ALGORITHMS
@@ -10,7 +12,7 @@ from core.search_tree.result import SearchResult
 from core.search_tree.tree import SearchTree
 from libs.ranking import criteria
 from libs.ranking.comparator import lexicographic_key, sort_results
-from libs.ranking.leaderboard import build_leaderboard, build_summary
+from libs.ranking.leaderboard import Stat, build_leaderboard, build_summary
 from libs.ranking.scorer import MAX_SCORE, score_all
 
 
@@ -135,3 +137,28 @@ def test_summary_orders_the_most_successful_first(
 
 def test_summary_of_no_executions_is_empty() -> None:
     assert build_summary(()).rows == ()
+
+
+def test_summary_reports_mean_and_median(problems: tuple[Problem, ...]) -> None:
+    results = tuple(
+        ALGORITHMS["backtracking"](SearchTree(), STRATEGIES["ascending"]).solve(p)
+        for p in (*problems, Problem("SYNTHETIC", problems[0].initial))
+    )
+    (row,) = build_summary(results).rows
+    lengths = [r.solution_length or 0 for r in results]
+    assert row.moves == Stat(mean=fmean(lengths), median=median(lengths))
+
+
+def test_highlights_only_consider_the_most_successful(
+    executions: tuple[SearchResult, ...],
+) -> None:
+    summary = build_summary(executions)
+    most = max(row.successes for row in summary.rows)
+    for highlight in summary.highlights:
+        winners = (*highlight.by_mean, *highlight.by_median)
+        assert winners
+        assert all(row.successes == most for row in winners)
+
+
+def test_summary_of_no_executions_has_no_highlights() -> None:
+    assert build_summary(()).highlights == ()

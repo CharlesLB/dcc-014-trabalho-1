@@ -39,6 +39,7 @@ python main.py --algorithm backtracking --show-tree --show-trace
 python main.py --show-states
 python main.py --strategy custom --order R2,R4,R6,R1,R3,R5
 python main.py --rank-mode score
+python main.py --all-goals             # os 36 estados finais; só o resumo, com média e mediana
 python main.py --format json --output resultados.json
 python main.py --svg-dir data          # árvore de cada execução em data/<carta>/<algoritmo>_<estratégia>.svg
 python main.py --help
@@ -175,6 +176,15 @@ flowchart TD
 ```
 
 O objetivo só encerra a busca quando vira o estado atual, não quando é gerado, e por isso a solução é a de menor custo. A estratégia só desempata irmãos de mesmo custo. A poda segue o vetor de menor custo do material: um estado gerado de novo com custo maior ou igual é descartado. Em P1: R4, R1, R1, custo 3 em 10 iterações.
+
+## Comparação em todos os objetivos
+
+Uma carta só não diz qual método é melhor. `--all-goals` resolve cada um dos 36 estados do espaço como objetivo, sempre a partir da mesma posição inicial (cartas G01 a G36), com todo algoritmo e toda estratégia. A saída é só o resumo consolidado:
+
+- **Resumo**: para movimentos, custo, iterações e nós gerados, a média e a mediana de cada combinação. Movimentos e custo contam só os sucessos.
+- **Melhor por critério**: o menor valor pela média e pela mediana. Só concorre quem tem o maior número de sucessos, para a irrevogável não vencer resolvendo apenas os objetivos fáceis.
+
+O resultado: largura e ordenada empatam em movimentos, e a ordenada tem o menor custo médio em todas as estratégias. A largura só empata com ela na ordem decrescente e, pela mediana, as duas empatam. A média de iterações das duas é sempre 18,5, porque cada uma visita cada estado uma única vez, e por isso o objetivo i é encontrado na i-ésima posição de uma permutação de 1 a 36. O critério que as separa é o número de nós gerados. [tests/properties/test_all_goals.py](tests/properties/test_all_goals.py) verifica tudo isso.
 
 ## Qualidade
 

@@ -25,4 +25,5 @@ def build_report(request: ExecutionRequest) -> Report:
         show_tree=request.show_tree,
         show_trace=request.show_trace,
         show_states=request.show_states,
+        summary_only=request.all_goals,
     )

@@ -8,20 +8,31 @@ from core.search_tree.result import SearchResult
 from libs.outputs import state_render, theme, trace_render, tree_render
 from libs.outputs.formatter import ProblemReport, Report
 from libs.outputs.trace_render import render_table
-from libs.ranking.leaderboard import Leaderboard, Summary
+from libs.ranking.leaderboard import Leaderboard, Stat, Summary, SummaryRow
 
 
 class ConsoleFormatter:
     name = "console"
 
     def render(self, report: Report) -> str:
-        blocks = [self._render_problem(entry, report) for entry in report.problems]
-        if report.summary is not None and len(report.problems) > 1:
+        blocks = (
+            []
+            if report.summary_only
+            else [self._render_problem(entry, report) for entry in report.problems]
+        )
+        if report.summary is not None and (
+            report.summary_only or len(report.problems) > 1
+        ):
             blocks.append(self._render_summary(report.summary))
         return "\n\n".join(block for block in blocks if block)
 
     def _render_summary(self, summary: Summary) -> str:
-        return render_section(theme.SUMMARY_HEADER, render_summary(summary))
+        sections = [render_section(theme.SUMMARY_HEADER, render_summary(summary))]
+        if summary.highlights:
+            sections.append(
+                render_section(theme.HIGHLIGHTS_HEADER, render_highlights(summary))
+            )
+        return "\n\n".join(sections)
 
     def _render_problem(self, entry: ProblemReport, report: Report) -> str:
         sections = [
@@ -111,12 +122,49 @@ def render_summary(summary: Summary) -> str:
             row.strategy,
             f"{row.successes}/{row.runs}",
             str(row.deadlocks),
-            theme.ABSENT if row.mean_moves is None else f"{row.mean_moves:.1f}",
-            f"{row.mean_iterations:.1f}",
+            _render_stat(row.moves),
+            _render_stat(row.cost),
+            _render_stat(row.iterations),
+            _render_stat(row.nodes_generated),
         )
         for row in summary.rows
     )
-    return render_table(theme.SUMMARY_HEADERS, rows)
+    table = render_table(theme.SUMMARY_HEADERS, rows)
+    return f"{theme.SUMMARY_LEGEND}\n\n{table}"
+
+
+def render_highlights(summary: Summary) -> str:
+    strategies: dict[str, int] = {}
+    for row in summary.rows:
+        strategies[row.algorithm] = strategies.get(row.algorithm, 0) + 1
+    rows = tuple(
+        (
+            theme.CRITERION_LABELS[highlight.criterion],
+            _render_winners(highlight.by_mean, strategies),
+            _render_winners(highlight.by_median, strategies),
+        )
+        for highlight in summary.highlights
+    )
+    table = render_table(theme.HIGHLIGHTS_HEADERS, rows)
+    return f"{theme.HIGHLIGHTS_LEGEND}\n\n{table}"
+
+
+def _render_winners(winners: tuple[SummaryRow, ...], strategies: dict[str, int]) -> str:
+    grouped: dict[str, list[str]] = {}
+    for row in winners:
+        grouped.setdefault(row.algorithm, []).append(row.strategy)
+    return "; ".join(
+        f"{algorithm} {theme.ALL_STRATEGIES}"
+        if len(names) == strategies[algorithm]
+        else f"{algorithm} ({', '.join(names)})"
+        for algorithm, names in grouped.items()
+    )
+
+
+def _render_stat(stat: Stat | None) -> str:
+    if stat is None:
+        return theme.ABSENT
+    return f"{stat.mean:.2f} / {stat.median:g}"
 
 
 def render_box(title: str, lines: tuple[str, ...]) -> str:

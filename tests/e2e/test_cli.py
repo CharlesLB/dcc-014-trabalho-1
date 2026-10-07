@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from config import settings
+from libs.outputs import theme
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -99,3 +100,22 @@ def test_running_without_arguments_covers_every_axis() -> None:
     explicit = _run("--all")
     assert bare.returncode == settings.EXIT_OK
     assert bare.stdout.count("PROBLEMA") == explicit.stdout.count("PROBLEMA")
+
+
+def test_all_goals_prints_only_the_summary_with_mean_and_median() -> None:
+    completed = _run("--all-goals")
+    assert completed.returncode == settings.EXIT_OK
+    assert theme.SUMMARY_HEADER in completed.stdout
+    assert theme.HIGHLIGHTS_HEADER in completed.stdout
+    assert theme.PROBLEM_HEADER not in completed.stdout
+
+
+def test_all_goals_json_carries_the_stats(tmp_path: Path) -> None:
+    target = tmp_path / "goals.json"
+    completed = _run("--all-goals", "--format", "json", "--output", str(target))
+    assert completed.returncode == settings.EXIT_OK
+    payload = json.loads(target.read_text(encoding="utf-8"))
+    assert len(payload["problemas"]) == 36
+    first = payload["resumo"]["linhas"][0]
+    assert set(first["movimentos"]) == {"media", "mediana"}
+    assert payload["resumo"]["melhores"]
