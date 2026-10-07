@@ -17,24 +17,16 @@ class Page:
     title: str
 
 
-PROJECT = Page("00_projeto.ipynb", "Projeto: problema, regras e motor de busca")
 IRREVOCABLE = Page("01_busca_irrevogavel.ipynb", "Busca irrevogável")
 BACKTRACKING = Page("02_backtracking.ipynb", "Backtracking")
 BREADTH_FIRST = Page("03_busca_em_largura.ipynb", "Busca em largura")
 ORDERED = Page("04_busca_ordenada.ipynb", "Busca ordenada")
 ANALYSIS = Page("05_analise.ipynb", "Gráficos e análise")
 
-PAGES: tuple[Page, ...] = (
-    PROJECT,
-    IRREVOCABLE,
-    BACKTRACKING,
-    BREADTH_FIRST,
-    ORDERED,
-    ANALYSIS,
-)
+PAGES: tuple[Page, ...] = (IRREVOCABLE, BACKTRACKING, BREADTH_FIRST, ORDERED, ANALYSIS)
 
 
-def header(page: Page, intro: str) -> Cell:
+def header(page: Page) -> Cell:
     navigation = " · ".join(
         f"**{item.title}**"
         if item == page
@@ -48,24 +40,7 @@ def header(page: Page, intro: str) -> Cell:
 
 DCC014 Inteligência Artificial · UFJF · Trabalho 1 · Grupo 5
 
-Páginas: {navigation}
-
-{intro}"""
-    )
-
-
-def setup_note(*, own_module: str | None = None) -> Cell:
-    if own_module is None:
-        detail = "Ela grava todo o `src/` do repositório"
-    else:
-        detail = (
-            "Ela grava todo o `src/` do repositório, menos "
-            f"`{own_module}`, que aparece por inteiro logo abaixo"
-        )
-    return markdown(
-        f"""## Preparação
-
-Rode a célula a seguir antes de qualquer outra. {detail}, nos mesmos caminhos, e põe `src/` no `sys.path`. A página roda sozinha: não depende de outra página nem de clonar o repositório. Para ver o código de cada pasta, abra a página [{PROJECT.title}]({COLAB_BASE}/{PROJECT.filename})."""
+Páginas: {navigation}"""
     )
 
 

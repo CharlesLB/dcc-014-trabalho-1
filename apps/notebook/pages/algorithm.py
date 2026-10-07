@@ -11,9 +11,8 @@ from pages.common import (
     VIEW_HELPERS,
     Page,
     header,
-    setup_note,
 )
-from source import SOURCE_DIR, all_files, install_cell, writefile_cell
+from source import SOURCE_DIR, find, setup_cells, writefile_cell
 
 
 @dataclass(frozen=True, slots=True)
@@ -184,13 +183,10 @@ ALGORITHM_PAGES: tuple[AlgorithmPage, ...] = (
 
 def build(spec: AlgorithmPage) -> Notebook:
     own_path = f"{SOURCE_DIR}/{spec.module}"
-    others = tuple(item for item in all_files() if item.path != own_path)
-    own = next(item for item in all_files() if item.path == own_path)
     cells: tuple[Cell, ...] = (
-        header(spec.page, spec.intro),
-        setup_note(own_module=own_path),
-        install_cell("Grava o código do projeto", others),
-        VIEW_HELPERS,
+        header(spec.page),
+        *setup_cells(exclude=own_path, extras=(VIEW_HELPERS,)),
+        markdown(f"# {spec.page.title}\n\n{spec.intro}"),
         markdown("## Fluxograma"),
         code(
             f"""#@title Desenha o fluxograma
@@ -202,7 +198,7 @@ else:
             hidden=True,
         ),
         markdown(f"## O código\n\n{spec.code_note}"),
-        writefile_cell(own),
+        writefile_cell(find(own_path)),
         markdown(
             """## Execução em P1
 

@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from cells import Notebook
-from pages import analysis, project
+from pages import analysis
 from pages.algorithm import ALGORITHM_PAGES
 from pages.algorithm import build as build_algorithm
 
@@ -15,7 +15,6 @@ OUTPUT_DIR = Path(__file__).resolve().parent / "notebooks"
 
 def notebooks() -> tuple[Notebook, ...]:
     return (
-        project.build(),
         *(build_algorithm(spec) for spec in ALGORITHM_PAGES),
         analysis.build(),
     )

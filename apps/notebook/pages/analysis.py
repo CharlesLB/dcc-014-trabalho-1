@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from cells import Notebook, code, markdown
-from pages.common import ANALYSIS, VIEW_HELPERS, header, setup_note
-from source import all_files, install_cell
+from pages.common import ANALYSIS, VIEW_HELPERS, header
+from source import setup_cells
 
 INTRO = """Uma carta só não diz qual método é melhor. Esta página roda a matriz completa (4 algoritmos × 3 estratégias) primeiro na carta P1 e depois em todos os 36 estados do espaço como objetivo, sempre a partir da mesma posição inicial (cartas G01 a G36). Os gráficos comparam desfecho, qualidade da solução e esforço da busca, e a análise no fim só afirma o que as células verificam."""
 
@@ -357,11 +357,9 @@ def build() -> Notebook:
         ANALYSIS.filename,
         ANALYSIS.title,
         (
-            header(ANALYSIS, INTRO),
-            setup_note(),
-            install_cell("Grava o código do projeto", all_files()),
-            VIEW_HELPERS,
-            PLOT_STYLE,
+            header(ANALYSIS),
+            *setup_cells(extras=(VIEW_HELPERS, PLOT_STYLE)),
+            markdown(f"# {ANALYSIS.title}\n\n{INTRO}"),
             *P1_CELLS,
             *ALL_GOALS_CELLS,
             CONCLUSION,
