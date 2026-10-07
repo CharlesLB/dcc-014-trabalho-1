@@ -206,6 +206,14 @@ sudo apt install graphviz     # ou: brew install graphviz
 make graphs
 ```
 
+## Notebooks para o Colab
+
+`apps/notebook/` gera a apresentação em notebooks, um por página: o projeto pasta por pasta, um por algoritmo e um com os gráficos e a análise. Os notebooks são gerados a partir de `src/` e rodam sozinhos no Colab, sem clonar o repositório. Veja [apps/notebook/README.md](apps/notebook/README.md).
+
+```bash
+make notebooks
+```
+
 ## Documentação
 
 - [SPEC.md](SPEC.md): especificação técnica completa.

@@ -3,7 +3,7 @@ VENV   := .venv
 BIN    := $(VENV)/bin
 
 .DEFAULT_GOAL := help
-.PHONY: help install test lint types check run graphs clean
+.PHONY: help install test lint types check run graphs notebooks clean
 
 help:  ## Lista os alvos disponíveis
 	@grep -E '^[a-z-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -31,6 +31,9 @@ run:  ## Executa a matriz completa
 
 graphs:  ## Grava a árvore de cada execução em data/ (DOT e SVG, exige Graphviz)
 	$(BIN)/python main.py --all --svg-dir data
+
+notebooks:  ## Regera os notebooks do Colab a partir de src/
+	$(BIN)/python apps/notebook/build.py
 
 clean:  ## Remove artefatos
 	rm -rf .pytest_cache .mypy_cache .ruff_cache .coverage htmlcov

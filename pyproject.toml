@@ -39,11 +39,14 @@ disallow_any_explicit = false
 [tool.ruff]
 line-length = 88
 target-version = "py312"
-extend-exclude = ["agents", ".agents", ".venv"]
+extend-exclude = ["agents", ".agents", ".venv", "apps/notebook/notebooks"]
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "PTH", "PERF", "RUF"]
 ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"apps/notebook/pages/*.py" = ["RUF001"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["core", "libs", "runner", "config"]
