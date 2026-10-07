@@ -7,6 +7,7 @@ from core.algorithms.backtracking import BacktrackingSearch
 from core.algorithms.breadth_first import BreadthFirstSearch
 from core.algorithms.domain.base import SearchAlgorithm
 from core.algorithms.irrevocable import IrrevocableSearch
+from core.algorithms.ordered import OrderedSearch
 
 
 class UnknownAlgorithmError(Exception):
@@ -20,6 +21,7 @@ ALGORITHMS: Mapping[str, type[SearchAlgorithm]] = MappingProxyType(
         IrrevocableSearch.name: IrrevocableSearch,
         BacktrackingSearch.name: BacktrackingSearch,
         BreadthFirstSearch.name: BreadthFirstSearch,
+        OrderedSearch.name: OrderedSearch,
     }
 )
 

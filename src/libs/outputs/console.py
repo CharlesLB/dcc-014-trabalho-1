@@ -51,12 +51,14 @@ def render_result_box(result: SearchResult) -> str:
     moves = (
         theme.ABSENT if result.solution_length is None else str(result.solution_length)
     )
+    cost = theme.ABSENT if result.solution_cost is None else str(result.solution_cost)
     path = (
         theme.ARROW.join(result.applied_rules) if result.applied_rules else theme.ABSENT
     )
     rows = (
         (theme.REPORT_LABELS["outcome"], theme.outcome_label(result.outcome)),
         (theme.REPORT_LABELS["moves"], moves),
+        (theme.REPORT_LABELS["cost"], cost),
         (theme.REPORT_LABELS["path"], path),
         (theme.REPORT_LABELS["iterations"], str(metrics.iterations)),
         (theme.REPORT_LABELS["nodes_generated"], str(metrics.nodes_generated)),

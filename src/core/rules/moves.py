@@ -9,6 +9,13 @@
 
 Toda regra tem inversa exata: R1<->R3, R2<->R5, R4<->R6.
 
+Custo de uma regra: a distância entre as hastes que ela liga, como um braço
+que leva o disco de uma haste à outra.
+
+    R1, R3 (H1 <-> H2): 1     R4, R6 (H2 <-> H3): 1     R2, R5 (H1 <-> H3): 2
+
+Uma regra e sua inversa custam o mesmo. Só a busca ordenada olha o custo.
+
 `apply` exige `is_applicable` como pré-condição: aplicar regra inválida é erro de
 programação e falha alto.
 """
@@ -27,6 +34,10 @@ class Move:
     id: str
     origin: Peg
     destination: Peg
+
+    @property
+    def cost(self) -> int:
+        return abs(self.destination - self.origin)
 
     def is_applicable(self, state: State) -> bool:
         return is_move_allowed(state, self.origin, self.destination)

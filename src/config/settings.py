@@ -18,9 +18,9 @@ EXIT_INVALID_INPUT: Final = 2
 PROGRAM_NAME: Final = "main.py"
 
 DESCRIPTION: Final = (
-    "Resolvedor da Torre de Londres: executa busca irrevogável, backtracking e "
-    "busca em largura sobre as cartas do problema, variando a estratégia de "
-    "controle, e ranqueia os resultados."
+    "Resolvedor da Torre de Londres: executa busca irrevogável, backtracking, "
+    "busca em largura e busca ordenada sobre as cartas do problema, variando a "
+    "estratégia de controle, e ranqueia os resultados."
 )
 
 EPILOG: Final = (

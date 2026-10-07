@@ -51,6 +51,7 @@ class TransitionRule(Protocol):
         is_applicable(estado)  ->  posso mover agora? (origem tem disco e
                                    destino tem espaço)
         apply(estado)          ->  o estado que resulta do movimento
+        cost                   ->  quanto custa mover (só a busca ordenada usa)
 
     `apply` não mexe no estado recebido, devolve um novo -- por isso um nó da
     árvore nunca perde a configuração que guardava. São seis regras fixas, R1
@@ -68,6 +69,9 @@ class TransitionRule(Protocol):
 
     @property
     def destination(self) -> Peg: ...
+
+    @property
+    def cost(self) -> int: ...
 
     def is_applicable(self, state: State) -> bool: ...
 

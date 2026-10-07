@@ -24,5 +24,9 @@ class SearchResult:
         return len(self.applied_rules) if self.outcome.is_success else None
 
     @property
+    def solution_cost(self) -> int | None:
+        return self.solution_path[-1].cost if self.outcome.is_success else None
+
+    @property
     def label(self) -> str:
         return f"{self.algorithm} · {self.strategy}"

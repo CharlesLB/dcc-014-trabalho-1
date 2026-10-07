@@ -34,7 +34,7 @@ class _RunContext:
 
 
 class SearchAlgorithm(ABC):
-    """Motor compartilhado pelos três algoritmos de busca.
+    """Motor compartilhado pelos algoritmos de busca.
 
     Visitar, gerar, podar, contar e registrar vivem aqui. Cada algoritmo
     implementa só o próprio laço, em `_search`.
@@ -114,7 +114,7 @@ class SearchAlgorithm(ABC):
         allowed: list[TransitionRule] = []
         for rule in self._strategy.order(tuple(applicable)):
             successor = rule.apply(node.state)
-            if self._is_repetition(node, successor):
+            if self._is_repetition(node, rule, successor):
                 context.trace.record_prune(
                     iteration=context.metrics.iterations,
                     node=node,
@@ -125,11 +125,14 @@ class SearchAlgorithm(ABC):
             allowed.append(rule)
         return tuple(allowed)
 
-    def _is_repetition(self, node: Node, successor: State) -> bool:
+    def _is_repetition(
+        self, node: Node, rule: TransitionRule, successor: State
+    ) -> bool:
         """A política de repetição: aqui, um estado já presente no caminho.
 
         A busca em largura sobrescreve para usar o conjunto global de
-        fechados, que é uma poda mais forte.
+        fechados, que é uma poda mais forte. A ordenada sobrescreve para
+        comparar o custo do novo caminho com o menor já conhecido.
         """
         return path.contains_state(node, successor)
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 from core.search_tree.result import SearchResult
 from core.search_tree.trace import TraceEvent, TraceStep
 from libs.outputs import state_render, theme
+from libs.outputs.tree_render import removed_edges
 
 
 def render_dot(result: SearchResult) -> str:
@@ -15,6 +16,7 @@ def render_dot(result: SearchResult) -> str:
     deadlock_orders = {step.node_order for step in trace.of_event(TraceEvent.DEADLOCK)}
     visited_orders = {step.node_order for step in trace.of_event(TraceEvent.VISIT)}
     solution_orders = {node.order for node in result.solution_path}
+    removed = removed_edges(trace)
 
     lines = [
         "digraph search {",
@@ -25,7 +27,7 @@ def render_dot(result: SearchResult) -> str:
     ]
 
     for step in trace.of_event(TraceEvent.GENERATE):
-        if step.parent_order is None:
+        if step.parent_order is None or (step.parent_order, step.rule_id) in removed:
             continue
         on_path = step.node_order in solution_orders
         if step.node_order in goal_orders:
@@ -48,6 +50,8 @@ def _title(result: SearchResult) -> str:
     parts = [result.problem, result.label, theme.outcome_label(result.outcome)]
     if result.solution_length is not None:
         parts.append(f"{result.solution_length} {theme.GRAPH_MOVES_LABEL}")
+    if result.solution_cost is not None:
+        parts.append(f"{theme.GRAPH_COST_LABEL} {result.solution_cost}")
     return " · ".join(parts)
 
 

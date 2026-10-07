@@ -10,9 +10,10 @@ def render_tree(trace: Trace) -> str:
         return ""
 
     root = root_steps[0]
+    removed = removed_edges(trace)
     children: dict[int, list[tuple[int, str | None, str]]] = {}
     for step in trace.of_event(TraceEvent.GENERATE):
-        if step.parent_order is None:
+        if step.parent_order is None or (step.parent_order, step.rule_id) in removed:
             continue
         label = state_render.render_inline(step.state)
         children.setdefault(step.parent_order, []).append(
@@ -53,3 +54,9 @@ def _append_children(
             deadlock_orders,
             prefix + (theme.TREE_GAP if is_last else theme.TREE_TRUNK),
         )
+
+
+def removed_edges(trace: Trace) -> set[tuple[int, str | None]]:
+    return {
+        (step.node_order, step.rule_id) for step in trace.of_event(TraceEvent.PRUNE)
+    }

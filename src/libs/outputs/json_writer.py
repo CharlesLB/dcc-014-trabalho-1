@@ -82,6 +82,7 @@ def _result_to_json(result: SearchResult) -> JsonValue:
         "estrategia": result.strategy,
         "desfecho": theme.outcome_label(result.outcome),
         "movimentos": result.solution_length,
+        "custo": result.solution_cost,
         "caminho": list(result.applied_rules),
         "metricas": {
             "iteracoes": metrics.iterations,

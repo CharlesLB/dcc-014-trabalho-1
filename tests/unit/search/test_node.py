@@ -4,7 +4,7 @@ import pytest
 
 from core.domain.state import State
 from core.rules.domain.exceptions import RuleNotApplicableError
-from core.rules.moves import R1, R5
+from core.rules.moves import R1, R2, R5
 from core.search_tree.node import Node
 from core.search_tree.tree import SearchTree
 
@@ -16,6 +16,7 @@ def test_root_has_no_parent_and_zero_depth(initial_state: State) -> None:
     assert root.rule is None
     assert root.depth == 0
     assert root.order == 0
+    assert root.cost == 0
 
 
 def test_child_records_its_origin(initial_state: State) -> None:
@@ -26,6 +27,15 @@ def test_child_records_its_origin(initial_state: State) -> None:
     assert child.rule is R1
     assert child.depth == 1
     assert child.state == R1.apply(initial_state)
+
+
+def test_child_accumulates_the_cost_of_the_path(initial_state: State) -> None:
+    tree = SearchTree()
+    root = tree.root(initial_state)
+    child = tree.expand(root, R2)
+    grandchild = tree.expand(child, R5)
+    assert child.cost == R2.cost
+    assert grandchild.cost == R2.cost + R5.cost
 
 
 def test_node_is_immutable(initial_state: State) -> None:

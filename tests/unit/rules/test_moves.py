@@ -36,6 +36,19 @@ def test_each_rule_declares_its_pegs(rule: Move, origin: Peg, destination: Peg) 
     assert rule.destination is destination
 
 
+@pytest.mark.parametrize(
+    ("rule", "cost"),
+    [(R1, 1), (R2, 2), (R3, 1), (R4, 1), (R5, 2), (R6, 1)],
+)
+def test_each_rule_costs_the_distance_between_its_pegs(rule: Move, cost: int) -> None:
+    assert rule.cost == cost
+
+
+def test_a_rule_and_its_inverse_cost_the_same() -> None:
+    for rule in RULES:
+        assert inverse_of(rule).cost == rule.cost
+
+
 def test_rules_are_immutable() -> None:
     with pytest.raises(AttributeError):
         R1.id = "RX"  # type: ignore[misc]

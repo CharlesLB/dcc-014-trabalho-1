@@ -1,6 +1,6 @@
 # Torre de Londres
 
-Resolvedor do problema da Torre de Londres (3 hastes, 3 discos) com busca irrevogável, backtracking e busca em largura sobre uma mesma abstração de árvore de busca, com estratégia de controle parametrizável, métricas instrumentadas e placar comparativo.
+Resolvedor do problema da Torre de Londres (3 hastes, 3 discos) com busca irrevogável, backtracking, busca em largura e busca ordenada sobre uma mesma abstração de árvore de busca, com estratégia de controle parametrizável, métricas instrumentadas e placar comparativo.
 
 Python 3.12+, zero dependências de runtime.
 
@@ -63,7 +63,8 @@ src/
 │       ├── domain/            contrato e registro
 │       ├── irrevocable.py
 │       ├── backtracking.py
-│       └── breadth_first.py
+│       ├── breadth_first.py
+│       └── ordered.py
 ├── libs/                      bibliotecas de borda
 │   ├── inputs/                linha de comando → requisição validada
 │   ├── outputs/               única camada que escreve no terminal e em disco
@@ -74,7 +75,7 @@ src/
 
 Duas convenções sustentam a leitura da árvore:
 
-- **Uma pasta no plural contém apenas implementações.** `algorithms/` tem três arquivos, um por algoritmo. O contrato e o registro de cada família vivem num `domain/` interno.
+- **Uma pasta no plural contém apenas implementações.** `algorithms/` tem quatro arquivos, um por algoritmo. O contrato e o registro de cada família vivem num `domain/` interno.
 - **Não há `__init__.py`.** O que cada camada é fica documentado aqui e nos ADRs, e é verificado por teste, não por um arquivo vazio em cada pasta.
 
 ### Regra de dependência
@@ -95,13 +96,13 @@ Tudo isso é verificado na AST por [tests/architecture/test_dependencies.py](tes
 
 - Código inteiramente em inglês.
 - **Sem comentários e sem docstrings de função.** O contrato de cada função é a assinatura tipada, garantida por `mypy --strict`. Só diretivas de ferramenta (`# noqa`, `# type:`) aparecem no meio do código.
-- **A modelagem do problema é documentada no topo dos módulos que a carregam**, e só neles: [problem.py](src/core/domain/problem.py) (posição inicial e catálogo de cartas), [state_space.py](src/core/domain/state_space.py) (os 36 estados, conexidade, o oráculo) e os três algoritmos, cada um com a execução de P1 resolvida passo a passo, listas ABERTOS e FECHADOS, árvore de busca e caminho solução.
+- **A modelagem do problema é documentada no topo dos módulos que a carregam**, e só neles: [problem.py](src/core/domain/problem.py) (posição inicial e catálogo de cartas), [state_space.py](src/core/domain/state_space.py) (os 36 estados, conexidade, o oráculo) e os quatro algoritmos, cada um com a execução de P1 resolvida passo a passo, listas ABERTOS e FECHADOS, árvore de busca e caminho solução.
 - Estado imutável em todo lugar: `tuple`, frozen dataclass, enum.
 - Texto apresentado ao usuário só em `libs/outputs/theme.py` e `config/settings.py`.
 
 ## Algoritmos
 
-Os três compartilham o motor: `visita` conta e registra o vértice, `gera` cria um filho pela regra, `poda` descarta a regra cujo sucessor repetiria um estado. Estourar o limite de iterações encerra qualquer um deles com LIMITE. O que muda é a fronteira e a decisão em cada vértice.
+Os quatro compartilham o motor: `visita` conta e registra o vértice, `gera` cria um filho pela regra, `poda` descarta a regra cujo sucessor repetiria um estado. Estourar o limite de iterações encerra qualquer um deles com LIMITE. O que muda é a fronteira e a decisão em cada vértice.
 
 ### Busca irrevogável
 
@@ -157,7 +158,23 @@ flowchart TD
     E --> B
 ```
 
-Nada de profundidade d+1 antes de esgotar d, então o primeiro caminho até um estado é o mais curto. O objetivo encontrado é o ótimo, e por isso este método é a referência dos outros dois. A poda aqui é global: um estado descoberto por qualquer ramo nunca é gerado de novo. Em P1: R4, R1, R1, 3 movimentos em 12 iterações.
+Nada de profundidade d+1 antes de esgotar d, então o primeiro caminho até um estado é o mais curto. O objetivo encontrado é o ótimo em número de movimentos, e por isso este método é a referência dos outros em comprimento; em custo, a referência é a busca ordenada. A poda aqui é global: um estado descoberto por qualquer ramo nunca é gerado de novo. Em P1: R4, R1, R1, 3 movimentos em 12 iterações.
+
+### Busca ordenada
+
+Cada regra tem um custo, a distância entre as hastes que ela liga: R1, R3, R4 e R6 custam 1; R2 e R5, que pulam a haste do meio, custam 2. ABERTOS vira uma fila ordenada pelo custo acumulado desde a raiz.
+
+```mermaid
+flowchart TD
+    A([raiz em ABERTOS]) --> B[tira o de menor custo; no empate, o gerado primeiro]
+    B --> C{é o objetivo?}
+    C -- sim --> S([SUCESSO])
+    C -- não --> V[visita: regras aplicáveis na ordem da estratégia, menos as que não baixam o menor custo conhecido do estado]
+    V --> E[aplica todas; se um filho chega mais barato a um estado ainda aberto, o nó antigo sai de ABERTOS e da árvore]
+    E --> B
+```
+
+O objetivo só encerra a busca quando vira o estado atual, não quando é gerado, e por isso a solução é a de menor custo. A estratégia só desempata irmãos de mesmo custo. A poda segue o vetor de menor custo do material: um estado gerado de novo com custo maior ou igual é descartado. Em P1: R4, R1, R1, custo 3 em 10 iterações.
 
 ## Qualidade
 

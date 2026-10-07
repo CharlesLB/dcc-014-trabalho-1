@@ -13,6 +13,7 @@ class Node:
     rule: TransitionRule | None
     depth: int
     order: int
+    cost: int = 0
 
     @property
     def is_root(self) -> bool:

@@ -98,12 +98,13 @@
 
     Nada de profundidade d+1 é visitado antes de esgotar a profundidade d,
     então o primeiro caminho até um estado é o mais curto até ele. O objetivo
-    encontrado é o ótimo, e por isso este método serve de referência para os
-    outros dois. A estratégia só muda a ordem dentro de um nível.
+    encontrado é o ótimo em movimentos, e por isso este método serve de
+    referência de comprimento para os outros. A estratégia só muda a ordem
+    dentro de um nível.
 
     A poda aqui é global: um estado descoberto por qualquer ramo nunca é
-    gerado de novo. Os outros dois métodos só evitam repetir dentro do
-    próprio caminho.
+    gerado de novo. A irrevogável e o backtracking só evitam repetir dentro
+    do próprio caminho.
 """
 
 from __future__ import annotations
@@ -114,6 +115,7 @@ from config import settings
 from core.algorithms.domain.base import SearchAlgorithm
 from core.domain.problem import Problem
 from core.domain.state import State
+from core.rules.domain.base import TransitionRule
 from core.rules.strategies.domain.base import ControlStrategy
 from core.search_tree.frontier import QueueFrontier
 from core.search_tree.node import Node
@@ -161,5 +163,7 @@ class BreadthFirstSearch(SearchAlgorithm):
 
         return self._exhausted()
 
-    def _is_repetition(self, node: Node, successor: State) -> bool:
+    def _is_repetition(
+        self, node: Node, rule: TransitionRule, successor: State
+    ) -> bool:
         return successor in self._closed or successor in self._open_states
