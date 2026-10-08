@@ -480,7 +480,24 @@ def algorithms_table(algorithm):
         for name in ALGORITHM_NAMES
         for strategy in SLIDE_STRATEGIES
     }
-    return _bold_columns(pd.DataFrame(columns), algorithm)
+    frame = pd.DataFrame(columns)
+    contenders = [
+        f"{ALGORITHM_LABELS[name]} {SHORT[strategy]}"
+        for name in CHART_ALGORITHMS
+        for strategy in SLIDE_STRATEGIES
+        if solve(name, strategy).outcome.is_success
+    ]
+    return _bold_columns(frame, algorithm).apply(_champions, subset=contenders, axis=1)
+
+
+CHAMPION_ROWS = ("Custo", "Nível da solução", "Iterações", "Nós gerados", "Nós expandidos", "Pico de ABERTOS", "Retrocessos / impasses")
+
+
+def _champions(row):
+    if row.name not in CHAMPION_ROWS:
+        return ["" for _ in row]
+    values = [int(str(value).split(" / ")[0]) for value in row]
+    return ["color: #1a8746; font-weight: bold" if value == min(values) else "" for value in values]
 
 
 def _charted(algorithm):
@@ -682,6 +699,30 @@ def _with_steps(result):
     return " ".join(steps)
 
 
+def show_hop(before, rule_id, title=""):
+    state = INITIAL_STATE
+    for previous in before:
+        state = RULE_BY_ID[previous].apply(state)
+    rule = RULE_BY_ID[rule_id]
+    after = rule.apply(state)
+    disk = state[rule.origin][-1]
+    if title:
+        print(title)
+    print(
+        side_by_side(
+            [
+                f"{compact(state)}\\n\\n{state_render.render_pegs(state)}",
+                f"\\n\\n\\n  —{rule.id}→",
+                f"{compact(after)}\\n\\n{state_render.render_pegs(after)}",
+            ]
+        )
+    )
+    print(
+        f"\\n{rule.id} leva o {theme.disk_name(disk).lower()} (peso {DISK_WEIGHTS[disk]}) de {rule.origin.name} para "
+        f"{rule.destination.name} (distância {rule.distance}): {MOVE_COST} + {DISK_WEIGHTS[disk]} × {rule.distance} = {rule.cost(state)}\\n"
+    )
+
+
 def compare_with_breadth(goal_id, strategy):
     problem = next(p for p in goals_report().problems if p.problem_id == goal_id)
     rows = []
@@ -695,6 +736,9 @@ def compare_with_breadth(goal_id, strategy):
                 "Custo": result.solution_cost,
             }
         )
+    breadth_cost = rows[0]["Custo"]
+    for row in rows:
+        row["Melhoria em relação à largura"] = f"{100 * (breadth_cost - row['Custo']) / breadth_cost:.1f}%".replace(".", ",")
     print(f"{goal_id}: de {compact(problem.initial_state)} até {compact(problem.goal_state)}, ordem {STRATEGY_LABELS[strategy]}")
     return pd.DataFrame(rows).set_index("Algoritmo")
 
@@ -788,10 +832,11 @@ def _study(models):
     pairs = [(s, g) for s in states for g in states if s != g]
     shortest = {(s, g): shortest_distance(s, g) for s, g in pairs}
     breadth = {
-        (s, g, name): BreadthFirstSearch(SearchTree(), STRATEGY_REGISTRY[name]).solve(Problem("PAR", g, initial=s)).applied_rules
+        (s, g, name): BreadthFirstSearch(SearchTree(), STRATEGY_REGISTRY[name]).solve(Problem("PAR", g, initial=s))
         for s, g in pairs
         for name in SLIDE_STRATEGIES
     }
+    breadth_generated = sum(result.metrics.nodes_generated for result in breadth.values()) / len(breadth)
     rows = []
     for label, price in models:
         rules = tuple(PricedRule(rule, price) for rule in RULES)
@@ -804,7 +849,8 @@ def _study(models):
                 state = rule.apply(state)
             return total
 
-        runs = minimal = cheaper = unique = depends = swaps = 0
+        runs = minimal = cheaper = unique = depends = swaps = generated_total = extra_moves = 0
+        savings = []
         for s in states:
             counts = _optimal_counts(s, price)
             for g in states:
@@ -815,10 +861,15 @@ def _study(models):
                 for name in SLIDE_STRATEGIES:
                     result = OrderedSearch(SearchTree(rules), STRATEGY_REGISTRY[name]).solve(Problem("PAR", g, initial=s))
                     generated = [step.state for step in result.trace.of_event(TraceEvent.GENERATE)]
+                    reference = breadth[(s, g, name)]
+                    reference_cost = path_cost(s, reference.applied_rules)
                     runs += 1
                     minimal += result.solution_length == shortest[(s, g)]
-                    cheaper += result.solution_cost < path_cost(s, breadth[(s, g, name)])
+                    cheaper += result.solution_cost < reference_cost
                     swaps += len(generated) - len(set(generated))
+                    generated_total += result.metrics.nodes_generated
+                    extra_moves += result.solution_length - reference.solution_length
+                    savings.append((reference_cost - result.solution_cost) / reference_cost)
                     paths.add(result.applied_rules)
                 depends += len(paths) > 1
         rows.append(
@@ -829,6 +880,11 @@ def _study(models):
                 "Ótimo único": 100 * unique / len(pairs),
                 "Caminho muda com a estratégia": 100 * depends / len(pairs),
                 "Trocas de nó": swaps,
+                "Economia média de custo": 100 * sum(savings) / len(savings),
+                "Maior economia": 100 * max(savings),
+                "Nós gerados vs largura": 100 * (generated_total / runs - breadth_generated) / breadth_generated,
+                "Trocas por execução": swaps / runs,
+                "Movimentos a mais": extra_moves / runs,
             }
         )
     return pd.DataFrame(rows).set_index("Modelo de custo")
@@ -914,7 +970,7 @@ def weight_study():
 
 def show_cost_study():
     frame = cost_study()
-    percent = [column for column in frame.columns if column != "Trocas de nó"]
+    percent = [column for column in frame.columns if column not in ("Trocas de nó", "Trocas por execução", "Movimentos a mais")]
     return frame.style.format({column: "{:.1f}%" for column in percent}).set_properties(
         subset=pd.IndexSlice[["10 + peso × distância (escolhido)"], :], **{"font-weight": "bold"}
     )

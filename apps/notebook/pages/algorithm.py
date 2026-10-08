@@ -92,10 +92,10 @@ Não há fila nem pilha: ABERTOS tem no máximo um nó, o filho que acabou de se
         nó = aplica a primeira regra em nó""",
     path_strategy="ascending",
     path_note="Com `descending` a busca termina em impasse na 3ª iteração e não há caminho. O caminho abaixo é o da ordem crescente: chega, mas com 14 movimentos, quando o ótimo tem 3.",
-    complexity="""| Tempo | Memória | | Por quê | Solução |
+    complexity="""| Algoritmo | Tempo | Memória | Solução | Por quê |
 |---|---|---|---|---|
-| não termina | O(1) | **Irrevogável sem poda** | pode girar num ciclo para sempre | pode não achar |
-| O(b·m²) | O(m) | **Irrevogável com poda** | um nó por iteração, no máximo m; cada regra é comparada com o caminho | pode não achar |""",
+| **Irrevogável sem poda** | não termina | O(1) | pode não achar | pode girar num ciclo para sempre |
+| **Irrevogável com poda** | O(b·m²) | O(m) | pode não achar | um nó por iteração, no máximo m; cada regra é comparada com o caminho |""",
     symbols=("b", "m", "V"),
     conclusion="""## Conclusão
 
@@ -159,10 +159,10 @@ A fronteira do projeto, em `core/search_tree/frontier.py`, tem as três filas us
     FRACASSO""",
     path_strategy="descending",
     path_note="A ordem decrescente, a do docstring do módulo: 22 movimentos para um ótimo de 3, depois de 14 retrocessos.",
-    complexity="""| Tempo | Memória | | Por quê | Solução |
+    complexity="""| Algoritmo | Tempo | Memória | Solução | Por quê |
 |---|---|---|---|---|
-| não termina | O(L) | **Backtracking sem poda** | o ciclo cresce a pilha até o limite L de iterações | pode não achar |
-| O(bᵐ) | O(m) | **Backtracking com poda** | só guarda o caminho atual | a primeira achada |""",
+| **Backtracking sem poda** | não termina | O(L) | pode não achar | o ciclo cresce a pilha até o limite L de iterações |
+| **Backtracking com poda** | O(bᵐ) | O(m) | a primeira achada | só guarda o caminho atual |""",
     symbols=("b", "m"),
     conclusion="""## Conclusão
 
@@ -240,11 +240,11 @@ Largura: fila, sai o primeiro que entrou. Varre por níveis.""",
     FRACASSO""",
     path_strategy="ascending",
     path_note="3 movimentos. As duas estratégias, com e sem poda, chegam a este mesmo caminho, e ele é o menor possível.",
-    complexity="""| Tempo | Memória | | Por quê | Solução |
+    complexity="""| Algoritmo | Tempo | Memória | Solução | Por quê |
 |---|---|---|---|---|
-| O(bᵈ) | O(bᵈ) | **Largura sem poda** | a fila guarda o nível inteiro | ótima |
-| O(V + E) | O(V) | **Largura com poda** | cada estado entra uma vez | ótima |
-| O(bᵐ) | O(m) | **Backtracking** | só guarda o caminho atual | a primeira achada |""",
+| **Largura sem poda** | O(bᵈ) | O(bᵈ) | ótima | a fila guarda o nível inteiro |
+| **Largura com poda** | O(V + E) | O(V) | ótima | cada estado entra uma vez |
+| **Backtracking** | O(bᵐ) | O(m) | a primeira achada | só guarda o caminho atual |""",
     symbols=("b", "d", "m", "V", "E"),
     conclusion="""## Conclusão
 
@@ -305,6 +305,9 @@ Hastes vizinhas (H1 ↔ H2, H2 ↔ H3) valem 1; H1 ↔ H3, que pula a do meio, v
 
 Exemplo, objetivo RV / A / –: os dois caminhos têm 4 movimentos e fazem duas viagens longas. Só com o peso, empatam em 46; com a distância, o que leva o verde nas viagens longas custa 48 e o que leva o vermelho custa 50."""
     ),
+    code(
+        'show_hop(("R1",), "R2", "R1 R2 R3 R5: o verde faz a viagem longa")\nshow_hop((), "R2", "R2 R1 R5 R3: o vermelho faz a viagem longa")'
+    ),
     code("distance_example()"),
     code("distance_tiebreak()"),
     markdown(
@@ -320,9 +323,15 @@ Exemplo, objetivo RV / A / –: os dois caminhos têm 4 movimentos e fazem duas 
 
 Verde 1, vermelho 2, azul 3. O custo passa a depender de qual disco se move, e não só da regra, então dois caminhos com o mesmo número de movimentos deixam de empatar.
 
-**Por que é boa:** com o peso, a ordenada acha um caminho mais barato que o da largura em 10,3% dos casos (contra 0,5% só com distância), o ótimo é único em 85% dos pares e a resposta muda com a estratégia em só 4,6%. Exemplo, objetivo VA/R/– com a ordem decrescente: os dois fazem 3 movimentos, mas a largura carrega o azul por duas hastes."""
+**Por que é boa:** no exemplo abaixo, objetivo VA / R / – com a ordem decrescente, os dois fazem 3 movimentos, mas a largura leva o azul por duas hastes (R5, 16) e a ordenada só por uma (R3, 13): 41 contra 39, 4,9% mais barato. No espaço todo, a melhoria média em relação à largura é de 0,4%, no máximo 10%."""
+    ),
+    code(
+        'show_hop(("R4", "R1"), "R5", "Largura: R4 R1 R5, o azul anda duas hastes")\nshow_hop(("R2",), "R3", "Ordenada: R2 R3 R6, o azul anda uma haste")'
     ),
     code('compare_with_breadth("G11", "descending")'),
+    code(
+        'cost_study().loc[["10 + peso × distância (escolhido)"], ["Economia média de custo", "Maior economia"]].round(1)'
+    ),
     markdown(
         "Em P1, o peso também faz aparecer o caso 3 da técnica de poda: um estado ainda aberto reaparece mais barato e troca de nó."
     ),
@@ -334,14 +343,16 @@ Verde 1, vermelho 2, azul 3. O custo passa a depender de qual disco se move, e n
     markdown(
         """### Por que essa regra e não outra
 
-O mesmo estudo com 7 modelos de custo, rodado pelo motor do projeto em todos os 1.260 pares início → objetivo e nas duas estratégias. *Mínimo de movimentos* e *mais barato que a largura*: % das 2.520 execuções. *Ótimo único* e *caminho muda com a estratégia*: % dos 1.260 pares. *Trocas de nó*: quantas vezes o caso 3 da poda aconteceu."""
+O mesmo estudo com 7 modelos de custo, rodado pelo motor do projeto em todos os 1.260 pares início → objetivo e nas duas estratégias. *Mínimo de movimentos*: % das 2.520 execuções em que a ordenada achou um caminho com o mínimo de movimentos. *Mais barato que a largura*: % das execuções em que o caminho achado pela ordenada custa menos que o achado pela largura, no mesmo objetivo. *Ótimo único* e *caminho muda com a estratégia*: % dos 1.260 pares. *Trocas de nó*: quantas vezes o caso 3 da poda aconteceu."""
     ),
     code("show_cost_study()"),
     markdown(
-        """**Como a regra evoluiu: trocas de nó.** Das três regras pelas quais passamos, só com a distância a troca de nó nunca acontece (0); com 10 + peso, acontece 29 vezes; com 10 + peso × distância, 1.308 vezes, 45 vezes mais que só com o peso. O mínimo de movimentos fica em 100% nas três."""
+        """### Ganho real da regra
+
+Comparação com a largura, nos 1.260 pares início → objetivo e nas duas estratégias. *Economia*: quanto o caminho achado pela ordenada custa a menos que o achado pela largura, no mesmo objetivo, em % do custo da largura; a tabela traz a média e a maior. Também: nós gerados a mais, trocas de nó por execução e movimentos a mais."""
     ),
     code(
-        'cost_study().loc[["distância (1 ou 2)", "10 + peso do disco", "10 + peso × distância (escolhido)"], ["Trocas de nó", "Mínimo de movimentos", "Mais barato que a largura", "Caminho muda com a estratégia"]].round(1)'
+        'cost_study().loc[["distância (1 ou 2)", "10 + peso do disco", "10 + peso × distância (escolhido)"], ["Economia média de custo", "Maior economia", "Nós gerados vs largura", "Trocas por execução", "Movimentos a mais"]].round(2)'
     ),
     markdown(
         "Só a regra escolhida junta as quatro coisas: sempre o mínimo de movimentos, um custo que de fato muda a resposta, uma solução quase independente da estratégia e a técnica de poda completa em ação. A distância² muda bastante a resposta, mas perde o mínimo de movimentos em 44% dos casos; o braço físico e a distância pura quase nunca mudam a resposta."
@@ -356,22 +367,19 @@ Cada estado do espaço como objetivo, sempre a partir da mesma posição inicial
 
 ### Iterações
 
-Ordenada e largura têm a mesma distribuição: mediana 18,5, de 1 a 36. Sem heurística, a ordem de visita não depende do objetivo, e o objetivo i sai na i-ésima iteração. O backtracking decrescente tem cauda longa: média 82,9, máximo 2.078."""
+Com poda, cada estado sai de ABERTOS uma vez, numa ordem que não depende do objetivo: o objetivo i é achado na posição i dessa ordem. Nos 36 objetivos, as iterações são sempre 1, 2, …, 36, só embaralhadas, para qualquer custo."""
     ),
     code('goals_boxplot("ordered", "iterations")'),
     code('goals_stats("ordered", "iterations")'),
-    markdown(
-        """### Nós gerados
-
-A ordenada gera um pouco mais que a largura (média 23,5 contra 22,0 e 22,2): quando um estado reaparece mais barato, ele é gerado de novo na troca de nó. O backtracking crescente gera menos (mediana 18,5), mas o decrescente chega a 1.045."""
-    ),
+    markdown("### Nós gerados"),
     code('goals_boxplot("ordered", "generated")'),
     code('goals_stats("ordered", "generated")'),
-    markdown(
-        """### Custo da solução achada
-
-A ordenada acha o menor custo nos 36 objetivos: mediana 51, máximo 98. A largura chega a 104 na ordem crescente e passa do ótimo em 9 das 72 execuções. O backtracking custa de 3 a 4 vezes mais (mediana 209 e 167)."""
-    ),
+    markdown("### Nós expandidos"),
+    code('goals_boxplot("ordered", "expanded")'),
+    code('goals_stats("ordered", "expanded")'),
+    markdown("### Custo da solução: só P1"),
+    code('p1_cost_chart("ordered")'),
+    markdown("### Custo da solução: todos os 36 objetivos"),
     code('goals_boxplot("ordered", "cost")'),
     code('goals_stats("ordered", "cost")'),
 )
@@ -423,10 +431,10 @@ Com o custo 10 + peso × distância, o terceiro caso aparece em P1: na iteraçã
     FRACASSO""",
     path_strategy="ascending",
     path_note="R4, R1, R1: 13 + 12 + 11 = 36. Levar o azul uma haste custa 13, o vermelho 12 e o verde 11. É o menor custo possível; as duas estratégias, com e sem poda, chegam a este mesmo caminho.",
-    complexity="""| Tempo | Memória | | Por quê | Solução |
+    complexity="""| Algoritmo | Tempo | Memória | Solução | Por quê |
 |---|---|---|---|---|
-| O(b^(1 + C*/ε)) | O(b^(1 + C*/ε)) | **Ordenada sem poda** | a fila guarda todo nó mais barato que o objetivo, repetido ou não | menor custo |
-| O((V + E) log V) | O(V) | **Ordenada com poda** | cada estado entra uma vez; o heap custa log V por operação | menor custo |""",
+| **Ordenada sem poda** | O(b^(1 + C*/ε)) | O(b^(1 + C*/ε)) | menor custo | a fila guarda todo nó mais barato que o objetivo, repetido ou não |
+| **Ordenada com poda** | O((V + E) log V) | O(V) | menor custo | cada estado entra uma vez; o heap custa log V por operação |""",
     symbols=("b", "C*", "ε", "V", "E"),
     conclusion="""## Conclusão
 

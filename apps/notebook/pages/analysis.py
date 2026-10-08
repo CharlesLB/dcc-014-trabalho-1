@@ -172,6 +172,7 @@ def goals_runs():
                     "cost": result.solution_cost,
                     "iterations": result.metrics.iterations,
                     "generated": result.metrics.nodes_generated,
+                    "expanded": result.metrics.nodes_visited,
                     "best_moves": best_moves,
                     "best_cost": best_cost,
                 }
@@ -231,6 +232,7 @@ def boxplots(ax, runs, column, title):
 GOAL_COLUMNS = {
     "iterations": ("Iterações", 120),
     "generated": ("Nós gerados", 80),
+    "expanded": ("Nós expandidos", 120),
     "cost": ("Custo da solução", 440),
 }
 
@@ -273,6 +275,23 @@ def goals_boxplot(algorithm, column):
             ax.annotate(text, xy=(limit, position), xytext=(-4, 0), textcoords="offset points", ha="right", va="center", fontsize=9, color=INK)
     ax.invert_yaxis()
     ax.set_title(f"{title} nos 36 objetivos, da menor para a maior média (número: média; seta: fora da escala)", loc="left")
+    ax.grid(axis="y", visible=False)
+    plt.show()
+
+
+def p1_cost_chart(algorithm):
+    results = {(result.algorithm, result.strategy): result for result in p1_report().problems[0].results}
+    names = [algorithm, *(name for name in ALGORITHMS if name != algorithm)]
+    rows = [(name, strategy) for name in names for strategy in STRATEGIES if results[(name, strategy)].solution_cost is not None]
+    rows.sort(key=lambda row: results[row].solution_cost)
+    fig, ax = plt.subplots(figsize=(11, 3.6))
+    bars = ax.barh(range(len(rows)), [results[row].solution_cost for row in rows], color=[ALGORITHM_COLORS[name] for name, _ in rows], height=0.6, alpha=0.85)
+    ax.bar_label(bars, fontsize=9, fontweight="bold", color="#0b0b0b", padding=4)
+    ax.set_yticks(range(len(rows)), [combination_label(name, strategy) for name, strategy in rows])
+    for tick, (name, _) in zip(ax.get_yticklabels(), rows):
+        tick.set_fontweight("bold" if name == algorithm else "normal")
+    ax.invert_yaxis()
+    ax.set_title("Custo da solução: só P1", loc="left")
     ax.grid(axis="y", visible=False)
     plt.show()
 
@@ -346,11 +365,9 @@ def _complexity_table() -> str:
     rows = []
     for spec in ALGORITHM_SECTIONS:
         for line in spec.complexity.splitlines()[2:]:
-            time, memory, name, reason, solution = (
-                cell.strip() for cell in line.strip("|").split("|")
-            )
+            name = line.strip("|").split("|")[0].strip()
             if "poda" in name:
-                rows.append(f"| {name} | {time} | {memory} | {solution} | {reason} |")
+                rows.append(line)
     return "\n".join(
         (
             "| Algoritmo | Tempo | Memória | Solução | Por quê |",
