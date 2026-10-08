@@ -6,12 +6,15 @@
 
 2. Custos
 
-    Cada regra custa a distância entre as hastes que ela liga:
+    custo da regra = 10 + peso do disco movido x distância entre as hastes
 
-        R1 = H1 → H2: 1     R3 = H2 → H1: 1     R4 = H2 → H3: 1
-        R2 = H1 → H3: 2     R5 = H3 → H1: 2     R6 = H3 → H2: 1
+        10          por jogada; pesa mais que o esforço, e em todo par do
+                    espaço o caminho mais barato é um dos mais curtos
+        distância   hastes vizinhas: 1; H1 <-> H3, que pula a do meio: 2
+        peso        verde 1, vermelho 2, azul 3
 
-    O custo de um nó é a soma das regras do caminho da raiz até ele.
+    Na raiz: R1 (vermelho, 1) 12, R2 (vermelho, 2) 14, R3 (azul, 1) 13,
+    R4 (azul, 1) 13. O custo de um nó é a soma das regras desde a raiz.
 
 3. Critério
 
@@ -27,101 +30,106 @@
 4. Execução
 
     Expansão de S0 = ([V, R], [A], []), custo 0
-        R1 → S1 = ([V], [A, R], [])      1
-        R2 → S2 = ([V], [A], [R])        2
-        R3 → S3 = ([V, R, A], [], [])    1
-        R4 → S4 = ([V, R], [], [A])      1
-        R5, R6: inválidas, H3 vazia
-        ABERTOS  = [S1(1), S3(1), S4(1), S2(2)]
-        FECHADOS = [S0(0)]
+        R1 → S1 = ([V], [A, R], [])      12
+        R2 → S2 = ([V], [A], [R])        14
+        R3 → S3 = ([V, R, A], [], [])    13
+        R4 → S4 = ([V, R], [], [A])      13
+        ABERTOS  = [S1(12), S3(13), S4(13), S2(14)]
+        FECHADOS = [S0]
 
-    Expansão de S1 = ([V], [A, R], []), custo 1
-        R2 → S5 = ([], [A, R], [V])      3
-        R3 → S0 (2 ≥ 0): poda
-        R4 → estado de S2 (2 ≥ 2): poda
-        ABERTOS  = [S3(1), S4(1), S2(2), S5(3)]
-        FECHADOS = [S0(0), S1(1)]
+    Expansão de S1 = ([V], [A, R], []), custo 12
+        R2 → S5 = ([], [A, R], [V])      24
+        R3 → S0, R4 → estado de S2 (24 ≥ 14): poda
+        ABERTOS  = [S3(13), S4(13), S2(14), S5(24)]
 
-    Expansão de S3 = ([V, R, A], [], []), custo 1
-        R1 → S0, R2 → S4: poda.  Nada novo.
-        ✗ impasse: S3 só vai para FECHADOS
-        ABERTOS  = [S4(1), S2(2), S5(3)]
-        FECHADOS = [S0(0), S1(1), S3(1)]
+    Expansão de S3 = ([V, R, A], [], []), custo 13
+        R1 → S0, R2 → S4: poda.  ✗ impasse
+        ABERTOS  = [S4(13), S2(14), S5(24)]
 
-    Expansão de S4 = ([V, R], [], [A]), custo 1
-        R1 → S6 = ([V], [R], [A])        2
-        R5 → S3, R6 → S0: poda
-        ABERTOS  = [S2(2), S6(2), S5(3)]
-        FECHADOS = [S0(0), S1(1), S3(1), S4(1)]
+    Expansão de S4 = ([V, R], [], [A]), custo 13
+        R1 → S6 = ([V], [R], [A])        25
+        R5, R6: poda
+        ABERTOS  = [S2(14), S5(24), S6(25)]
 
-    Expansão de S2 = ([V], [A], [R]), custo 2
-        R1 → S7 = ([], [A, V], [R])      3
-        R3 → S8 = ([V, A], [], [R])      3
-        R5 → S0, R6 → S1: poda
-        ABERTOS  = [S6(2), S5(3), S7(3), S8(3)]
-        FECHADOS = [S0(0), S1(1), S3(1), S4(1), S2(2)]
+    Expansão de S2 = ([V], [A], [R]), custo 14
+        R1 → S7 = ([], [A, V], [R])      25
+        R3 → S8 = ([V, A], [], [R])      27
+        ABERTOS  = [S5(24), S6(25), S7(25), S8(27)]
 
-    Expansão de S6 = ([V], [R], [A]), custo 2
-        R1 → S9  = ([], [R, V], [A])     3   ← é Sf, mas só entra na fila
-        R5 → S10 = ([V, A], [R], [])     4
-        R6 → S11 = ([V], [R, A], [])     3
-        R3 → S4: poda
-        ABERTOS  = [S5(3), S7(3), S8(3), S9(3), S11(3), S10(4)]
-        FECHADOS = [S0(0), S1(1), S3(1), S4(1), S2(2), S6(2)]
+    Expansão de S5 = ([], [A, R], [V]), custo 24
+        R3 → S9 = ([R], [A], [V])        36
 
-    S5, S7 e S8 custam 3 como S9, mas foram gerados antes e saem primeiro.
-        S5 gera S12(4).  S7 gera S13(5).  S8 gera S14(5).
-        ABERTOS  = [S9(3), S11(3), S10(4), S12(4), S13(5), S14(5)]
-        FECHADOS = [S0(0), S1(1), S3(1), S4(1), S2(2), S6(2), S5(3),
-                    S7(3), S8(3)]
+    Expansão de S6 = ([V], [R], [A]), custo 25
+        R1 → S10 = ([], [R, V], [A])     36   ← é Sf, mas só entra na fila
+        R5 → S11 = ([V, A], [R], [])     41   (azul, 2 hastes: 10 + 6)
+        R6 → S12 = ([V], [R, A], [])     38
+        ABERTOS  = [S7(25), S8(27), S9(36), S10(36), S12(38), S11(41)]
 
-    Chega a vez de S9 = ([], [R, V], [A])
+    Expansão de S7 = ([], [A, V], [R]), custo 25
+        R5 → S13 = ([R], [A, V], [])     39
+
+    Expansão de S8 = ([V, A], [], [R]), custo 27
+        R5 → S14 = ([V, A, R], [], [])   41
+        R6 → S15 = ([V, A], [R], [])     39   (vermelho, 1 haste: 10 + 2)
+        ✓ TROCA: S15 chega ao estado de S11 por 39, menos que 41. S11 sai
+          de ABERTOS e da árvore; S15 entra no lugar.
+        ABERTOS  = [S9(36), S10(36), S12(38), S13(39), S15(39), S14(41)]
+
+    Expansão de S9 = ([R], [A], [V]), custo 36
+        S9 e S10 custam 36; S9 foi gerado antes e sai primeiro.
+        R3 → S16 (49), R5 → S17 (48)
+
+    Chega a vez de S10 = ([], [R, V], [A])
         ✓ SUCESSO
 
 5. Árvore de busca (custo acumulado entre parênteses)
 
     S0 ([V,R], [A], [])  (0)
-    ├── R1 → S1 ([V], [A,R], [])  (1)
-    │   └── R2 → S5 ([], [A,R], [V])  (3)
-    │       └── R3 → S12  (4)
-    ├── R2 → S2 ([V], [A], [R])  (2)
-    │   ├── R1 → S7 ([], [A,V], [R])  (3)
-    │   │   └── R5 → S13  (5)
-    │   └── R3 → S8 ([V,A], [], [R])  (3)
-    │       └── R5 → S14  (5)
-    ├── R3 → S3 ([V,R,A], [], [])  (1)   (impasse)
-    └── R4 → S4 ([V,R], [], [A])  (1)
-        └── R1 → S6 ([V], [R], [A])  (2)
-            ├── R1 → S9 ([], [R,V], [A])  (3)   (objetivo)
-            ├── R5 → S10 ([V,A], [R], [])  (4)
-            └── R6 → S11 ([V], [R,A], [])  (3)
+    ├── R1 → S1 ([V], [A,R], [])  (12)
+    │   └── R2 → S5 ([], [A,R], [V])  (24)
+    │       └── R3 → S9 ([R], [A], [V])  (36)
+    │           ├── R3 → S16  (49)
+    │           └── R5 → S17  (48)
+    ├── R2 → S2 ([V], [A], [R])  (14)
+    │   ├── R1 → S7 ([], [A,V], [R])  (25)
+    │   │   └── R5 → S13  (39)
+    │   └── R3 → S8 ([V,A], [], [R])  (27)
+    │       ├── R5 → S14  (41)
+    │       └── R6 → S15 ([V,A], [R], [])  (39)   (substituiu S11)
+    ├── R3 → S3 ([V,R,A], [], [])  (13)   (impasse)
+    └── R4 → S4 ([V,R], [], [A])  (13)
+        └── R1 → S6 ([V], [R], [A])  (25)
+            ├── R1 → S10 ([], [R,V], [A])  (36)   (objetivo)
+            ├── R5 → S11  (41)   (removido pela troca)
+            └── R6 → S12 ([V], [R,A], [])  (38)
 
 6. Caminho solução
 
     S0 ([V,R], [A], [])
-     │ R4: azul H2 → H3        custo 1
+     │ R4: azul H2 → H3        10 + 3 x 1 = 13
      ↓
     S4 ([V,R], [], [A])
-     │ R1: vermelho H1 → H2    custo 1
+     │ R1: vermelho H1 → H2    10 + 2 x 1 = 12
      ↓
     S6 ([V], [R], [A])
-     │ R1: verde H1 → H2       custo 1
+     │ R1: verde H1 → H2       10 + 1 x 1 = 11
      ↓
     Sf ([], [R,V], [A])
 
-    Custo da solução: 1 + 1 + 1 = 3
-    Número de movimentos: 3      Iterações: 10      Gerados: 15
+    Custo da solução: 13 + 12 + 11 = 36
+    Número de movimentos: 3      Iterações: 11      Gerados: 18
 
-    Com a ordem decrescente: o mesmo caminho em 11 iterações.
+    Com a ordem decrescente: o mesmo caminho, o mesmo custo e também 11
+    iterações.
 
 7. Conclusão
 
     Um nó só é expandido depois de todos os mais baratos, então quando o
     objetivo vira o estado atual nenhum nó aberto chega nele mais barato:
-    a solução é a de MENOR CUSTO, que nem sempre é a de menos movimentos.
-    Com custo unitário ela seria a busca em largura. Aqui, em P1, as duas
-    acham o mesmo caminho, mas a ordenada deixa para depois os ramos que
-    começam por R2 e chega em 10 iterações contra 14.
+    a solução é a de MENOR CUSTO. Como cada jogada custa 10 e o esforço de
+    uma jogada varia só de 1 a 6, a de menor custo é, em todo par do
+    espaço, uma das de menos movimentos; entre as de mesmo tamanho, vence a
+    que carrega os discos mais pesados por menos distância.
 """
 
 from __future__ import annotations
@@ -212,7 +220,7 @@ class OrderedSearch(SearchAlgorithm):
         barato depois, então ele sempre cai aqui.
         """
         best = self._best_cost.get(successor)
-        return best is not None and node.cost + rule.cost >= best
+        return best is not None and node.cost + rule.cost(node.state) >= best
 
     def _discard(self, node: Node) -> None:
         """Só contabilidade: registra o nó substituído como poda do pai."""

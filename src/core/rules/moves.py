@@ -9,12 +9,24 @@
 
 Toda regra tem inversa exata: R1<->R3, R2<->R5, R4<->R6.
 
-Custo de uma regra: a distância entre as hastes que ela liga, como um braço
-que leva o disco de uma haste à outra.
+Custo de aplicar uma regra num estado:
 
-    R1, R3 (H1 <-> H2): 1     R4, R6 (H2 <-> H3): 1     R2, R5 (H1 <-> H3): 2
+    custo = 10 + peso do disco movido x distância entre as hastes
 
-Uma regra e sua inversa custam o mesmo. Só a busca ordenada olha o custo.
+    10           toda jogada custa o mesmo tanto, e esse tanto pesa mais que o
+                 esforço (de 1 a 6 por jogada). Em todos os 1.260 pares início
+                 -> objetivo deste espaço, o caminho mais barato é um dos mais
+                 curtos: a busca ordenada não troca movimentos por esforço.
+                 Sem o 10, isso falha em 3,7% das execuções.
+    distância    hastes vizinhas (H1 <-> H2, H2 <-> H3): 1; H1 <-> H3, que pula
+                 a do meio: 2.
+    peso         VERDE 1, VERMELHO 2, AZUL 3 (`DISK_WEIGHTS`).
+
+Entre caminhos com o mesmo número de movimentos, vence o que carrega os discos
+mais pesados por menos distância. Uma regra e sua inversa custam o mesmo: movem
+o mesmo disco pela mesma distância. Só a busca ordenada olha o custo.
+
+Exemplo: em ([V, R], [A], []), R4 leva o azul de H2 para H3: 10 + 3 x 1 = 13.
 
 `apply` exige `is_applicable` como pré-condição: aplicar regra inválida é erro de
 programação e falha alto.
@@ -23,10 +35,13 @@ programação e falha alto.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Final
 
-from core.rules.domain.base import Peg, State
+from core.rules.domain.base import DISK_WEIGHTS, Peg, State
 from core.rules.domain.constraints import is_move_allowed
 from core.rules.domain.exceptions import RuleNotApplicableError
+
+MOVE_COST: Final = 10
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,8 +51,14 @@ class Move:
     destination: Peg
 
     @property
-    def cost(self) -> int:
+    def distance(self) -> int:
         return abs(self.destination - self.origin)
+
+    def cost(self, state: State) -> int:
+        if not self.is_applicable(state):
+            raise RuleNotApplicableError(self.id)
+        disk = state[self.origin][-1]
+        return MOVE_COST + DISK_WEIGHTS[disk] * self.distance
 
     def is_applicable(self, state: State) -> bool:
         return is_move_allowed(state, self.origin, self.destination)

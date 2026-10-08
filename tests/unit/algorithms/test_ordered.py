@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import pairwise
 
 import pytest
 
@@ -8,7 +9,8 @@ from core.algorithms.domain.registry import ALGORITHMS
 from core.algorithms.ordered import OrderedSearch
 from core.domain.problem import INITIAL_STATE, Problem
 from core.domain.state import State
-from core.domain.state_space import all_states, cheapest_cost
+from core.domain.state_space import all_states, cheapest_cost, shortest_distance
+from core.rules.domain.base import Disk
 from core.rules.moves import R1, R2, R3, R4, R5, R6, Move
 from core.rules.strategies.domain.registry import STRATEGIES
 from core.search_tree.outcome import Outcome
@@ -22,8 +24,7 @@ from libs.outputs.tree_render import render_tree
 class _PricedMove(Move):
     price: int
 
-    @property
-    def cost(self) -> int:
+    def cost(self, state: State) -> int:
         return self.price
 
 
@@ -54,9 +55,11 @@ def test_solution_cost_is_the_sum_of_its_rules(problems: tuple[Problem, ...]) ->
     for problem in problems:
         for name in STRATEGIES:
             result = _solve(name, problem)
-            steps = result.solution_path[1:]
+            path = result.solution_path
             assert result.solution_cost == sum(
-                node.rule.cost for node in steps if node.rule is not None
+                child.rule.cost(parent.state)
+                for parent, child in pairwise(path)
+                if child.rule is not None
             )
 
 
@@ -109,7 +112,7 @@ def test_never_backtracks(problems: tuple[Problem, ...]) -> None:
 
 
 def test_cheaper_path_replaces_the_open_node() -> None:
-    expensive_r2 = _PricedMove(R2.id, R2.origin, R2.destination, price=5)
+    expensive_r2 = _PricedMove(R2.id, R2.origin, R2.destination, price=30)
     tree = SearchTree(rules=(R1, expensive_r2, R3, R4, R5, R6))
     direct = R2.apply(INITIAL_STATE)
     detour = R4.apply(R1.apply(INITIAL_STATE))
@@ -118,9 +121,11 @@ def test_cheaper_path_replaces_the_open_node() -> None:
     result = _solve("ascending", Problem("SYNTHETIC", direct), tree)
 
     assert result.applied_rules == ("R1", "R4")
-    assert result.solution_cost == 2
+    assert result.solution_cost == R1.cost(INITIAL_STATE) + R4.cost(
+        R1.apply(INITIAL_STATE)
+    )
     replaced = next(
-        node for node in tree.nodes if node.state == direct and node.cost == 5
+        node for node in tree.nodes if node.state == direct and node.cost == 30
     )
     visited = {step.node_order for step in result.trace.of_event(TraceEvent.VISIT)}
     assert replaced.order not in visited
@@ -129,3 +134,24 @@ def test_cheaper_path_replaces_the_open_node() -> None:
         for step in result.trace.of_event(TraceEvent.PRUNE)
     )
     assert f"#{replaced.order} " not in render_tree(result.trace)
+
+
+def test_never_trades_moves_for_effort(initial_state: State) -> None:
+    for goal in all_states():
+        problem = Problem("SYNTHETIC", goal, initial=initial_state)
+        for name in STRATEGIES:
+            result = _solve(name, problem)
+            assert result.solution_length == shortest_distance(initial_state, goal)
+
+
+def test_p1_replaces_an_open_node_with_a_cheaper_one(
+    problems: tuple[Problem, ...],
+) -> None:
+    result = _solve("ascending", problems[0])
+    replaced = [
+        step
+        for step in result.trace.of_event(TraceEvent.PRUNE)
+        if step.state == ((Disk.GREEN, Disk.BLUE), (Disk.RED,), ())
+        and step.rule_id == "R5"
+    ]
+    assert replaced

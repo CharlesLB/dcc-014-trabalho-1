@@ -37,7 +37,7 @@ class SearchTree:
             rule=rule,
             depth=node.depth + 1,
             order=len(self._nodes),
-            cost=node.cost + rule.cost,
+            cost=node.cost + rule.cost(node.state),
         )
         self._nodes.append(child)
         return child

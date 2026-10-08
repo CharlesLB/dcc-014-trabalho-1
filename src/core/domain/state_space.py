@@ -101,7 +101,7 @@ def cheapest_cost(source: State, target: State) -> int | None:
         if cost > costs[current]:
             continue
         for rule, successor in successors(current):
-            candidate = cost + rule.cost
+            candidate = cost + rule.cost(current)
             if candidate < costs.get(successor, candidate + 1):
                 costs[successor] = candidate
                 heapq.heappush(heap, (candidate, pushed, successor))

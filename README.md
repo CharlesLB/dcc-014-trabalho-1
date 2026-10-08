@@ -162,7 +162,12 @@ Nada de profundidade d+1 antes de esgotar d, então o primeiro caminho até um e
 
 ### Busca ordenada
 
-Cada regra tem um custo, a distância entre as hastes que ela liga: R1, R3, R4 e R6 custam 1; R2 e R5, que pulam a haste do meio, custam 2. ABERTOS vira uma fila ordenada pelo custo acumulado desde a raiz.
+Aplicar uma regra custa **10 + peso do disco × distância**: 10 por jogada; distância 1 entre hastes vizinhas e 2 de H1 para H3; peso 1 para o verde, 2 para o vermelho e 3 para o azul. ABERTOS vira uma fila ordenada pelo custo acumulado desde a raiz.
+
+- **10 por jogada** pesa mais que o esforço, que vai de 1 a 6 por jogada: em todos os 1.260 pares início → objetivo, o caminho mais barato é um dos mais curtos, e a ordenada não troca movimentos por esforço. Sem o 10, isso falha em 3,7% das execuções.
+- **Peso × distância** escolhe, entre os caminhos mais curtos, o que carrega os discos mais pesados por menos distância. Como depende de qual disco se move, separa caminhos que a largura trata como iguais.
+
+A escolha veio de um estudo com 13 modelos de custo em todos os 1.260 pares início → objetivo. Com distância pura, a ordenada só achava algo mais barato que a largura em 0,5% dos casos e a resposta mudava com a estratégia em 15%. Com este modelo, acha em 10,3%, o ótimo é único em 85% dos pares e a resposta só muda com a estratégia em 4,6%, sempre com o mínimo de movimentos.
 
 ```mermaid
 flowchart TD
@@ -174,7 +179,7 @@ flowchart TD
     E --> B
 ```
 
-O objetivo só encerra a busca quando vira o estado atual, não quando é gerado, e por isso a solução é a de menor custo. A estratégia só desempata irmãos de mesmo custo. A poda segue o vetor de menor custo do material: um estado gerado de novo com custo maior ou igual é descartado. Em P1: R4, R1, R1, custo 3 em 10 iterações.
+O objetivo só encerra a busca quando vira o estado atual, não quando é gerado, e por isso a solução é a de menor custo. A estratégia só desempata irmãos de mesmo custo. A poda segue o vetor de menor custo do material: um estado gerado de novo com custo maior ou igual é descartado, e um estado ainda aberto que reaparece mais barato troca de nó. Em P1: R4, R1, R1, custo 13 + 12 + 11 = 36 em 11 iterações, com uma troca na iteração 9.
 
 ## Comparação em todos os objetivos
 
@@ -183,7 +188,7 @@ Uma carta só não diz qual método é melhor. `--all-goals` resolve cada um dos
 - **Resumo**: para movimentos, custo, iterações e nós gerados, a média e a mediana de cada combinação. Movimentos e custo contam só os sucessos.
 - **Melhor por critério**: o menor valor pela média e pela mediana. Só concorre quem tem o maior número de sucessos, para a irrevogável não vencer resolvendo apenas os objetivos fáceis.
 
-O resultado: largura e ordenada empatam em movimentos, e a ordenada tem o menor custo médio em todas as estratégias. A largura só empata com ela na ordem decrescente e, pela mediana, as duas empatam. A média de iterações das duas é sempre 18,5, porque cada uma visita cada estado uma única vez, e por isso o objetivo i é encontrado na i-ésima posição de uma permutação de 1 a 36. O critério que as separa é o número de nós gerados. [tests/properties/test_all_goals.py](tests/properties/test_all_goals.py) verifica tudo isso.
+O resultado: largura e ordenada empatam em movimentos, e a ordenada tem o menor custo médio nas duas estratégias (51,33, contra 51,72 e 51,67 da largura); a largura passa do menor custo em 9 das 72 execuções. A média de iterações das duas é sempre 18,5, porque cada uma visita cada estado uma única vez, e por isso o objetivo i é encontrado na i-ésima posição de uma permutação de 1 a 36. O critério que as separa é o número de nós gerados. [tests/properties/test_all_goals.py](tests/properties/test_all_goals.py) verifica tudo isso.
 
 ## Qualidade
 

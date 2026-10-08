@@ -3,6 +3,9 @@
 Discos: VERDE, VERMELHO, AZUL. Distintos por cor; NÃO há ordenação por tamanho.
 Hastes: H1, H2, H3.
 
+Pesos, usados só no custo das regras (busca ordenada):
+    VERDE: 1    VERMELHO: 2    AZUL: 3
+
 Capacidades:
     H1: até 3 discos
     H2: até 2 discos
@@ -39,6 +42,10 @@ class Peg(IntEnum):
 
 CAPACITIES: Mapping[Peg, int] = MappingProxyType({Peg.H1: 3, Peg.H2: 2, Peg.H3: 1})
 
+DISK_WEIGHTS: Mapping[Disk, int] = MappingProxyType(
+    {Disk.GREEN: 1, Disk.RED: 2, Disk.BLUE: 3}
+)
+
 TOTAL_DISKS: int = len(Disk)
 
 type Stack = tuple[Disk, ...]
@@ -51,7 +58,9 @@ class TransitionRule(Protocol):
         is_applicable(estado)  ->  posso mover agora? (origem tem disco e
                                    destino tem espaço)
         apply(estado)          ->  o estado que resulta do movimento
-        cost                   ->  quanto custa mover (só a busca ordenada usa)
+        distance               ->  quantas hastes o disco atravessa (1 ou 2)
+        cost(estado)           ->  quanto custa mover agora (só a busca
+                                   ordenada usa; depende do disco movido)
 
     `apply` não mexe no estado recebido, devolve um novo -- por isso um nó da
     árvore nunca perde a configuração que guardava. São seis regras fixas, R1
@@ -71,7 +80,9 @@ class TransitionRule(Protocol):
     def destination(self) -> Peg: ...
 
     @property
-    def cost(self) -> int: ...
+    def distance(self) -> int: ...
+
+    def cost(self, state: State) -> int: ...
 
     def is_applicable(self, state: State) -> bool: ...
 

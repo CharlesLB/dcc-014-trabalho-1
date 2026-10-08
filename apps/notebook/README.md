@@ -11,6 +11,8 @@ A apresentação é feita pelo próprio Colab. Todo código marcado com **(ignor
 | Comparação dos algoritmos | Matriz completa (4 algoritmos × 2 estratégias) em P1, com a carta desenhada sobre o gráfico, e nos 36 objetivos, em boxplot; qualidade da solução, tabela de complexidade dos quatro algoritmos e a análise. Os gráficos deixam a irrevogável de fora; as tabelas mostram os quatro. |
 | Integrantes | O grupo. |
 
+A seção da busca ordenada tem, logo depois das regras, a lógica dos custos: a regra 10 + peso × distância, uma parte por vez com o porquê, e o estudo que compara 7 modelos de custo pelo motor do projeto (cerca de 5 s).
+
 A primeira seção (busca irrevogável) mostra os módulos compartilhados: legenda e cartas no slide do problema, o motor no slide do laço, as regras e as estratégias nos slides delas. A fronteira (pilha, fila e fila por custo) aparece no slide da ideia do backtracking, o primeiro algoritmo que usa uma.
 
 ## Gerar

@@ -43,6 +43,7 @@ class AlgorithmSection:
     no_prune_limit: int | None = None
     shows_frontier: bool = False
     frontier_demo: bool = False
+    cost_cells: tuple[Cell, ...] = ()
 
 
 FLOW_STYLE = """  rankdir=TB; fontname="Helvetica"; bgcolor="transparent";
@@ -247,7 +248,7 @@ Largura: fila, sai o primeiro que entrou. Varre por níveis.""",
     conclusion="""## Conclusão
 
 - Em P1 as duas estratégias acham R4, R1, R1: 3 movimentos, o ótimo. A estratégia só muda a ordem dentro de um nível e, com ela, o número de iterações.
-- Nos 36 objetivos acha sempre o mínimo de movimentos (média 4,14). No custo, passa do menor em 1 das 72 execuções, porque não olha o custo das regras.
+- Nos 36 objetivos acha sempre o mínimo de movimentos (média 4,14). No custo, passa do menor em 9 das 72 execuções, porque não olha o custo das regras.
 - É a referência de comprimento para os outros algoritmos. Em custo, a referência é a busca ordenada.""",
     flowchart="""digraph flow {
 %s
@@ -265,6 +266,68 @@ Largura: fila, sai o primeiro que entrou. Varre por níveis.""",
   apply -> pop;
 }""",
     frontier_demo=True,
+)
+
+COST_CELLS: tuple[Cell, ...] = (
+    markdown(
+        """## A regra de custo
+
+**custo = 10 + peso do disco × distância**
+
+| Parte | Valor | Por quê |
+|---|---|---|
+| custo por jogada | 10 | toda jogada conta, e conta mais que o esforço |
+| distância | 1 entre hastes vizinhas; 2 de H1 para H3 | o disco anda mais quando pula a haste do meio |
+| peso do disco | verde 1, vermelho 2, azul 3 | carregar um disco mais pesado custa mais |
+
+O custo de um nó é a soma das regras do caminho desde a raiz. A tabela dá o custo de cada regra conforme o disco que está no topo da origem."""
+    ),
+    code("cost_table()"),
+    code('explain_cost("R4")'),
+    markdown(
+        """### 1. Dez por jogada: menos movimentos vem primeiro
+
+O esforço de uma jogada (peso × distância) vai de 1 a 6; o 10 fixo pesa mais. Em todos os 1.260 pares início → objetivo, o caminho mais barato é sempre um dos de menos movimentos: a ordenada não troca movimentos por esforço. É o que a Torre de Londres mede, o número de movimentos.
+
+**Por que é boa:** sem o 10, só com peso × distância, a ordenada passa do mínimo de movimentos em 3,7% das execuções."""
+    ),
+    code("effort_range()"),
+    code(
+        'cost_study().loc[["peso × distância, sem o 10", "10 + peso × distância (escolhido)"], ["Mínimo de movimentos"]].round(1)'
+    ),
+    markdown(
+        """### 2. Distância: o disco anda mais quando pula a haste do meio
+
+Hastes vizinhas (H1 ↔ H2, H2 ↔ H3) valem 1; H1 ↔ H3 vale 2. Uma regra e sua inversa atravessam a mesma distância com o mesmo disco, então custam o mesmo: ir e voltar é simétrico.
+
+**Por que é boa:** é a parte física da regra; sem ela, R2 e R5 custariam o mesmo que as regras entre hastes vizinhas.
+
+**Sozinha não basta:** com custo só de distância, a ordenada acha algo mais barato que a largura em 0,5% dos casos. Os caminhos mais curtos usam misturas parecidas de regras, e a distância quase não os separa."""
+    ),
+    code(
+        'cost_study().loc[["uniforme (1 por jogada)", "distância (1 ou 2)"], ["Mais barato que a largura", "Caminho muda com a estratégia"]].round(1)'
+    ),
+    markdown(
+        """### 3. Peso do disco: separa caminhos do mesmo tamanho
+
+Verde 1, vermelho 2, azul 3. O custo passa a depender de qual disco se move, e não só da regra, então dois caminhos com o mesmo número de movimentos deixam de empatar.
+
+**Por que é boa:** com o peso, a ordenada acha um caminho mais barato que o da largura em 10,3% dos casos (contra 0,5% só com distância), o ótimo é único em 85% dos pares e a resposta muda com a estratégia em só 4,6%. Exemplo, objetivo VA/R/– com a ordem decrescente: os dois fazem 3 movimentos, mas a largura carrega o azul por duas hastes."""
+    ),
+    code('compare_with_breadth("G11", "descending")'),
+    markdown(
+        "Em P1, o peso também faz aparecer o caso 3 da técnica de poda: um estado ainda aberto reaparece mais barato e troca de nó."
+    ),
+    code("show_swaps()"),
+    markdown(
+        """### Por que essa regra e não outra
+
+O mesmo estudo com 7 modelos de custo, rodado pelo motor do projeto em todos os 1.260 pares início → objetivo e nas duas estratégias. *Mínimo de movimentos* e *mais barato que a largura*: % das 2.520 execuções. *Ótimo único* e *caminho muda com a estratégia*: % dos 1.260 pares. *Trocas de nó*: quantas vezes o caso 3 da poda aconteceu."""
+    ),
+    code("show_cost_study()"),
+    markdown(
+        "Só a regra escolhida junta as quatro coisas: sempre o mínimo de movimentos, um custo que de fato muda a resposta, uma solução quase independente da estratégia e a técnica de poda completa em ação. A distância² muda bastante a resposta, mas perde o mínimo de movimentos em 44% dos casos; o braço físico e a distância pura quase nunca mudam a resposta."
+    ),
 )
 
 ORDERED_SECTION = AlgorithmSection(
@@ -286,8 +349,8 @@ Ordenada: fila por custo, sai o mais barato; no empate, o gerado primeiro. Com o
 **ABERTOS**: fila dos nós gerados que ainda não foram analisados, ordenada por custo.
 
 **FECHADOS**: nós já expandidos. Com poda, o vetor de menor custo cobre ABERTOS e FECHADOS de uma vez.""",
-    strategy_note="Na ordenada a estratégia só desempata irmãos de mesmo custo: decide quem fica na frente em ABERTOS, nunca o custo da solução. A coluna **Custo** da tabela de regras é a distância entre as hastes: R2 e R5 pulam a haste do meio e custam 2.",
-    root_note="Na raiz, R1, R3 e R4 custam 1 e R2 custa 2. A estratégia ordena os três de custo 1; R2 fica atrás de todos nas duas ordens.",
+    strategy_note="Na ordenada a estratégia só desempata irmãos de mesmo custo: decide quem fica na frente em ABERTOS, nunca o custo da solução. Com o custo 10 + peso × distância os empates são raros, e em P1 as duas ordens fazem as mesmas 11 iterações.",
+    root_note="Na raiz, R1 leva o vermelho por uma haste (12), R3 e R4 levam o azul por uma haste (13) e R2 leva o vermelho por duas (14). A fila fica ordenada pelo custo nas duas ordens; a estratégia só decide entre R3 e R4, que empatam em 13.",
     no_prune="""Sem poda, estados repetidos entram de novo em ABERTOS, cada um com o custo do caminho que o gerou. A busca ainda acha o menor custo, porque só para quando o objetivo sai da fila, mas gera muito mais nós.""",
     prune="""Técnica de poda da busca ordenada, com o **vetor de menor custo**: toda vez que um nó é gerado,
 
@@ -295,7 +358,7 @@ Ordenada: fila por custo, sai o mais barato; no empate, o gerado primeiro. Com o
 - se o estado aparece repetido com custo maior ou igual ao do vetor, poda o nó;
 - se aparece com custo menor, atualiza o vetor, tira o nó antigo de ABERTOS e da árvore e inclui o novo.
 
-Com os custos deste problema o terceiro caso nunca acontece em P1: R1 seguida de R4 custa o mesmo que R2, e empate é podado.""",
+Com o custo 10 + peso × distância, o terceiro caso aparece em P1: na iteração 9, VA/R/– reaparece por 39 e tira de ABERTOS o nó antigo, de custo 41.""",
     pseudocode="""busca_ordenada(problema, estratégia, poda)
     ABERTOS = fila por custo com a raiz (custo 0)
     MENOR_CUSTO = {raiz: 0}
@@ -313,7 +376,7 @@ Com os custos deste problema o terceiro caso nunca acontece em P1: R1 seguida de
                 põe o filho em ABERTOS, na posição do custo
     FRACASSO""",
     path_strategy="ascending",
-    path_note="R4, R1, R1: custo 1 + 1 + 1 = 3, o menor possível. As duas estratégias, com e sem poda, chegam a este mesmo caminho.",
+    path_note="R4, R1, R1: 13 + 12 + 11 = 36. Levar o azul uma haste custa 13, o vermelho 12 e o verde 11. É o menor custo possível; as duas estratégias, com e sem poda, chegam a este mesmo caminho.",
     complexity="""| Tempo | Memória | | Por quê | Solução |
 |---|---|---|---|---|
 | O(b^(1 + C*/ε)) | O(b^(1 + C*/ε)) | **Ordenada sem poda** | a fila guarda todo nó mais barato que o objetivo, repetido ou não | menor custo |
@@ -321,8 +384,8 @@ Com os custos deste problema o terceiro caso nunca acontece em P1: R1 seguida de
     symbols=("b", "C*", "ε", "V", "E"),
     conclusion="""## Conclusão
 
-- Em P1: R4, R1, R1, custo 3. Com `ascending` são 10 iterações, a execução mais rápida de P1; com `descending`, o mesmo caminho em 11.
-- Nos 36 objetivos acha sempre o menor custo (média 5,22, a menor de todas) e também o mínimo de movimentos. A média de iterações é 18,5, a mesma da largura.
+- Em P1: R4, R1, R1, custo 36, em 11 iterações e 18 nós gerados, com as duas ordens. Houve uma troca de nó: S15 entrou no lugar de S11.
+- Nos 36 objetivos acha sempre o menor custo (média 51,33, a menor de todas) e também o mínimo de movimentos. A média de iterações é 18,5, a mesma da largura.
 - A estratégia só desempata irmãos de mesmo custo: nunca muda o custo da solução.""",
     flowchart="""digraph flow {
 %s
@@ -340,6 +403,7 @@ Com os custos deste problema o terceiro caso nunca acontece em P1: R1 seguida de
   apply -> pop;
 }""",
     frontier_demo=True,
+    cost_cells=COST_CELLS,
 )
 
 ALGORITHM_SECTIONS: tuple[AlgorithmSection, ...] = (
@@ -432,6 +496,7 @@ def section(spec: AlgorithmSection, index: int, *, first: bool) -> tuple[Cell, .
     if first:
         cells.extend(_writefiles(RULE_MODULES))
     cells.extend((code("rules_table()"), code('show_rule_example("R4")')))
+    cells.extend(spec.cost_cells)
 
     cells.append(
         markdown(

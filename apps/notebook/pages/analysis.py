@@ -364,7 +364,7 @@ Os símbolos, com os valores medidos em P1:"""
 CONCLUSION = markdown(
     """## Análise
 
-**Garantias.** Largura e ordenada resolvem os 36 objetivos com o número mínimo de movimentos, com qualquer estratégia. A ordenada também acha sempre o menor custo; a largura passa do menor custo em 1 das 72 execuções, porque conta movimentos e não olha o custo das regras. Isso confere com a teoria: largura é ótima em comprimento, ordenada é ótima em custo, e no empate de comprimento as duas coincidem.
+**Garantias.** Largura e ordenada resolvem os 36 objetivos com o número mínimo de movimentos, com qualquer estratégia. A ordenada também acha sempre o menor custo; a largura passa do menor custo em 9 das 72 execuções, porque conta movimentos e não olha o custo das regras. Isso confere com a teoria: largura é ótima em comprimento, ordenada é ótima em custo, e no empate de comprimento as duas coincidem.
 
 **A irrevogável depende da estratégia.** Ela é barata (um nó gerado por iteração), mas não garante solução: resolve 18 ou 3 dos 36 objetivos conforme a estratégia. Quando resolve, o caminho pode ser bem mais longo que o ótimo.
 
@@ -372,7 +372,7 @@ CONCLUSION = markdown(
 
 **Esforço.** Largura e ordenada empatam em iterações (média 18,5, pelo argumento da permutação acima) e ficam próximas em nós gerados. O backtracking com `ascending` gera menos nós, mas paga com as soluções mais longas de todas.
 
-**Recomendação.** Para este problema, a busca ordenada é a escolha: resolve tudo, com o menor custo e o menor número de movimentos, e com esforço igual ao da largura. Quando as regras têm o mesmo custo, a largura dá o mesmo resultado. A irrevogável e o backtracking servem para mostrar o que acontece sem memória da fronteira e sem garantia de otimalidade."""
+**Recomendação.** Para este problema, a busca ordenada é a escolha: resolve tudo, com o menor custo e o menor número de movimentos, com as mesmas iterações médias da largura e cerca de 7% mais nós gerados. Quando as regras têm o mesmo custo, a largura dá o mesmo resultado. A irrevogável e o backtracking servem para mostrar o que acontece sem memória da fronteira e sem garantia de otimalidade."""
 )
 
 
