@@ -67,6 +67,7 @@ DCC014 · Inteligência Artificial · Universidade Federal de Juiz de Fora · Pr
 VIEW_HELPERS = code(
     """#@title Funções de apresentação
 import heapq
+import itertools
 import shutil
 import subprocess
 from collections import Counter
@@ -782,8 +783,7 @@ def _optimal_counts(source, price):
     return count
 
 
-@cache
-def cost_study():
+def _study(models):
     states = all_states()
     pairs = [(s, g) for s in states for g in states if s != g]
     shortest = {(s, g): shortest_distance(s, g) for s, g in pairs}
@@ -793,7 +793,7 @@ def cost_study():
         for name in SLIDE_STRATEGIES
     }
     rows = []
-    for label, price in COST_MODELS.items():
+    for label, price in models:
         rules = tuple(PricedRule(rule, price) for rule in RULES)
 
         def path_cost(state, rule_ids):
@@ -832,6 +832,84 @@ def cost_study():
             }
         )
     return pd.DataFrame(rows).set_index("Modelo de custo")
+
+
+@cache
+def cost_study():
+    return _study(COST_MODELS.items())
+
+
+def _path_cost(state, rule_ids, price):
+    total = 0
+    for rule_id in rule_ids:
+        rule = RULE_BY_ID[rule_id]
+        total += price(state, rule)
+        state = rule.apply(state)
+    return total
+
+
+def _long_hops(state, rule_ids):
+    hops = []
+    for rule_id in rule_ids:
+        rule = RULE_BY_ID[rule_id]
+        if rule.distance == 2:
+            hops.append(f"{rule.id} leva o {theme.disk_name(state[rule.origin][-1]).lower()}")
+        state = rule.apply(state)
+    return ", ".join(hops)
+
+
+def distance_example(goal_id="G17", paths=(("R1", "R2", "R3", "R5"), ("R2", "R1", "R5", "R3"))):
+    problem = next(p for p in goals_report().problems if p.problem_id == goal_id)
+    weight_only = COST_MODELS["10 + peso do disco"]
+    chosen = COST_MODELS["10 + peso × distância (escolhido)"]
+    print(f"{goal_id}: de {compact(problem.initial_state)} até {compact(problem.goal_state)}")
+    return pd.DataFrame(
+        [
+            {
+                "Caminho": " ".join(path),
+                "Viagens longas (H1 ↔ H3)": _long_hops(problem.initial_state, path),
+                "Custo com 10 + peso": _path_cost(problem.initial_state, path, weight_only),
+                "Custo com 10 + peso × distância": _path_cost(problem.initial_state, path, chosen),
+            }
+            for path in paths
+        ]
+    ).set_index("Caminho")
+
+
+def distance_tiebreak(goal_id="G17"):
+    problem = next(p for p in goals_report().problems if p.problem_id == goal_id)
+    rows = []
+    for label in ("10 + peso do disco", "10 + peso × distância (escolhido)"):
+        rules = tuple(PricedRule(rule, COST_MODELS[label]) for rule in RULES)
+        for name in SLIDE_STRATEGIES:
+            result = OrderedSearch(SearchTree(rules), STRATEGY_REGISTRY[name]).solve(Problem("PAR", problem.goal_state, initial=problem.initial_state))
+            rows.append({"Custo": label, "Estratégia": STRATEGY_LABELS[name], "Caminho achado": " ".join(result.applied_rules), "Custo do caminho": result.solution_cost})
+    return pd.DataFrame(rows).set_index(["Custo", "Estratégia"])
+
+
+WEIGHT_ORDERS = tuple(itertools.permutations((1, 2, 3)))
+
+
+def _weights_label(weights):
+    return " ".join(f"{theme.disk_symbol(disk)} {weight}" for disk, weight in zip(Disk, weights))
+
+
+@cache
+def weight_study():
+    models = []
+    for weights in WEIGHT_ORDERS:
+        table = dict(zip(Disk, weights))
+        models.append((_weights_label(weights), lambda state, rule, table=table: MOVE_COST + table[state[rule.origin][-1]] * rule.distance))
+    frame = _study(models)
+    swaps_p1 = []
+    for _, price in models:
+        rules = tuple(PricedRule(rule, price) for rule in RULES)
+        result = OrderedSearch(SearchTree(rules), STRATEGY_REGISTRY["ascending"]).solve(P1)
+        generated = [step.state for step in result.trace.of_event(TraceEvent.GENERATE)]
+        swaps_p1.append(len(generated) - len(set(generated)))
+    frame["Trocas em P1"] = swaps_p1
+    frame.index.name = "Pesos (V R A)"
+    return frame.round(1)
 
 
 def show_cost_study():

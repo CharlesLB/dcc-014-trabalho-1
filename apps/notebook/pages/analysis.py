@@ -228,6 +228,74 @@ def boxplots(ax, runs, column, title):
     ax.grid(axis="y", visible=False)
 
 
+GOAL_COLUMNS = {
+    "iterations": ("Iterações", 120),
+    "generated": ("Nós gerados", 80),
+    "cost": ("Custo da solução", 440),
+}
+
+
+def _goal_rows(algorithm, column):
+    names = [algorithm, *(name for name in ALGORITHMS if name != algorithm)]
+    rows = [(name, strategy) for name in names for strategy in STRATEGIES]
+    runs = goals_runs()
+    return sorted(rows, key=lambda row: round(_values(runs, *row, column).mean(), 9))
+
+
+def goals_boxplot(algorithm, column):
+    title, limit = GOAL_COLUMNS[column]
+    runs = goals_runs()
+    rows = _goal_rows(algorithm, column)
+    data = [_values(runs, name, strategy, column) for name, strategy in rows]
+    fig, ax = plt.subplots(figsize=(11, 4.2))
+    paint(ax.boxplot(data, **HORIZONTAL, widths=0.6, **BOX_STYLE), [ALGORITHM_COLORS[name] for name, _ in rows])
+    ax.set_yticks(range(1, len(rows) + 1), [combination_label(name, strategy) for name, strategy in rows])
+    for tick, (name, _) in zip(ax.get_yticklabels(), rows):
+        tick.set_fontweight("bold" if name == algorithm else "normal")
+    ax.set_xlim(0, limit)
+    decimals = 2 if column == "cost" else 1
+    for position, values in enumerate(data, start=1):
+        mean = values.mean()
+        ax.annotate(
+            f"{mean:.{decimals}f}".replace(".", ","),
+            xy=(mean, position),
+            xytext=(0, 13),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=8,
+            fontweight="bold",
+            color="#0b0b0b",
+        )
+        beyond = sorted(value for value in values if value > limit)
+        if beyond:
+            text = " e ".join(f"{value:,.0f}".replace(",", ".") for value in beyond) + " →"
+            ax.annotate(text, xy=(limit, position), xytext=(-4, 0), textcoords="offset points", ha="right", va="center", fontsize=9, color=INK)
+    ax.invert_yaxis()
+    ax.set_title(f"{title} nos 36 objetivos, da menor para a maior média (número: média; seta: fora da escala)", loc="left")
+    ax.grid(axis="y", visible=False)
+    plt.show()
+
+
+def goals_stats(algorithm, column):
+    runs = goals_runs()
+    rows = []
+    for name, strategy in _goal_rows(algorithm, column):
+        values = pd.Series(_values(runs, name, strategy, column))
+        rows.append(
+            {
+                "Combinação": combination_label(name, strategy),
+                "Mínimo": values.min(),
+                "1º quartil": values.quantile(0.25),
+                "Mediana": values.median(),
+                "3º quartil": values.quantile(0.75),
+                "Máximo": values.max(),
+                "Média": round(values.mean(), 2),
+            }
+        )
+    return pd.DataFrame(rows).set_index("Combinação")
+
+
 def quality_chart():
     fig, axes = plt.subplots(1, 2, figsize=(13, 4), sharey=True)
     boxplots(axes[0], goals_runs(), "extra_moves", "Movimentos acima do ótimo")

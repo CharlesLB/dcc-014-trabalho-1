@@ -44,6 +44,7 @@ class AlgorithmSection:
     shows_frontier: bool = False
     frontier_demo: bool = False
     cost_cells: tuple[Cell, ...] = ()
+    goals_cells: tuple[Cell, ...] = ()
 
 
 FLOW_STYLE = """  rankdir=TB; fontname="Helvetica"; bgcolor="transparent";
@@ -296,16 +297,23 @@ O esforço de uma jogada (peso × distância) vai de 1 a 6; o 10 fixo pesa mais.
         'cost_study().loc[["peso × distância, sem o 10", "10 + peso × distância (escolhido)"], ["Mínimo de movimentos"]].round(1)'
     ),
     markdown(
-        """### 2. Distância: o disco anda mais quando pula a haste do meio
+        """### 2. Distância: a viagem longa fica com o disco leve
 
-Hastes vizinhas (H1 ↔ H2, H2 ↔ H3) valem 1; H1 ↔ H3 vale 2. Uma regra e sua inversa atravessam a mesma distância com o mesmo disco, então custam o mesmo: ir e voltar é simétrico.
+Hastes vizinhas (H1 ↔ H2, H2 ↔ H3) valem 1; H1 ↔ H3, que pula a do meio, vale 2. O esforço de uma jogada é **peso × distância**, como o trabalho na física (força × deslocamento): carregar o azul por duas hastes custa o dobro de carregá-lo por uma.
 
-**Por que é boa:** é a parte física da regra; sem ela, R2 e R5 custariam o mesmo que as regras entre hastes vizinhas.
+**O que ela faz:** o peso diz *qual* disco se move; a distância diz *quanto* ele anda. Sem ela, dois caminhos que movem os mesmos discos o mesmo número de vezes empatam, e quem decide é a ordem das regras. Com ela, vence o caminho em que a viagem longa fica com o disco mais leve.
 
-**Sozinha não basta:** com custo só de distância, a ordenada acha algo mais barato que a largura em 0,5% dos casos. Os caminhos mais curtos usam misturas parecidas de regras, e a distância quase não os separa."""
+Exemplo, objetivo RV / A / –: os dois caminhos têm 4 movimentos e fazem duas viagens longas. Só com o peso, empatam em 46; com a distância, o que leva o verde nas viagens longas custa 48 e o que leva o vermelho custa 50."""
+    ),
+    code("distance_example()"),
+    code("distance_tiebreak()"),
+    markdown(
+        """Só com o peso, cada estratégia escolhe um caminho diferente; com a distância, as duas acham o mesmo. No espaço todo, a resposta muda com a estratégia em 12,1% dos pares com "10 + peso" e em 4,6% com a distância. A distância também é o que faz aparecer a troca de nó: 29 trocas sem ela, 1.308 com ela, e a troca de P1 só existe com ela.
+
+**Sozinha, ela não basta:** com custo só de distância, a ordenada acha algo mais barato que a largura em 0,5% dos casos, porque os caminhos mais curtos usam misturas parecidas de regras."""
     ),
     code(
-        'cost_study().loc[["uniforme (1 por jogada)", "distância (1 ou 2)"], ["Mais barato que a largura", "Caminho muda com a estratégia"]].round(1)'
+        'cost_study().loc[["distância (1 ou 2)", "10 + peso do disco", "10 + peso × distância (escolhido)"], ["Mais barato que a largura", "Caminho muda com a estratégia", "Trocas de nó"]].round(1)'
     ),
     markdown(
         """### 3. Peso do disco: separa caminhos do mesmo tamanho
@@ -320,14 +328,52 @@ Verde 1, vermelho 2, azul 3. O custo passa a depender de qual disco se move, e n
     ),
     code("show_swaps()"),
     markdown(
+        """**Por que o azul pesa 3?** É uma escolha de modelagem: os discos da Torre de Londres têm o mesmo tamanho, e a posição inicial não decide nada (o azul começa sozinho em H2; quem está embaixo é o verde). As seis formas de dar os pesos 1, 2 e 3 às cores dão exatamente os mesmos números no espaço todo, porque trocar as cores é só renomear os discos. Em uma carta específica a escolha muda o caminho da busca: em P1, com o azul pesando 3, aparece a troca de nó."""
+    ),
+    code("weight_study()"),
+    markdown(
         """### Por que essa regra e não outra
 
 O mesmo estudo com 7 modelos de custo, rodado pelo motor do projeto em todos os 1.260 pares início → objetivo e nas duas estratégias. *Mínimo de movimentos* e *mais barato que a largura*: % das 2.520 execuções. *Ótimo único* e *caminho muda com a estratégia*: % dos 1.260 pares. *Trocas de nó*: quantas vezes o caso 3 da poda aconteceu."""
     ),
     code("show_cost_study()"),
     markdown(
+        """**Como a regra evoluiu: trocas de nó.** Das três regras pelas quais passamos, só com a distância a troca de nó nunca acontece (0); com 10 + peso, acontece 29 vezes; com 10 + peso × distância, 1.308 vezes, 45 vezes mais que só com o peso. O mínimo de movimentos fica em 100% nas três."""
+    ),
+    code(
+        'cost_study().loc[["distância (1 ou 2)", "10 + peso do disco", "10 + peso × distância (escolhido)"], ["Trocas de nó", "Mínimo de movimentos", "Mais barato que a largura", "Caminho muda com a estratégia"]].round(1)'
+    ),
+    markdown(
         "Só a regra escolhida junta as quatro coisas: sempre o mínimo de movimentos, um custo que de fato muda a resposta, uma solução quase independente da estratégia e a técnica de poda completa em ação. A distância² muda bastante a resposta, mas perde o mínimo de movimentos em 44% dos casos; o braço físico e a distância pura quase nunca mudam a resposta."
     ),
+)
+
+GOALS_CELLS: tuple[Cell, ...] = (
+    markdown(
+        """## Comparativo: os 36 objetivos
+
+Cada estado do espaço como objetivo, sempre a partir da mesma posição inicial, nas duas estratégias. As linhas vêm da menor para a maior média. A caixa vai do 1º ao 3º quartil, o traço é a mediana, o losango branco é a média e os bigodes vão até 1,5 vez a altura da caixa; o que passa disso é um ponto. A irrevogável fica fora, como nos outros gráficos.
+
+### Iterações
+
+Ordenada e largura têm a mesma distribuição: mediana 18,5, de 1 a 36. Sem heurística, a ordem de visita não depende do objetivo, e o objetivo i sai na i-ésima iteração. O backtracking decrescente tem cauda longa: média 82,9, máximo 2.078."""
+    ),
+    code('goals_boxplot("ordered", "iterations")'),
+    code('goals_stats("ordered", "iterations")'),
+    markdown(
+        """### Nós gerados
+
+A ordenada gera um pouco mais que a largura (média 23,5 contra 22,0 e 22,2): quando um estado reaparece mais barato, ele é gerado de novo na troca de nó. O backtracking crescente gera menos (mediana 18,5), mas o decrescente chega a 1.045."""
+    ),
+    code('goals_boxplot("ordered", "generated")'),
+    code('goals_stats("ordered", "generated")'),
+    markdown(
+        """### Custo da solução achada
+
+A ordenada acha o menor custo nos 36 objetivos: mediana 51, máximo 98. A largura chega a 104 na ordem crescente e passa do ótimo em 9 das 72 execuções. O backtracking custa de 3 a 4 vezes mais (mediana 209 e 167)."""
+    ),
+    code('goals_boxplot("ordered", "cost")'),
+    code('goals_stats("ordered", "cost")'),
 )
 
 ORDERED_SECTION = AlgorithmSection(
@@ -404,6 +450,7 @@ Com o custo 10 + peso × distância, o terceiro caso aparece em P1: na iteraçã
 }""",
     frontier_demo=True,
     cost_cells=COST_CELLS,
+    goals_cells=GOALS_CELLS,
 )
 
 ALGORITHM_SECTIONS: tuple[AlgorithmSection, ...] = (
@@ -537,6 +584,7 @@ def section(spec: AlgorithmSection, index: int, *, first: bool) -> tuple[Cell, .
             code(f'algorithms_table("{spec.name}")'),
             markdown("## Comparativo: quem explorou menos nós"),
             code(f'expanded_chart("{spec.name}")'),
+            *spec.goals_cells,
             markdown(f"## Complexidade\n\n{spec.complexity}"),
             code(f'complexity_values("{spec.name}", {spec.symbols!r})'),
             markdown(spec.conclusion),
