@@ -311,51 +311,32 @@ Exemplo, objetivo RV / A / –: os dois caminhos têm 4 movimentos e fazem duas 
     code("distance_example()"),
     code("distance_tiebreak()"),
     markdown(
-        """Só com o peso, cada estratégia escolhe um caminho diferente; com a distância, as duas acham o mesmo. No espaço todo, a resposta muda com a estratégia em 12,1% dos pares com "10 + peso" e em 4,6% com a distância. A distância também é o que faz aparecer a troca de nó: 29 trocas sem ela, 1.308 com ela, e a troca de P1 só existe com ela.
+        """**Só com o peso:** empate em 46. A crescente acha o primeiro, a decrescente acha o segundo.
 
-**Sozinha, ela não basta:** com custo só de distância, a ordenada acha algo mais barato que a largura em 0,5% dos casos, porque os caminhos mais curtos usam misturas parecidas de regras."""
-    ),
-    code(
-        'cost_study().loc[["distância (1 ou 2)", "10 + peso do disco", "10 + peso × distância (escolhido)"], ["Mais barato que a largura", "Caminho muda com a estratégia", "Trocas de nó"]].round(1)'
+**Com a distância:** as duas estratégias acham o primeiro (48), o do disco leve."""
     ),
     markdown(
-        """### 3. Peso do disco: separa caminhos do mesmo tamanho
+        """### 3. Peso do disco: o azul pesa mais
 
-Verde 1, vermelho 2, azul 3. O custo passa a depender de qual disco se move, e não só da regra, então dois caminhos com o mesmo número de movimentos deixam de empatar.
-
-**Por que é boa:** no exemplo abaixo, objetivo VA / R / – com a ordem decrescente, os dois fazem 3 movimentos, mas a largura leva o azul por duas hastes (R5, 16) e a ordenada só por uma (R3, 13): 41 contra 39, 4,9% mais barato. No espaço todo, a melhoria média em relação à largura é de 0,4%, no máximo 10%."""
+Pesos: verde 1 · vermelho 2 · azul 3. Objetivo VA / R / –, ordem decrescente: os dois fazem 3 movimentos."""
     ),
     code(
         'show_hop(("R4", "R1"), "R5", "Largura: R4 R1 R5, o azul anda duas hastes")\nshow_hop(("R2",), "R3", "Ordenada: R2 R3 R6, o azul anda uma haste")'
     ),
     code('compare_with_breadth("G11", "descending")'),
+    markdown(
+        "Total: 13 + 12 + 16 = **41** na largura, 14 + 13 + 12 = **39** na ordenada. Em média, nos 1.260 pares, a ordenada sai **0,4%** mais barata que a largura."
+    ),
     code(
-        'cost_study().loc[["10 + peso × distância (escolhido)"], ["Economia média de custo", "Maior economia"]].round(1)'
+        'cost_study().loc[["10 + peso × distância (escolhido)"], ["Economia média de custo"]].round(1)'
     ),
     markdown(
-        "Em P1, o peso também faz aparecer o caso 3 da técnica de poda: um estado ainda aberto reaparece mais barato e troca de nó."
-    ),
-    code("show_swaps()"),
-    markdown(
-        """**Por que o azul pesa 3?** É uma escolha de modelagem: os discos da Torre de Londres têm o mesmo tamanho, e a posição inicial não decide nada (o azul começa sozinho em H2; quem está embaixo é o verde). As seis formas de dar os pesos 1, 2 e 3 às cores dão exatamente os mesmos números no espaço todo, porque trocar as cores é só renomear os discos. Em uma carta específica a escolha muda o caminho da busca: em P1, com o azul pesando 3, aparece a troca de nó."""
-    ),
-    code("weight_study()"),
-    markdown(
-        """### Por que essa regra e não outra
+        """### Ganho real: menos de 0,5% de custo
 
-O mesmo estudo com 7 modelos de custo, rodado pelo motor do projeto em todos os 1.260 pares início → objetivo e nas duas estratégias. *Mínimo de movimentos*: % das 2.520 execuções em que a ordenada achou um caminho com o mínimo de movimentos. *Mais barato que a largura*: % das execuções em que o caminho achado pela ordenada custa menos que o achado pela largura, no mesmo objetivo. *Ótimo único* e *caminho muda com a estratégia*: % dos 1.260 pares. *Trocas de nó*: quantas vezes o caso 3 da poda aconteceu."""
-    ),
-    code("show_cost_study()"),
-    markdown(
-        """### Ganho real da regra
-
-Comparação com a largura, nos 1.260 pares início → objetivo e nas duas estratégias. *Economia*: quanto o caminho achado pela ordenada custa a menos que o achado pela largura, no mesmo objetivo, em % do custo da largura; a tabela traz a média e a maior. Também: nós gerados a mais, trocas de nó por execução e movimentos a mais."""
+Economia média: quanto o caminho da ordenada custa a menos que o da largura, em relação à largura, nos 1.260 pares início → objetivo e nas duas estratégias."""
     ),
     code(
         'cost_study().loc[["distância (1 ou 2)", "10 + peso do disco", "10 + peso × distância (escolhido)"], ["Economia média de custo", "Maior economia", "Nós gerados vs largura", "Trocas por execução", "Movimentos a mais"]].round(2)'
-    ),
-    markdown(
-        "Só a regra escolhida junta as quatro coisas: sempre o mínimo de movimentos, um custo que de fato muda a resposta, uma solução quase independente da estratégia e a técnica de poda completa em ação. A distância² muda bastante a resposta, mas perde o mínimo de movimentos em 44% dos casos; o braço físico e a distância pura quase nunca mudam a resposta."
     ),
 )
 
@@ -363,20 +344,24 @@ GOALS_CELLS: tuple[Cell, ...] = (
     markdown(
         """## Comparativo: os 36 objetivos
 
-Cada estado do espaço como objetivo, sempre a partir da mesma posição inicial, nas duas estratégias. As linhas vêm da menor para a maior média. A caixa vai do 1º ao 3º quartil, o traço é a mediana, o losango branco é a média e os bigodes vão até 1,5 vez a altura da caixa; o que passa disso é um ponto. A irrevogável fica fora, como nos outros gráficos.
+Cada estado do espaço como objetivo, sempre a partir da mesma posição inicial, nas duas estratégias, da menor para a maior média.
 
-### Iterações
-
-Com poda, cada estado sai de ABERTOS uma vez, numa ordem que não depende do objetivo: o objetivo i é achado na posição i dessa ordem. Nos 36 objetivos, as iterações são sempre 1, 2, …, 36, só embaralhadas, para qualquer custo."""
+### Nós expandidos nos 36 objetivos"""
     ),
+    code('goals_boxplot("ordered", "expanded")'),
+    markdown(
+        "Na ordenada e na largura, expandidos = iterações − 1: o objetivo sai de ABERTOS, mas não é expandido. Por isso os valores são sempre 0, 1, …, 35."
+    ),
+    code('goals_stats("ordered", "expanded")'),
+    markdown("### Iterações nos 36 objetivos"),
     code('goals_boxplot("ordered", "iterations")'),
+    markdown(
+        "Com poda, cada estado sai de ABERTOS uma vez, numa ordem que não depende do objetivo: o objetivo i é achado na posição i dessa ordem. Nos 36 objetivos, as iterações são sempre 1, 2, …, 36, só embaralhadas, para qualquer custo."
+    ),
     code('goals_stats("ordered", "iterations")'),
-    markdown("### Nós gerados"),
+    markdown("### Nós gerados nos 36 objetivos"),
     code('goals_boxplot("ordered", "generated")'),
     code('goals_stats("ordered", "generated")'),
-    markdown("### Nós expandidos"),
-    code('goals_boxplot("ordered", "expanded")'),
-    code('goals_stats("ordered", "expanded")'),
     markdown("### Custo da solução: só P1"),
     code('p1_cost_chart("ordered")'),
     markdown("### Custo da solução: todos os 36 objetivos"),

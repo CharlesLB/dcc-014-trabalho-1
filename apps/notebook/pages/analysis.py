@@ -274,7 +274,7 @@ def goals_boxplot(algorithm, column):
             text = " e ".join(f"{value:,.0f}".replace(",", ".") for value in beyond) + " →"
             ax.annotate(text, xy=(limit, position), xytext=(-4, 0), textcoords="offset points", ha="right", va="center", fontsize=9, color=INK)
     ax.invert_yaxis()
-    ax.set_title(f"{title} nos 36 objetivos, da menor para a maior média (número: média; seta: fora da escala)", loc="left")
+    ax.set_title("Custo da solução: todos os 36 objetivos" if column == "cost" else f"{title} nos 36 objetivos", loc="left")
     ax.grid(axis="y", visible=False)
     plt.show()
 

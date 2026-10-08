@@ -67,7 +67,6 @@ DCC014 · Inteligência Artificial · Universidade Federal de Juiz de Fora · Pr
 VIEW_HELPERS = code(
     """#@title Funções de apresentação
 import heapq
-import itertools
 import shutil
 import subprocess
 from collections import Counter
@@ -743,28 +742,6 @@ def compare_with_breadth(goal_id, strategy):
     return pd.DataFrame(rows).set_index("Algoritmo")
 
 
-def show_swaps(algorithm="ordered", strategy="ascending"):
-    result = solve(algorithm, strategy)
-    nodes = _nodes(result)
-    costs = _costs(nodes)
-    visits = {step.iteration: step.node_order for step in result.trace.of_event(TraceEvent.VISIT)}
-    found = False
-    for step in result.trace.of_event(TraceEvent.PRUNE):
-        if visits.get(step.iteration) == step.node_order:
-            continue
-        old = next(o for o, n in nodes.items() if n.parent_order == step.node_order and n.rule_id == step.rule_id and n.state == step.state)
-        new = next(o for o, n in nodes.items() if o != old and n.state == step.state and n.parent_order == visits[step.iteration])
-        found = True
-        print(
-            f"iteração {step.iteration}: {compact(step.state)} chega por S{new} "
-            f"({nodes[new].rule_id} de S{nodes[new].parent_order}, custo {costs[new]}), "
-            f"mais barato que S{old} ({step.rule_id} de S{step.node_order}, custo {costs[old]}): "
-            f"S{old} sai de ABERTOS e da árvore."
-        )
-    if not found:
-        print("nenhuma troca nesta execução")
-
-
 class PricedRule:
     def __init__(self, rule, price):
         self.rule = rule
@@ -941,39 +918,6 @@ def distance_tiebreak(goal_id="G17"):
             result = OrderedSearch(SearchTree(rules), STRATEGY_REGISTRY[name]).solve(Problem("PAR", problem.goal_state, initial=problem.initial_state))
             rows.append({"Custo": label, "Estratégia": STRATEGY_LABELS[name], "Caminho achado": " ".join(result.applied_rules), "Custo do caminho": result.solution_cost})
     return pd.DataFrame(rows).set_index(["Custo", "Estratégia"])
-
-
-WEIGHT_ORDERS = tuple(itertools.permutations((1, 2, 3)))
-
-
-def _weights_label(weights):
-    return " ".join(f"{theme.disk_symbol(disk)} {weight}" for disk, weight in zip(Disk, weights))
-
-
-@cache
-def weight_study():
-    models = []
-    for weights in WEIGHT_ORDERS:
-        table = dict(zip(Disk, weights))
-        models.append((_weights_label(weights), lambda state, rule, table=table: MOVE_COST + table[state[rule.origin][-1]] * rule.distance))
-    frame = _study(models)
-    swaps_p1 = []
-    for _, price in models:
-        rules = tuple(PricedRule(rule, price) for rule in RULES)
-        result = OrderedSearch(SearchTree(rules), STRATEGY_REGISTRY["ascending"]).solve(P1)
-        generated = [step.state for step in result.trace.of_event(TraceEvent.GENERATE)]
-        swaps_p1.append(len(generated) - len(set(generated)))
-    frame["Trocas em P1"] = swaps_p1
-    frame.index.name = "Pesos (V R A)"
-    return frame.round(1)
-
-
-def show_cost_study():
-    frame = cost_study()
-    percent = [column for column in frame.columns if column not in ("Trocas de nó", "Trocas por execução", "Movimentos a mais")]
-    return frame.style.format({column: "{:.1f}%" for column in percent}).set_properties(
-        subset=pd.IndexSlice[["10 + peso × distância (escolhido)"], :], **{"font-weight": "bold"}
-    )
 
 
 def show_dot(source):
