@@ -27,6 +27,7 @@ FOLDERS: tuple[str, ...] = (
     "libs/ranking",
     "runner",
 )
+_PACKAGES = tuple(sorted({folder.split("/")[0] for folder in FOLDERS}))
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,9 +97,13 @@ def setup_cells(
         ignore(
             code(
                 f"""#@title Prepara as pastas
+import shutil
 import sys
 from pathlib import Path
 
+shutil.rmtree("{SOURCE_DIR}", ignore_errors=True)
+for name in [name for name in sys.modules if name.split(".")[0] in {_PACKAGES!r}]:
+    del sys.modules[name]
 for folder in {FOLDERS!r}:
     Path("{SOURCE_DIR}", folder).mkdir(parents=True, exist_ok=True)
 if str(Path("{SOURCE_DIR}").resolve()) not in sys.path:
