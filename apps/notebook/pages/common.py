@@ -15,7 +15,7 @@ SECTIONS = (
     "Backtracking",
     "Busca em largura",
     "Busca ordenada",
-    f"Gráficos e análise {IGNORE}",
+    "Comparação dos algoritmos",
     "Integrantes",
 )
 
@@ -47,9 +47,7 @@ Resolvedor da Torre de Londres (3 hastes, 3 discos) com quatro algoritmos de bus
 
 {contents}
 
-Tudo o que é código e não aparece nos slides está marcado com **{IGNORE}**: o Setup, as funções que desenham tabelas e gráficos e os extras de cada seção. O código que aparece nos slides (problema, regras, estratégias, fronteira, motor e algoritmos) fica no ponto do slide correspondente, sem marcação.
-
-Rode **Ambiente de execução → Executar tudo**."""
+Todo o código marcado com **{IGNORE}** está no topo, na seção Setup: os módulos de apoio do projeto e as funções que desenham tabelas, figuras e gráficos. Rode **Ambiente de execução → Executar tudo** e comece a apresentação na seção 1. Dali em diante só aparece o código do projeto que vai para a apresentação (problema, regras, estratégias, fronteira, motor e algoritmos) e chamadas de uma linha que desenham as tabelas e os gráficos."""
     )
 
 
@@ -100,8 +98,9 @@ ALGORITHM_LABELS = {
     "breadth_first": "Largura",
     "ordered": "Ordenada",
 }
-STRATEGY_LABELS = {"ascending": "crescente", "descending": "decrescente", "custom": "custom"}
-SHORT = {"ascending": "cresc.", "descending": "decr.", "custom": "custom"}
+CHART_ALGORITHMS = tuple(name for name in ALGORITHM_LABELS if name != "irrevocable")
+STRATEGY_LABELS = {"ascending": "crescente", "descending": "decrescente"}
+SHORT = {"ascending": "cresc.", "descending": "decr."}
 SLIDE_STRATEGIES = ("ascending", "descending")
 GRAPH_DIR = Path("data")
 P1 = get_problem("P1")
@@ -470,8 +469,12 @@ def algorithms_table(algorithm):
     return _bold_columns(pd.DataFrame(columns), algorithm)
 
 
+def _charted(algorithm):
+    return [name for name in ALGORITHM_NAMES if name in CHART_ALGORITHMS or name == algorithm]
+
+
 def paths_plot(algorithm):
-    rows = [(name, strategy, solve(name, strategy)) for name in ALGORITHM_NAMES for strategy in SLIDE_STRATEGIES]
+    rows = [(name, strategy, solve(name, strategy)) for name in _charted(algorithm) for strategy in SLIDE_STRATEGIES]
     colors = {"ascending": "#2a78d6", "descending": "#c87400"}
     longest = max(len(result.applied_rules) for _, _, result in rows)
     fig, ax = plt.subplots(figsize=(min(3 + 0.45 * longest, 14), 0.75 * len(rows) + 0.6))
@@ -480,7 +483,7 @@ def paths_plot(algorithm):
         rules = result.applied_rules
         label = f"{ALGORITHM_LABELS[name]} {SHORT[strategy]}"
         weight = "bold" if name == algorithm else "normal"
-        ax.text(-0.6, y, label, ha="right", va="center", color=colors[strategy], fontweight=weight, fontsize=10)
+        ax.text(-0.9, y, label, ha="right", va="center", color=colors[strategy], fontweight=weight, fontsize=10)
         count = str(len(rules)) if result.outcome.is_success else theme.outcome_label(result.outcome).lower()
         ax.text(-0.3, y, count, ha="right", va="center", fontweight="bold", fontsize=10, color="#0b0b0b")
         if rules:
@@ -503,7 +506,7 @@ def expanded_chart(algorithm):
             result = solve(algorithm, strategy, prune)
             label = f"{ALGORITHM_LABELS[algorithm]} {SHORT[strategy]} {'com' if prune else 'sem'} poda"
             bars.append((label, result, algorithm))
-    for name in ALGORITHM_NAMES:
+    for name in _charted(algorithm):
         if name == algorithm:
             continue
         for strategy in SLIDE_STRATEGIES:
@@ -545,6 +548,15 @@ SYMBOLS = {
 }
 
 
+def _max_depths(algorithm):
+    if algorithm is None:
+        return "; ".join(
+            f"{ALGORITHM_LABELS[name]} " + "/".join(str(solve(name, strategy).metrics.max_depth) for strategy in SLIDE_STRATEGIES)
+            for name in ALGORITHM_NAMES
+        ) + " (cresc./decr.)"
+    return " · ".join(f"{solve(algorithm, strategy).metrics.max_depth} no {SHORT[strategy]}" for strategy in SLIDE_STRATEGIES)
+
+
 def complexity_values(algorithm, symbols):
     states = all_states()
     loose = solve("breadth_first", "ascending", False)
@@ -552,7 +564,7 @@ def complexity_values(algorithm, symbols):
     values = {
         "b": f"cerca de {sum(len(successors(state)) for state in expanded) / len(expanded):.1f}".replace(".", ","),
         "d": str(solve("breadth_first", "ascending").solution_length),
-        "m": " · ".join(f"{solve(algorithm, strategy).metrics.max_depth} no {SHORT[strategy]}" for strategy in SLIDE_STRATEGIES),
+        "m": _max_depths(algorithm),
         "V": str(len(states)),
         "E": str(sum(len(successors(state)) for state in states) // 2),
         "C*": str(solve("ordered", "ascending").solution_cost),

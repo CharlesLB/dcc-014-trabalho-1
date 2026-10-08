@@ -2,13 +2,13 @@
 
 Gera o notebook da apresentação, `notebooks/torre_de_londres.ipynb`, a partir do código de `src/`. Ele roda sozinho no Colab: o código do projeto vai dentro dele.
 
-Cada seção de algoritmo segue a ordem dos slides. O código que aparece nos slides fica no ponto do slide, como `%%writefile` no mesmo caminho de `src/`. Todo código que não aparece nos slides vem marcado com **(ignore)**: no título da célula, numa primeira linha `# (ignore)` ou no título da seção.
+A apresentação é feita pelo próprio Colab. Todo código marcado com **(ignore)** fica no topo, na seção Setup. Depois dela, cada seção de algoritmo segue a ordem dos slides: o código do projeto que é apresentado fica no ponto do slide, como `%%writefile` no mesmo caminho de `src/`, e o resto são chamadas de uma linha às funções do Setup.
 
 | Seção | Conteúdo |
 |---|---|
-| Setup (ignore) | Os módulos de `src/` que não aparecem nos slides, pasta por pasta, cada um numa célula `%%writefile`; uma célula recolhida que grava os módulos dos slides (eles são mostrados de novo nas seções); funções de apresentação e estilo dos gráficos. |
-| Uma por algoritmo | Na ordem dos slides: o problema (P1), a ideia, o laço e as listas, as regras, a estratégia de controle, as duas estratégias na mesma raiz, sem poda (crescimento por nível, árvore e ABERTOS/FECHADOS iteração a iteração, crescente e decrescente), com poda (idem), pseudocódigo com o código do algoritmo, caminho solução, comparativos (caminhos, crescente contra decrescente, contra os outros algoritmos, quem explorou menos nós) e complexidade. Fecha com a conclusão e os extras (ignore): fluxograma, trace bruto e comparações no placar e nos 36 objetivos. |
-| Gráficos e análise (ignore) | Matriz completa em P1 e nos 36 objetivos, gráficos de desfecho, qualidade e esforço, e a análise. |
+| Setup (ignore) | Os módulos de `src/` que não aparecem nos slides, pasta por pasta, cada um numa célula `%%writefile`; uma célula recolhida que grava os módulos dos slides (eles são mostrados de novo nas seções); funções de apresentação, funções dos gráficos e fluxogramas. |
+| Uma por algoritmo | Na ordem dos slides: o problema (P1), a ideia, o laço e as listas, as regras, a estratégia de controle, as duas estratégias na mesma raiz, sem poda (crescimento por nível, árvore e ABERTOS/FECHADOS iteração a iteração, crescente e decrescente), com poda (idem), pseudocódigo com o código do algoritmo, caminho solução, comparativos (caminhos, crescente contra decrescente, contra os outros algoritmos, quem explorou menos nós) e complexidade. Fecha com a conclusão e os extras: fluxograma, trace bruto e comparações no placar e nos 36 objetivos. |
+| Comparação dos algoritmos | Matriz completa (4 algoritmos × 2 estratégias) em P1, com a carta desenhada sobre o gráfico, e nos 36 objetivos, em boxplot; qualidade da solução, tabela de complexidade dos quatro algoritmos e a análise. Os gráficos deixam a irrevogável de fora; as tabelas mostram os quatro. |
 | Integrantes | O grupo. |
 
 A primeira seção (busca irrevogável) mostra os módulos compartilhados: legenda e cartas no slide do problema, o motor no slide do laço, as regras e as estratégias nos slides delas. A fronteira (pilha, fila e fila por custo) aparece no slide da ideia do backtracking, o primeiro algoritmo que usa uma.
@@ -38,6 +38,6 @@ apps/notebook/
 ├── pages/
 │   ├── common.py      cabeçalho, integrantes e funções de apresentação
 │   ├── algorithm.py   uma seção por algoritmo, no roteiro dos slides
-│   └── analysis.py    gráficos e análise
+│   └── analysis.py    comparação dos algoritmos: gráficos, complexidade e análise
 └── notebooks/         saída gerada (não editar à mão)
 ```

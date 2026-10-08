@@ -4,12 +4,11 @@ import pytest
 
 from core.algorithms.domain.registry import ALGORITHM_NAMES
 from core.domain.problem import PROBLEM_IDS
-from core.rules.strategies.custom_order import CUSTOM, CustomOrderStrategy
 from core.rules.strategies.domain.registry import STRATEGY_NAMES
 from core.search_tree.outcome import Outcome
 from libs.inputs.parser import parse
 from libs.inputs.validator import validate
-from runner.executor import resolve_strategy, run_matrix
+from runner.executor import run_matrix
 
 
 @pytest.fixture(scope="module")
@@ -57,17 +56,6 @@ def test_narrowed_request_runs_a_single_execution() -> None:
     executed = run_matrix(request)
     assert len(executed) == 1
     assert len(executed[0][1]) == 1
-
-
-def test_custom_order_overrides_the_registered_strategy() -> None:
-    sequence = ("R6", "R5", "R4", "R3", "R2", "R1")
-    strategy = resolve_strategy("custom", sequence)
-    assert isinstance(strategy, CustomOrderStrategy)
-    assert strategy.sequence == sequence
-
-
-def test_custom_strategy_without_order_uses_the_default() -> None:
-    assert resolve_strategy("custom", None) is CUSTOM
 
 
 def test_each_execution_uses_a_fresh_tree() -> None:

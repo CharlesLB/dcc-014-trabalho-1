@@ -112,7 +112,7 @@
     Custo da solução: 1 + 1 + 1 = 3
     Número de movimentos: 3      Iterações: 10      Gerados: 15
 
-    Com as ordens decrescente e custom: o mesmo caminho em 11 iterações.
+    Com a ordem decrescente: o mesmo caminho em 11 iterações.
 
 7. Conclusão
 

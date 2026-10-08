@@ -77,22 +77,11 @@ def test_json_output_is_written_to_a_file(tmp_path: Path) -> None:
     assert json.loads(target.read_text(encoding="utf-8"))["problemas"]
 
 
-def test_custom_order_is_accepted() -> None:
-    completed = _run("--strategy", "custom", "--order", "R2,R4,R6,R1,R3,R5")
-    assert completed.returncode == settings.EXIT_OK
-
-
 def test_unknown_algorithm_fails_with_a_portuguese_message() -> None:
     completed = _run("--algorithm", "astar")
     assert completed.returncode == settings.EXIT_INVALID_INPUT
     assert settings.KIND_LABELS["algorithm"] in completed.stderr
     assert settings.ERROR_HINT in completed.stderr
-
-
-def test_invalid_order_fails() -> None:
-    completed = _run("--order", "R1,R2")
-    assert completed.returncode == settings.EXIT_INVALID_INPUT
-    assert settings.ERROR_PREFIX in completed.stderr
 
 
 def test_running_without_arguments_covers_every_axis() -> None:

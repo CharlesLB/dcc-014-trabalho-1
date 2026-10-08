@@ -5,7 +5,6 @@ from types import MappingProxyType
 
 from core.rules.domain.exceptions import UnknownStrategyError
 from core.rules.strategies.ascending import ASCENDING
-from core.rules.strategies.custom_order import CUSTOM
 from core.rules.strategies.descending import DESCENDING
 from core.rules.strategies.domain.base import ControlStrategy
 
@@ -13,7 +12,6 @@ STRATEGIES: Mapping[str, ControlStrategy] = MappingProxyType(
     {
         ASCENDING.name: ASCENDING,
         DESCENDING.name: DESCENDING,
-        CUSTOM.name: CUSTOM,
     }
 )
 

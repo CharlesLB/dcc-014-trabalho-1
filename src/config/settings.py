@@ -44,7 +44,6 @@ HELP_NO_PRUNE: Final = (
     "Desliga a poda: a árvore aceita estados repetidos. A irrevogável e o "
     "backtracking podem então girar em ciclo até o limite de iterações."
 )
-HELP_ORDER: Final = "Ordem das regras para a estratégia custom, ex.: R2,R4,R6,R1,R3,R5."
 HELP_SHOW_TREE: Final = "Renderiza a árvore de busca de cada execução."
 HELP_SHOW_TRACE: Final = (
     "Mostra o passo a passo com regra aplicada e estado resultante."
@@ -73,7 +72,6 @@ KIND_LABELS: Final[Mapping[str, str]] = {
 ERROR_PREFIX: Final = "Erro:"
 ERROR_UNKNOWN_SELECTION: Final = "{kind}: {name}. Disponíveis: {available}."
 ERROR_INVALID_ARGUMENT: Final = "argumento inválido: {detail}."
-ERROR_INVALID_RULE_ORDER: Final = "ordem de regras inválida: {reason}."
 ERROR_HINT: Final = "Use --help para ver as opções."
 
 USAGE_PREFIX: Final = "Uso: "

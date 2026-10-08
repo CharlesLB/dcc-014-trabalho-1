@@ -7,7 +7,6 @@ from config import settings
 from config.logging import configure_logging
 from core.algorithms.domain.registry import ALGORITHM_NAMES
 from core.domain.problem import PROBLEMS
-from core.rules.domain.exceptions import InvalidRuleOrderError
 from core.rules.strategies.domain.registry import STRATEGY_NAMES
 from libs.inputs import parser, validator
 from libs.inputs.exceptions import (
@@ -32,7 +31,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments = [] if argv is None else list(argv)
     try:
         request = validator.validate(parser.parse(arguments))
-    except (InputError, InvalidRuleOrderError) as error:
+    except InputError as error:
         console.write_error(_error_message(error))
         console.write_error(settings.ERROR_HINT)
         return settings.EXIT_INVALID_INPUT
@@ -98,8 +97,6 @@ def _error_message(error: Exception) -> str:
                 name=error.name,
                 available=", ".join(error.available),
             )
-        case InvalidRuleOrderError():
-            detail = settings.ERROR_INVALID_RULE_ORDER.format(reason=error.reason)
         case InvalidArgumentError():
             detail = settings.ERROR_INVALID_ARGUMENT.format(detail=error.detail)
         case _:

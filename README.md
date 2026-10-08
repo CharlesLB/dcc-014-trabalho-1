@@ -37,7 +37,6 @@ python main.py --problem P1
 python main.py --algorithm backtracking --strategy descending
 python main.py --algorithm backtracking --show-tree --show-trace
 python main.py --show-states
-python main.py --strategy custom --order R2,R4,R6,R1,R3,R5
 python main.py --rank-mode score
 python main.py --all-goals             # os 36 estados finais; só o resumo, com média e mediana
 python main.py --no-prune              # sem poda: a árvore aceita estados repetidos
@@ -57,8 +56,7 @@ src/
 │   │   └── strategies/
 │   │       ├── domain/        contrato e registro
 │   │       ├── ascending.py
-│   │       ├── descending.py
-│   │       └── custom_order.py
+│   │       └── descending.py
 │   ├── domain/                estados, invariantes, cartas, enumeração
 │   ├── search_tree/           nó, árvore, fronteira, caminho, métricas, trace
 │   └── algorithms/

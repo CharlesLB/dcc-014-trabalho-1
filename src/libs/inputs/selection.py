@@ -11,7 +11,6 @@ class ExecutionRequest:
     problem_ids: tuple[str, ...]
     algorithm_names: tuple[str, ...]
     strategy_names: tuple[str, ...]
-    custom_order: tuple[str, ...] | None = None
     show_tree: bool = False
     show_trace: bool = False
     show_states: bool = False

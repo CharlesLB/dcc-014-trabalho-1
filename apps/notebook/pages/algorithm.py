@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import permutations
 
-from cells import Cell, code, ignore, markdown
+from cells import Cell, code, markdown
 from source import SOURCE_DIR, find, writefile_cell
 
 PROBLEM_MODULES = ("core/rules/domain/base.py", "core/domain/problem.py")
@@ -16,7 +17,6 @@ RULE_MODULES = (
 STRATEGY_MODULES = (
     "core/rules/strategies/ascending.py",
     "core/rules/strategies/descending.py",
-    "core/rules/strategies/custom_order.py",
 )
 SLIDE_STRATEGIES = (("ascending", "crescente"), ("descending", "decrescente"))
 
@@ -48,6 +48,13 @@ class AlgorithmSection:
 FLOW_STYLE = """  rankdir=TB; fontname="Helvetica"; bgcolor="transparent";
   node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", fillcolor="#ffffff", color="#333333"];
   edge [fontname="Helvetica", fontsize=10, color="#333333"];"""
+
+RULES_LIST = "\n".join(
+    f"    R{index}: mover o disco do topo da {origin} para a {destination}."
+    for index, (origin, destination) in enumerate(
+        permutations(("H1", "H2", "H3"), 2), start=1
+    )
+)
 
 PRUNE_FLAG = "**poda** vem de `--no-prune`: desligada, a linha da poda não roda. A **estratégia** só muda a ordem do *para cada*."
 
@@ -90,8 +97,8 @@ Não há fila nem pilha: ABERTOS tem no máximo um nó, o filho que acabou de se
     symbols=("b", "m", "V"),
     conclusion="""## Conclusão
 
-- Em P1, `descending` trava na 3ª iteração: R4 e R5 levam a `H1[V,R,A]`, e de lá as duas regras aplicáveis voltam a estados do caminho. `custom` também termina em impasse; `ascending` chega, mas com 14 movimentos, quando o ótimo tem 3.
-- Nos 36 objetivos, resolve 18 com `ascending`, 7 com `custom` e 3 com `descending`. É o único algoritmo que deixa objetivos sem solução.
+- Em P1, `descending` trava na 3ª iteração: R4 e R5 levam a `H1[V,R,A]`, e de lá as duas regras aplicáveis voltam a estados do caminho. `ascending` chega, mas com 14 movimentos, quando o ótimo tem 3.
+- Nos 36 objetivos, resolve 18 com `ascending` e 3 com `descending`. É o único algoritmo que deixa objetivos sem solução.
 - É barata (um nó gerado por iteração), mas não garante solução nem qualidade: a estratégia decide tudo.""",
     flowchart="""digraph flow {
 %s
@@ -157,8 +164,8 @@ A fronteira do projeto, em `core/search_tree/frontier.py`, tem as três filas us
     symbols=("b", "m"),
     conclusion="""## Conclusão
 
-- Em P1 as três estratégias chegam ao objetivo. Com `descending` são 51 iterações, 14 retrocessos e 22 movimentos para um ótimo de 3; com `ascending` não há retrocesso e o caminho é o mesmo da irrevogável, com 14 movimentos.
-- Nos 36 objetivos resolve todos, mas com média de 12,25 a 16,5 movimentos, contra 4,14 do ótimo. Com `custom`, a média de iterações é 236,47 e a mediana 20,5: alguns objetivos passam de mil iterações.
+- Em P1 as duas estratégias chegam ao objetivo. Com `descending` são 51 iterações, 14 retrocessos e 22 movimentos para um ótimo de 3; com `ascending` não há retrocesso e o caminho é o mesmo da irrevogável, com 14 movimentos.
+- Nos 36 objetivos resolve todos, mas com média de 12,81 a 16,5 movimentos, contra 4,14 do ótimo. Com `descending`, a média de iterações é 82,92 e a mediana 21,5: um objetivo passa de 2 mil iterações.
 - Resolve o problema da irrevogável (o impasse vira desvio), mas para no primeiro objetivo que encontra, tenha o caminho o comprimento que tiver.""",
     flowchart="""digraph flow {
 %s
@@ -239,8 +246,8 @@ Largura: fila, sai o primeiro que entrou. Varre por níveis.""",
     symbols=("b", "d", "m", "V", "E"),
     conclusion="""## Conclusão
 
-- Em P1 as três estratégias acham R4, R1, R1: 3 movimentos, o ótimo. A estratégia só muda a ordem dentro de um nível e, com ela, o número de iterações.
-- Nos 36 objetivos acha sempre o mínimo de movimentos (média 4,14). No custo, passa do menor em 2 das 108 execuções, porque não olha o custo das regras.
+- Em P1 as duas estratégias acham R4, R1, R1: 3 movimentos, o ótimo. A estratégia só muda a ordem dentro de um nível e, com ela, o número de iterações.
+- Nos 36 objetivos acha sempre o mínimo de movimentos (média 4,14). No custo, passa do menor em 1 das 72 execuções, porque não olha o custo das regras.
 - É a referência de comprimento para os outros algoritmos. Em custo, a referência é a busca ordenada.""",
     flowchart="""digraph flow {
 %s
@@ -314,7 +321,7 @@ Com os custos deste problema o terceiro caso nunca acontece em P1: R1 seguida de
     symbols=("b", "C*", "ε", "V", "E"),
     conclusion="""## Conclusão
 
-- Em P1: R4, R1, R1, custo 3. Com `ascending` são 10 iterações, a execução mais rápida de P1; com `descending` e `custom`, o mesmo caminho em 11.
+- Em P1: R4, R1, R1, custo 3. Com `ascending` são 10 iterações, a execução mais rápida de P1; com `descending`, o mesmo caminho em 11.
 - Nos 36 objetivos acha sempre o menor custo (média 5,22, a menor de todas) e também o mínimo de movimentos. A média de iterações é 18,5, a mesma da largura.
 - A estratégia só desempata irmãos de mesmo custo: nunca muda o custo da solução.""",
     flowchart="""digraph flow {
@@ -419,6 +426,7 @@ def section(spec: AlgorithmSection, index: int, *, first: bool) -> tuple[Cell, .
         markdown(
             "## As regras: seis regras, uma para cada par origem e destino\n\n"
             "Vale se a origem tem disco e o destino tem espaço. Toda regra tem inversa: aplicar as duas em seguida volta ao mesmo estado."
+            f"\n\n{RULES_LIST}"
         )
     )
     if first:
@@ -473,26 +481,35 @@ def section(spec: AlgorithmSection, index: int, *, first: bool) -> tuple[Cell, .
     return tuple(cells)
 
 
+def flowcharts() -> Cell:
+    entries = "\n".join(
+        f"    {spec.name!r}: r'''{spec.flowchart % FLOW_STYLE}''',"
+        for spec in ALGORITHM_SECTIONS
+    )
+    return code(
+        f"""#@title Fluxogramas
+FLOWCHARTS = {{
+{entries}
+}}
+
+
+def show_flowchart(algorithm):
+    show_dot(FLOWCHARTS[algorithm])""",
+        hidden=True,
+    )
+
+
 def _extras(spec: AlgorithmSection) -> tuple[Cell, ...]:
-    return tuple(
-        ignore(cell)
-        for cell in (
-            markdown(
-                f"## Extras de {spec.title.lower()}\n\nNada daqui está nos slides."
-            ),
-            markdown("### Fluxograma"),
-            code(
-                f"""#@title Desenha o fluxograma
-show_dot('''{spec.flowchart % FLOW_STYLE}''')""",
-                hidden=True,
-            ),
-            markdown("### Passo a passo do trace, com poda e ordem crescente"),
-            code(f'show_trace(solve("{spec.name}", "ascending"))'),
-            markdown("### Comparação em P1, placar lexicográfico"),
-            code(f'p1_comparison("{spec.name}")'),
-            markdown(
-                "### Comparação nos 36 objetivos\n\nCada métrica: média / mediana; movimentos e custo contam só os sucessos."
-            ),
-            code(f'goals_comparison("{spec.name}")'),
-        )
+    return (
+        markdown(f"## Extras de {spec.title.lower()}"),
+        markdown("### Fluxograma"),
+        code(f'show_flowchart("{spec.name}")'),
+        markdown("### Passo a passo do trace, com poda e ordem crescente"),
+        code(f'show_trace(solve("{spec.name}", "ascending"))'),
+        markdown("### Comparação em P1, placar lexicográfico"),
+        code(f'p1_comparison("{spec.name}")'),
+        markdown(
+            "### Comparação nos 36 objetivos\n\nCada métrica: média / mediana; movimentos e custo contam só os sucessos."
+        ),
+        code(f'goals_comparison("{spec.name}")'),
     )

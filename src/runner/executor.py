@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from core.algorithms.domain.registry import get_algorithm
 from core.domain.problem import Problem, all_goal_problems, get_problem
-from core.rules.strategies.custom_order import CUSTOM, CustomOrderStrategy
-from core.rules.strategies.domain.base import ControlStrategy
 from core.rules.strategies.domain.registry import get_strategy
 from core.search_tree.result import SearchResult
 from core.search_tree.tree import SearchTree
@@ -16,7 +14,7 @@ def run_problem(
     return tuple(
         get_algorithm(algorithm_name)(
             SearchTree(),
-            resolve_strategy(strategy_name, request.custom_order),
+            get_strategy(strategy_name),
             max_iterations=request.max_iterations,
             prune=request.prune,
         ).solve(problem)
@@ -34,11 +32,3 @@ def run_matrix(
         else tuple(get_problem(problem_id) for problem_id in request.problem_ids)
     )
     return tuple((problem, run_problem(problem, request)) for problem in problems)
-
-
-def resolve_strategy(
-    name: str, custom_order: tuple[str, ...] | None
-) -> ControlStrategy:
-    if name == CUSTOM.name and custom_order is not None:
-        return CustomOrderStrategy(sequence=custom_order)
-    return get_strategy(name)

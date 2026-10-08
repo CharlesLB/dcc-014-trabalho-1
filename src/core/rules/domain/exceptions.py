@@ -13,12 +13,6 @@ class UnknownRuleError(RuleError):
         self.rule_id = rule_id
 
 
-class InvalidRuleOrderError(RuleError):
-    def __init__(self, reason: str) -> None:
-        super().__init__(f"invalid rule order: {reason}")
-        self.reason = reason
-
-
 class UnknownStrategyError(RuleError):
     def __init__(self, name: str) -> None:
         super().__init__(f"unknown control strategy: {name!r}")

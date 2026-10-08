@@ -8,7 +8,6 @@ from typing import NoReturn
 from config import settings
 from core.algorithms.domain.registry import ALGORITHM_NAMES
 from core.domain.problem import PROBLEM_IDS
-from core.rules.strategies.custom_order import parse_order
 from core.rules.strategies.domain.registry import STRATEGY_NAMES
 from libs.inputs.exceptions import InvalidArgumentError
 from libs.inputs.selection import ExecutionRequest
@@ -49,7 +48,6 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--all", action="store_true", help=settings.HELP_ALL)
     group.add_argument("--all-goals", action="store_true", help=settings.HELP_ALL_GOALS)
     group.add_argument("--no-prune", action="store_true", help=settings.HELP_NO_PRUNE)
-    group.add_argument("--order", help=settings.HELP_ORDER)
     group.add_argument("--show-tree", action="store_true", help=settings.HELP_SHOW_TREE)
     group.add_argument(
         "--show-trace", action="store_true", help=settings.HELP_SHOW_TRACE
@@ -87,13 +85,11 @@ def parse(argv: Sequence[str]) -> ExecutionRequest:
     problems = _selected(namespace.problem, PROBLEM_IDS, select_all, upper=True)
     algorithms = _selected(namespace.algorithm, ALGORITHM_NAMES, select_all)
     strategies = _selected(namespace.strategy, STRATEGY_NAMES, select_all)
-    order = parse_order(namespace.order) if namespace.order else None
 
     return ExecutionRequest(
         problem_ids=problems,
         algorithm_names=algorithms,
         strategy_names=strategies,
-        custom_order=order,
         show_tree=namespace.show_tree,
         show_trace=namespace.show_trace,
         show_states=namespace.show_states,
