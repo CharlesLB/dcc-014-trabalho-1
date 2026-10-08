@@ -53,6 +53,7 @@ def test_metrics_are_exported(problems: tuple[Problem, ...]) -> None:
         "retrocessos",
         "impasses",
         "profundidade_maxima",
+        "pico_abertos",
         "tempo_ms",
     }
 

@@ -18,6 +18,7 @@ def run_problem(
             SearchTree(),
             resolve_strategy(strategy_name, request.custom_order),
             max_iterations=request.max_iterations,
+            prune=request.prune,
         ).solve(problem)
         for algorithm_name in request.algorithm_names
         for strategy_name in request.strategy_names

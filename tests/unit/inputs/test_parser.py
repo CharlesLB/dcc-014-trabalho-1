@@ -127,3 +127,8 @@ def test_help_text_is_in_portuguese() -> None:
 def test_all_goals_is_a_flag() -> None:
     assert parse([]).all_goals is False
     assert parse(["--all-goals"]).all_goals is True
+
+
+def test_no_prune_turns_pruning_off() -> None:
+    assert parse([]).prune is True
+    assert parse(["--no-prune"]).prune is False

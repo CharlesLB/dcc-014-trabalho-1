@@ -13,6 +13,7 @@ class SearchMetrics:
     deadlocks: int
     max_depth: int
     elapsed_ms: float
+    max_frontier: int = 0
 
 
 @dataclass(slots=True)
@@ -24,6 +25,7 @@ class MetricsCollector:
     backtracks: int = 0
     deadlocks: int = 0
     max_depth: int = field(default=0)
+    max_frontier: int = 0
 
     def count_iteration(self) -> None:
         self.iterations += 1
@@ -31,6 +33,9 @@ class MetricsCollector:
     def count_generated(self, depth: int) -> None:
         self.nodes_generated += 1
         self.max_depth = max(self.max_depth, depth)
+
+    def observe_frontier(self, size: int) -> None:
+        self.max_frontier = max(self.max_frontier, size)
 
     def count_visited(self) -> None:
         self.nodes_visited += 1
@@ -54,4 +59,5 @@ class MetricsCollector:
             deadlocks=self.deadlocks,
             max_depth=self.max_depth,
             elapsed_ms=elapsed_ms,
+            max_frontier=self.max_frontier,
         )

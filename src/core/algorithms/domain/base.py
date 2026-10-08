@@ -48,10 +48,12 @@ class SearchAlgorithm(ABC):
         strategy: ControlStrategy,
         *,
         max_iterations: int = settings.MAX_ITERATIONS,
+        prune: bool = True,
     ) -> None:
         self._tree = tree
         self._strategy = strategy
         self._max_iterations = max_iterations
+        self._prune = prune
         self._context: _RunContext | None = None
 
     @property
@@ -61,6 +63,10 @@ class SearchAlgorithm(ABC):
     @property
     def max_iterations(self) -> int:
         return self._max_iterations
+
+    @property
+    def prune(self) -> bool:
+        return self._prune
 
     def solve(self, problem: Problem) -> SearchResult:
         """Porta de entrada da busca.
@@ -91,6 +97,7 @@ class SearchAlgorithm(ABC):
             applied_rules=() if goal_node is None else path.applied_rules(goal_node),
             metrics=context.metrics.seal(elapsed_ms),
             trace=context.trace.seal(),
+            pruned=self._prune,
         )
 
     @abstractmethod
@@ -102,7 +109,8 @@ class SearchAlgorithm(ABC):
         """As regras que este nó pode usar, prontas para serem tentadas.
 
         Faz os três passos em ordem: testa quais são aplicáveis, ordena pela
-        estratégia e poda as que repetiriam um estado.
+        estratégia e poda as que repetiriam um estado. Sem poda, o terceiro
+        passo não roda e a árvore aceita estados repetidos.
         """
         context = self._require_context()
         applicable: list[TransitionRule] = []
@@ -114,7 +122,7 @@ class SearchAlgorithm(ABC):
         allowed: list[TransitionRule] = []
         for rule in self._strategy.order(tuple(applicable)):
             successor = rule.apply(node.state)
-            if self._is_repetition(node, rule, successor):
+            if self._prune and self._is_repetition(node, rule, successor):
                 context.trace.record_prune(
                     iteration=context.metrics.iterations,
                     node=node,
@@ -158,6 +166,10 @@ class SearchAlgorithm(ABC):
             return False
         context.metrics.count_iteration()
         return True
+
+    def _observe_frontier(self, size: int) -> None:
+        """Só contabilidade: guarda o maior tamanho que ABERTOS já teve."""
+        self._require_context().metrics.observe_frontier(size)
 
     def _visit(self, node: Node) -> None:
         """Só contabilidade: registra que o nó foi olhado. Uma vez por nó."""

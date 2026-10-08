@@ -1,42 +1,43 @@
 # Notebooks da apresentação
 
-Gera os notebooks que vão para o Google Colab a partir do código de `src/`. Cada notebook é uma página e roda sozinho: o código do projeto vai dentro dele.
+Gera o notebook da apresentação, `notebooks/torre_de_londres.ipynb`, a partir do código de `src/`. Ele roda sozinho no Colab: o código do projeto vai dentro dele.
 
-Toda página começa com uma seção **Setup**: o `src/` inteiro, pasta por pasta e na ordem do repositório, cada módulo numa célula `%%writefile` no mesmo caminho, mais as funções de apresentação. Nas páginas de algoritmo, o Setup leva tudo menos o próprio algoritmo, que vem depois, na seção dele.
+Cada seção de algoritmo segue a ordem dos slides. O código que aparece nos slides fica no ponto do slide, como `%%writefile` no mesmo caminho de `src/`. Todo código que não aparece nos slides vem marcado com **(ignore)**: no título da célula, numa primeira linha `# (ignore)` ou no título da seção.
 
-| Página | Arquivo | Depois do Setup |
-|---|---|---|
-| Busca irrevogável | `01_busca_irrevogavel.ipynb` | Fluxograma, código, execução em P1 com as três estratégias, passo a passo, árvores de busca, caminho solução e conclusão. |
-| Backtracking | `02_backtracking.ipynb` | Idem. |
-| Busca em largura | `03_busca_em_largura.ipynb` | Idem. |
-| Busca ordenada | `04_busca_ordenada.ipynb` | Idem. |
-| Gráficos e análise | `05_analise.ipynb` | Matriz completa em P1 e nos 36 objetivos, gráficos de desfecho, qualidade e esforço, e a análise. |
+| Seção | Conteúdo |
+|---|---|
+| Setup (ignore) | Os módulos de `src/` que não aparecem nos slides, pasta por pasta, cada um numa célula `%%writefile`; uma célula recolhida que grava os módulos dos slides (eles são mostrados de novo nas seções); funções de apresentação e estilo dos gráficos. |
+| Uma por algoritmo | Na ordem dos slides: o problema (P1), a ideia, o laço e as listas, as regras, a estratégia de controle, as duas estratégias na mesma raiz, sem poda (crescimento por nível, árvore e ABERTOS/FECHADOS iteração a iteração, crescente e decrescente), com poda (idem), pseudocódigo com o código do algoritmo, caminho solução, comparativos (caminhos, crescente contra decrescente, contra os outros algoritmos, quem explorou menos nós) e complexidade. Fecha com a conclusão e os extras (ignore): fluxograma, trace bruto e comparações no placar e nos 36 objetivos. |
+| Gráficos e análise (ignore) | Matriz completa em P1 e nos 36 objetivos, gráficos de desfecho, qualidade e esforço, e a análise. |
+| Integrantes | O grupo. |
+
+A primeira seção (busca irrevogável) mostra os módulos compartilhados: legenda e cartas no slide do problema, o motor no slide do laço, as regras e as estratégias nos slides delas. A fronteira (pilha, fila e fila por custo) aparece no slide da ideia do backtracking, o primeiro algoritmo que usa uma.
 
 ## Gerar
 
 ```bash
 make notebooks                                 # ou: python apps/notebook/build.py
-python apps/notebook/build.py --check          # falha se algum notebook estiver atrasado em relação a src/
+python apps/notebook/build.py --check          # falha se o notebook estiver atrasado em relação a src/
 ```
 
-O gerador usa só a biblioteca padrão. Mudou algo em `src/`? Gere de novo e versione os notebooks junto.
+O gerador usa só a biblioteca padrão. Mudou algo em `src/`? Gere de novo e versione o notebook junto.
 
 ## Subir para o Colab
 
-Depois do push para `main`, o selo "Abrir no Colab" no topo de cada página abre o notebook direto do GitHub, e os links entre as páginas também levam ao Colab. Sem push, use **Arquivo → Fazer upload de notebook** no Colab com os arquivos de `notebooks/`.
+O selo "Abrir no Colab" no topo do notebook abre a versão da `main` direto do GitHub. Sem push, use **Arquivo → Fazer upload de notebook** com `notebooks/torre_de_londres.ipynb`.
 
-Rode **Ambiente de execução → Executar tudo**. As páginas usam pandas, matplotlib e o Graphviz (`dot`), que o Colab já traz. Sem o `dot`, as árvores aparecem em texto.
+Rode **Ambiente de execução → Executar tudo**. O notebook usa pandas, matplotlib e o Graphviz (`dot`), que o Colab já traz. Sem o `dot`, as árvores aparecem em texto.
 
 ## Estrutura
 
 ```
 apps/notebook/
-├── build.py           entrada: gera os notebooks ou verifica se estão em dia
-├── cells.py           células e notebook no formato .ipynb
+├── build.py           entrada: gera o notebook ou verifica se está em dia
+├── cells.py           células, marcador (ignore) e notebook no formato .ipynb
 ├── source.py          lê src/ na ordem das pastas e monta a seção Setup
 ├── pages/
-│   ├── common.py      navegação e funções de apresentação
-│   ├── algorithm.py   uma página por algoritmo
+│   ├── common.py      cabeçalho, integrantes e funções de apresentação
+│   ├── algorithm.py   uma seção por algoritmo, no roteiro dos slides
 │   └── analysis.py    gráficos e análise
 └── notebooks/         saída gerada (não editar à mão)
 ```

@@ -40,6 +40,7 @@ python main.py --show-states
 python main.py --strategy custom --order R2,R4,R6,R1,R3,R5
 python main.py --rank-mode score
 python main.py --all-goals             # os 36 estados finais; só o resumo, com média e mediana
+python main.py --no-prune              # sem poda: a árvore aceita estados repetidos
 python main.py --format json --output resultados.json
 python main.py --svg-dir data          # árvore de cada execução em data/<carta>/<algoritmo>_<estratégia>.svg
 python main.py --help
@@ -208,7 +209,7 @@ make graphs
 
 ## Notebooks para o Colab
 
-`apps/notebook/` gera a apresentação em notebooks: uma página por algoritmo e uma com os gráficos e a análise. Cada página abre com uma seção Setup que grava o `src/` pasta por pasta. Os notebooks são gerados a partir de `src/` e rodam sozinhos no Colab, sem clonar o repositório. Veja [apps/notebook/README.md](apps/notebook/README.md).
+`apps/notebook/` gera a apresentação num notebook. Cada seção de algoritmo segue a ordem dos slides (problema, ideia, laço e listas, regras, estratégia, árvore sem e com poda, pseudocódigo com o código do projeto, caminho solução, comparativos e complexidade). O que é código e não está nos slides, como o Setup, vem marcado com (ignore). O notebook é gerado a partir de `src/` e roda sozinho no Colab, sem clonar o repositório. Veja [apps/notebook/README.md](apps/notebook/README.md).
 
 ```bash
 make notebooks

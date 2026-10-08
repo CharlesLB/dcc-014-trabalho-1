@@ -47,7 +47,10 @@ def render_dot(result: SearchResult) -> str:
 
 
 def _title(result: SearchResult) -> str:
-    parts = [result.problem, result.label, theme.outcome_label(result.outcome)]
+    parts = [result.problem, result.label]
+    if not result.pruned:
+        parts.append(theme.GRAPH_NO_PRUNE_LABEL)
+    parts.append(theme.outcome_label(result.outcome))
     if result.solution_length is not None:
         parts.append(f"{result.solution_length} {theme.GRAPH_MOVES_LABEL}")
     if result.solution_cost is not None:

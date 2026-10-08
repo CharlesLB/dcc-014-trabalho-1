@@ -107,3 +107,17 @@ def test_writer_renders_svg_next_to_each_dot(
     assert len(written) == 4
     svg = next(path for path in written if path.suffix == ".svg")
     assert "<svg" in svg.read_text(encoding="utf-8")
+
+
+def test_unpruned_runs_get_their_own_file_and_title(
+    problems: tuple[Problem, ...], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(shutil, "which", lambda _name: None)
+    result = BacktrackingSearch(
+        SearchTree(), STRATEGIES["ascending"], max_iterations=5, prune=False
+    ).solve(problems[0])
+    assert theme.GRAPH_NO_PRUNE_LABEL in dot_render.render_dot(result)
+    written = graph_writer.write_graphs(_report(problems[0], result), tmp_path)
+    assert written == (
+        tmp_path / problems[0].id / "backtracking_ascending_sem_poda.dot",
+    )

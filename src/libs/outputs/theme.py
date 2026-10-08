@@ -56,6 +56,7 @@ REPORT_LABELS: Final[Mapping[str, str]] = {
     "backtracks": "Retrocessos",
     "deadlocks": "Impasses",
     "max_depth": "Profundidade máx",
+    "max_frontier": "Pico de ABERTOS",
     "elapsed": "Tempo (ms)",
 }
 
@@ -134,6 +135,8 @@ GRAPH_FONT: Final = "Helvetica"
 GRAPH_MONO_FONT: Final = "monospace"
 GRAPH_MOVES_LABEL: Final = "movimentos"
 GRAPH_COST_LABEL: Final = "custo"
+GRAPH_NO_PRUNE_LABEL: Final = "sem poda"
+GRAPH_NO_PRUNE_SUFFIX: Final = "_sem_poda"
 GRAPH_ROOT_FILL: Final = "#dbe9ff"
 GRAPH_GOAL_FILL: Final = "#c6f0c6"
 GRAPH_DEADLOCK_FILL: Final = "#f7c6c6"

@@ -102,6 +102,7 @@ def _result_to_json(result: SearchResult) -> JsonValue:
     return {
         "algoritmo": result.algorithm,
         "estrategia": result.strategy,
+        "poda": result.pruned,
         "desfecho": theme.outcome_label(result.outcome),
         "movimentos": result.solution_length,
         "custo": result.solution_cost,
@@ -114,6 +115,7 @@ def _result_to_json(result: SearchResult) -> JsonValue:
             "retrocessos": metrics.backtracks,
             "impasses": metrics.deadlocks,
             "profundidade_maxima": metrics.max_depth,
+            "pico_abertos": metrics.max_frontier,
             "tempo_ms": round(metrics.elapsed_ms, 3),
         },
         "estados": [_state_to_json(node.state) for node in result.solution_path],

@@ -30,6 +30,23 @@ class Cell:
         }
 
 
+IGNORE = "(ignore)"
+WRITEFILE = "%%writefile"
+TITLE = "#@title"
+
+
+def ignore(cell: Cell) -> Cell:
+    if cell.kind == "markdown":
+        head, _, rest = cell.source.partition("\n")
+        return Cell(cell.kind, f"{head} {IGNORE}\n{rest}".rstrip("\n"), cell.hidden)
+    head, _, rest = cell.source.partition("\n")
+    if head.startswith(TITLE):
+        return Cell(cell.kind, f"{head} {IGNORE}\n{rest}", cell.hidden)
+    if head.startswith(WRITEFILE):
+        return Cell(cell.kind, f"{head}\n# {IGNORE}\n{rest}", cell.hidden)
+    return Cell(cell.kind, f"# {IGNORE}\n{cell.source}", cell.hidden)
+
+
 def markdown(source: str) -> Cell:
     return Cell("markdown", source)
 

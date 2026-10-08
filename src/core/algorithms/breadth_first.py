@@ -132,8 +132,9 @@ class BreadthFirstSearch(SearchAlgorithm):
         strategy: ControlStrategy,
         *,
         max_iterations: int = settings.MAX_ITERATIONS,
+        prune: bool = True,
     ) -> None:
-        super().__init__(tree, strategy, max_iterations=max_iterations)
+        super().__init__(tree, strategy, max_iterations=max_iterations, prune=prune)
         self._closed: set[State] = set()
         self._open_states: set[State] = set()
 
@@ -144,6 +145,7 @@ class BreadthFirstSearch(SearchAlgorithm):
 
         self._closed = set()
         self._open_states = {context.root.state}
+        self._observe_frontier(len(frontier))
 
         while len(frontier):
             if not self._next_iteration():
@@ -160,6 +162,7 @@ class BreadthFirstSearch(SearchAlgorithm):
                 child = self._expand(node, rule)
                 self._open_states.add(child.state)
                 frontier.push(child)
+            self._observe_frontier(len(frontier))
 
         return self._exhausted()
 

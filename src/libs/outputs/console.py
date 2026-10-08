@@ -78,6 +78,7 @@ def render_result_box(result: SearchResult) -> str:
         (theme.REPORT_LABELS["backtracks"], str(metrics.backtracks)),
         (theme.REPORT_LABELS["deadlocks"], str(metrics.deadlocks)),
         (theme.REPORT_LABELS["max_depth"], str(metrics.max_depth)),
+        (theme.REPORT_LABELS["max_frontier"], str(metrics.max_frontier)),
         (theme.REPORT_LABELS["elapsed"], f"{metrics.elapsed_ms:.3f}"),
     )
     lines = [line for label, value in rows for line in _wrap_row(label, value)]

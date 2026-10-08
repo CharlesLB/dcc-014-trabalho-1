@@ -74,6 +74,7 @@ class IrrevocableSearch(SearchAlgorithm):
 
     def _search(self, problem: Problem) -> Outcome:
         node = self._require_context().root
+        self._observe_frontier(1)
         while True:
             if not self._next_iteration():
                 return Outcome.CUTOFF

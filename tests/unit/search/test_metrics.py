@@ -89,3 +89,10 @@ def test_trace_records_pruned_transitions(initial_state: State) -> None:
 
 def test_empty_trace_is_falsy_in_length() -> None:
     assert len(Trace()) == 0
+
+
+def test_peak_frontier_keeps_the_highest_value() -> None:
+    collector = MetricsCollector()
+    for size in (1, 4, 2):
+        collector.observe_frontier(size)
+    assert collector.seal(0.0).max_frontier == 4

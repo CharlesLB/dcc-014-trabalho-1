@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from cells import Notebook, code, markdown
-from pages.common import ANALYSIS, VIEW_HELPERS, header
-from source import setup_cells
+from cells import Cell, code, ignore, markdown
 
-INTRO = """Uma carta só não diz qual método é melhor. Esta página roda a matriz completa (4 algoritmos × 3 estratégias) primeiro na carta P1 e depois em todos os 36 estados do espaço como objetivo, sempre a partir da mesma posição inicial (cartas G01 a G36). Os gráficos comparam desfecho, qualidade da solução e esforço da busca, e a análise no fim só afirma o que as células verificam."""
+TITLE = "Gráficos e análise"
+ALGORITHM_COUNT = ("irrevocable", "backtracking", "breadth_first", "ordered")
+
+INTRO = """Nada desta seção está nos slides. Uma carta só não diz qual método é melhor. Esta seção roda a matriz completa (4 algoritmos × 3 estratégias) primeiro na carta P1 e depois em todos os 36 estados do espaço como objetivo, sempre a partir da mesma posição inicial (cartas G01 a G36). Os gráficos comparam desfecho, qualidade da solução e esforço da busca, e a análise no fim só afirma o que as células verificam."""
 
 PLOT_STYLE = code(
     """#@title Estilo dos gráficos
@@ -15,15 +16,8 @@ import numpy as np
 MATPLOTLIB_VERSION = tuple(int(part) for part in matplotlib.__version__.split(".")[:2])
 HORIZONTAL = {"orientation": "horizontal"} if MATPLOTLIB_VERSION >= (3, 10) else {"vert": False}
 
-ALGORITHMS = ("irrevocable", "backtracking", "breadth_first", "ordered")
-STRATEGIES = ("ascending", "descending", "custom")
-ALGORITHM_LABELS = {
-    "irrevocable": "Irrevogável",
-    "backtracking": "Backtracking",
-    "breadth_first": "Largura",
-    "ordered": "Ordenada",
-}
-STRATEGY_LABELS = {"ascending": "crescente", "descending": "decrescente", "custom": "custom"}
+ALGORITHMS = tuple(ALGORITHM_LABELS)
+STRATEGIES = tuple(STRATEGY_LABELS)
 ALGORITHM_COLORS = {
     "irrevocable": "#2a78d6",
     "backtracking": "#eb6834",
@@ -119,37 +113,11 @@ def boxplots(ax, frame, column, title, *, log=False):
 
 P1_CELLS = (
     markdown(
-        """## 1. A carta P1
+        """## A carta P1
 
 As 12 execuções de P1, ordenadas pelo placar lexicográfico: desfecho, movimentos, iterações e nós gerados, nessa ordem de prioridade."""
     ),
-    code(
-        """from core.algorithms.domain.registry import ALGORITHM_NAMES
-from core.rules.strategies.domain.registry import STRATEGY_NAMES
-from libs.inputs.selection import ExecutionRequest
-from runner.pipeline import build_report
-
-p1_report = build_report(
-    ExecutionRequest(problem_ids=("P1",), algorithm_names=ALGORITHM_NAMES, strategy_names=STRATEGY_NAMES)
-)
-p1 = p1_report.problems[0]
-leaderboard = pd.DataFrame(
-    [
-        {
-            "#": row.position,
-            "Algoritmo": ALGORITHM_LABELS[row.result.algorithm],
-            "Estratégia": STRATEGY_LABELS[row.result.strategy],
-            LABELS["outcome"]: theme.outcome_label(row.result.outcome),
-            LABELS["moves"]: row.result.solution_length,
-            LABELS["cost"]: row.result.solution_cost,
-            LABELS["iterations"]: row.result.metrics.iterations,
-            LABELS["nodes_generated"]: row.result.metrics.nodes_generated,
-        }
-        for row in p1.leaderboard.rows
-    ]
-).set_index("#").astype({LABELS["moves"]: "Int64", LABELS["cost"]: "Int64"})
-leaderboard"""
-    ),
+    code('p1_comparison().set_index("#")'),
     markdown(
         """Movimentos, iterações e nós gerados de cada algoritmo, agrupados por estratégia. A linha tracejada é o ótimo de P1 (3 movimentos); "impasse" marca as execuções sem solução."""
     ),
@@ -163,7 +131,7 @@ leaderboard"""
             "iterations": result.metrics.iterations,
             "generated": result.metrics.nodes_generated,
         }
-        for result in p1.results
+        for result in p1_report().problems[0].results
     ]
 ).set_index(["algorithm", "strategy"]).astype({"moves": "Int64"})
 
@@ -183,18 +151,15 @@ plt.show()"""
 
 ALL_GOALS_CELLS = (
     markdown(
-        """## 2. Todos os 36 objetivos
+        """## Todos os 36 objetivos
 
 Cada estado do espaço vira o objetivo de uma carta sintética (G01 a G36), todas a partir da posição inicial: 36 cartas × 4 algoritmos × 3 estratégias = 432 execuções. O ótimo de cada carta vem dos oráculos de `state_space`, escritos fora do motor: `shortest_distance` (menor número de movimentos) e `cheapest_cost` (menor custo)."""
     ),
     code(
         """from core.domain.state_space import cheapest_cost, shortest_distance
 
-goals_report = build_report(
-    ExecutionRequest(problem_ids=(), algorithm_names=ALGORITHM_NAMES, strategy_names=STRATEGY_NAMES, all_goals=True)
-)
 rows = []
-for entry in goals_report.problems:
+for entry in goals_report().problems:
     best_moves = shortest_distance(entry.initial_state, entry.goal_state)
     best_cost = cheapest_cost(entry.initial_state, entry.goal_state)
     for result in entry.results:
@@ -222,28 +187,7 @@ print(len(runs), "execuções")"""
 
 O mesmo resumo de `python main.py --all-goals`: para cada combinação, média / mediana. Movimentos e custo contam só os sucessos."""
     ),
-    code(
-        """def stat(value):
-    return theme.ABSENT if value is None else f"{value.mean:.2f} / {value.median:g}"
-
-
-summary = pd.DataFrame(
-    [
-        {
-            "Algoritmo": ALGORITHM_LABELS[row.algorithm],
-            "Estratégia": STRATEGY_LABELS[row.strategy],
-            "Sucessos": f"{row.successes}/{row.runs}",
-            "Impasses": row.deadlocks,
-            LABELS["moves"]: stat(row.moves),
-            LABELS["cost"]: stat(row.cost),
-            LABELS["iterations"]: stat(row.iterations),
-            LABELS["nodes_generated"]: stat(row.nodes_generated),
-        }
-        for row in goals_report.summary.rows
-    ]
-)
-summary"""
-    ),
+    code("goals_comparison()"),
     markdown(
         """### Melhor por critério
 
@@ -261,7 +205,7 @@ pd.DataFrame(
             "Melhor pela média": names(item.by_mean),
             "Melhor pela mediana": names(item.by_median),
         }
-        for item in goals_report.summary.highlights
+        for item in goals_report().summary.highlights
     ]
 ).set_index("Critério")"""
     ),
@@ -338,7 +282,7 @@ As duas visitam cada estado no máximo uma vez e só encerram quando o objetivo 
 )
 
 CONCLUSION = markdown(
-    """## 3. Análise
+    """## Análise
 
 **Garantias.** Largura e ordenada resolvem os 36 objetivos com o número mínimo de movimentos, com qualquer estratégia. A ordenada também acha sempre o menor custo; a largura passa do menor custo em 2 das 108 execuções, porque conta movimentos e não olha o custo das regras. Isso confere com a teoria: largura é ótima em comprimento, ordenada é ótima em custo, e no empate de comprimento as duas coincidem.
 
@@ -352,16 +296,14 @@ CONCLUSION = markdown(
 )
 
 
-def build() -> Notebook:
-    return Notebook(
-        ANALYSIS.filename,
-        ANALYSIS.title,
-        (
-            header(ANALYSIS),
-            *setup_cells(extras=(VIEW_HELPERS, PLOT_STYLE)),
-            markdown(f"# {ANALYSIS.title}\n\n{INTRO}"),
-            *P1_CELLS,
-            *ALL_GOALS_CELLS,
-            CONCLUSION,
-        ),
+def section() -> tuple[Cell, ...]:
+    cells = (
+        markdown(f"# {len(ALGORITHM_COUNT) + 1}. {TITLE}\n\n{INTRO}"),
+        *P1_CELLS,
+        *ALL_GOALS_CELLS,
+        CONCLUSION,
+    )
+    return tuple(
+        ignore(cell) if cell.kind == "code" or index == 0 else cell
+        for index, cell in enumerate(cells)
     )

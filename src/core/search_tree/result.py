@@ -18,6 +18,7 @@ class SearchResult:
     applied_rules: tuple[str, ...]
     metrics: SearchMetrics
     trace: Trace
+    pruned: bool = True
 
     @property
     def solution_length(self) -> int | None:

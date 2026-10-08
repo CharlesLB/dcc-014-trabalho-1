@@ -40,6 +40,10 @@ HELP_ALL_GOALS: Final = (
     "Resolve todos os 36 estados finais possíveis a partir da posição inicial "
     "e mostra só o resumo, com média e mediana de cada algoritmo e estratégia."
 )
+HELP_NO_PRUNE: Final = (
+    "Desliga a poda: a árvore aceita estados repetidos. A irrevogável e o "
+    "backtracking podem então girar em ciclo até o limite de iterações."
+)
 HELP_ORDER: Final = "Ordem das regras para a estratégia custom, ex.: R2,R4,R6,R1,R3,R5."
 HELP_SHOW_TREE: Final = "Renderiza a árvore de busca de cada execução."
 HELP_SHOW_TRACE: Final = (

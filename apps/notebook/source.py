@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
-from cells import Cell, code, markdown
+from cells import Cell, code, ignore, markdown
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SOURCE_DIR = "src"
@@ -62,32 +62,67 @@ def writefile_cell(item: ProjectFile) -> Cell:
     return code(f"%%writefile {item.path}\n{item.text}")
 
 
+def install_cell(title: str, files: Iterable[ProjectFile]) -> Cell:
+    entries = "\n".join(f"    {item.path!r}: {item.text!r}," for item in files)
+    return code(
+        f"""#@title {title}
+from pathlib import Path
+
+FILES = {{
+{entries}
+}}
+for name, text in FILES.items():
+    Path(name).write_text(text, encoding="utf-8")""",
+        hidden=True,
+    )
+
+
 def setup_cells(
-    *, exclude: str | None = None, extras: Iterable[Cell] = ()
+    *, shown: Iterable[str], extras: Iterable[Cell] = ()
 ) -> tuple[Cell, ...]:
-    all_files()
+    files = all_files()
+    on_slides = {f"{SOURCE_DIR}/{path}" for path in shown}
     cells: list[Cell] = [
-        markdown("# Setup\n\nRode esta seção inteira antes do resto da página."),
-        code(
-            f"""import sys
+        ignore(
+            markdown(
+                "# Setup\n\nRode esta seção inteira antes do resto do notebook. Nada "
+                "aqui aparece nos slides: são os módulos de apoio do projeto e as "
+                "funções que desenham tabelas e gráficos."
+            )
+        ),
+        ignore(
+            code(
+                f"""#@title Prepara as pastas
+import sys
 from pathlib import Path
 
 for folder in {FOLDERS!r}:
     Path("{SOURCE_DIR}", folder).mkdir(parents=True, exist_ok=True)
 if str(Path("{SOURCE_DIR}").resolve()) not in sys.path:
-    sys.path.insert(0, str(Path("{SOURCE_DIR}").resolve()))"""
+    sys.path.insert(0, str(Path("{SOURCE_DIR}").resolve()))""",
+                hidden=True,
+            )
         ),
     ]
     for folder in FOLDERS:
-        files = [item for item in files_in(folder) if item.path != exclude]
-        if not files:
+        support = [item for item in files_in(folder) if item.path not in on_slides]
+        if not support:
             continue
-        cells.append(markdown(f"## {folder}/"))
-        cells.extend(writefile_cell(item) for item in files)
+        cells.append(ignore(markdown(f"## {folder}/")))
+        cells.extend(ignore(writefile_cell(item)) for item in support)
+    cells.append(ignore(markdown("## Módulos dos slides")))
+    cells.append(
+        ignore(
+            install_cell(
+                "Grava os módulos que aparecem nos slides (o código de cada um está no ponto do slide)",
+                (item for item in files if item.path in on_slides),
+            )
+        )
+    )
     extra = tuple(extras)
     if extra:
-        cells.append(markdown("## Apresentação"))
-        cells.extend(extra)
+        cells.append(ignore(markdown("## Apresentação")))
+        cells.extend(ignore(cell) for cell in extra)
     return tuple(cells)
 
 

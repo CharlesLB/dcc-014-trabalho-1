@@ -149,8 +149,9 @@ class OrderedSearch(SearchAlgorithm):
         strategy: ControlStrategy,
         *,
         max_iterations: int = settings.MAX_ITERATIONS,
+        prune: bool = True,
     ) -> None:
-        super().__init__(tree, strategy, max_iterations=max_iterations)
+        super().__init__(tree, strategy, max_iterations=max_iterations, prune=prune)
         self._best_cost: dict[State, int] = {}
         self._open: dict[State, Node] = {}
 
@@ -170,13 +171,15 @@ class OrderedSearch(SearchAlgorithm):
         # O nó de cada estado que ainda espera em ABERTOS, para poder tirá-lo
         # de lá quando um caminho mais barato até o mesmo estado aparecer.
         self._open = {context.root.state: context.root}
+        self._observe_frontier(len(frontier))
 
         while len(frontier):
             if not self._next_iteration():
                 return Outcome.CUTOFF
 
             node = frontier.pop()
-            del self._open[node.state]
+            if self._open.get(node.state) is node:
+                del self._open[node.state]
             if problem.is_goal(node.state):
                 return self._succeed(node)
 
@@ -187,7 +190,7 @@ class OrderedSearch(SearchAlgorithm):
 
             for rule in candidates:
                 child = self._expand(node, rule)
-                older = self._open.get(child.state)
+                older = self._open.get(child.state) if self.prune else None
                 if older is not None:
                     # Chegou mais barato a um estado que ainda está aberto:
                     # o nó antigo sai de ABERTOS e da árvore.
@@ -196,6 +199,7 @@ class OrderedSearch(SearchAlgorithm):
                 self._best_cost[child.state] = child.cost
                 self._open[child.state] = child
                 frontier.push(child)
+            self._observe_frontier(len(frontier))
 
         return self._exhausted()
 

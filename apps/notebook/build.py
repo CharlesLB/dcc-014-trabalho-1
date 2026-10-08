@@ -7,17 +7,26 @@ from pathlib import Path
 
 from cells import Notebook
 from pages import analysis
-from pages.algorithm import ALGORITHM_PAGES
-from pages.algorithm import build as build_algorithm
+from pages.algorithm import ALGORITHM_SECTIONS, section, slide_modules
+from pages.common import NOTEBOOK, TITLE, VIEW_HELPERS, header, members
+from source import setup_cells
 
 OUTPUT_DIR = Path(__file__).resolve().parent / "notebooks"
 
 
 def notebooks() -> tuple[Notebook, ...]:
-    return (
-        *(build_algorithm(spec) for spec in ALGORITHM_PAGES),
-        analysis.build(),
+    cells = (
+        header(),
+        *setup_cells(shown=slide_modules(), extras=(VIEW_HELPERS, analysis.PLOT_STYLE)),
+        *(
+            cell
+            for index, spec in enumerate(ALGORITHM_SECTIONS, start=1)
+            for cell in section(spec, index, first=index == 1)
+        ),
+        *analysis.section(),
+        members(),
     )
+    return (Notebook(NOTEBOOK, TITLE, cells),)
 
 
 def stale(directory: Path) -> tuple[str, ...]:

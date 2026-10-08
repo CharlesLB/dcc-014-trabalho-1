@@ -95,6 +95,7 @@ class BacktrackingSearch(SearchAlgorithm):
 
         path = StackFrontier()
         path.push(context.root)
+        self._observe_frontier(len(path))
 
         # Para cada nó do caminho, as regras que ele ainda não tentou. Sem
         # isso não há retrocesso: o nó não saberia por onde continuar.
@@ -116,6 +117,7 @@ class BacktrackingSearch(SearchAlgorithm):
                 # DESCE: o nó continua no caminho e o filho entra por cima.
                 path.push(node)
                 path.push(self._expand(node, remaining.popleft()))
+                self._observe_frontier(len(path))
             else:
                 # RETROCEDE: sem regras, o nó não volta e sai do caminho. Na
                 # próxima iteração o topo é o pai, que tenta a regra seguinte.
