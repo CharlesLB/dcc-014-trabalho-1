@@ -41,6 +41,7 @@ class AlgorithmSection:
     conclusion: str
     flowchart: str
     no_prune_limit: int | None = None
+    frontier: str | None = None
     shows_frontier: bool = False
     frontier_demo: bool = False
     cost_cells: tuple[Cell, ...] = ()
@@ -63,7 +64,7 @@ PRUNE_FLAG = "**poda** vem de `--no-prune`: desligada, a linha da poda não roda
 IRREVOCABLE_SECTION = AlgorithmSection(
     title="Busca irrevogável",
     name="irrevocable",
-    module="core/algorithms/irrevocable.py",
+    module="core/algorithms/irrevocable/algorithm.py",
     subtitle="Um caminho só: a regra preferida da estratégia é aplicada e as outras são esquecidas.",
     idea="""**Aplique a primeira regra válida e siga em frente, sem guardar alternativas.**
 
@@ -125,13 +126,14 @@ Não há fila nem pilha: ABERTOS tem no máximo um nó, o filho que acabou de se
 BACKTRACKING_SECTION = AlgorithmSection(
     title="Backtracking",
     name="backtracking",
-    module="core/algorithms/backtracking.py",
+    module="core/algorithms/backtracking/algorithm.py",
+    frontier="core/algorithms/backtracking/frontier.py",
     subtitle="A mesma descida da busca irrevogável, com as alternativas de cada nó guardadas numa pilha.",
     idea="""**Desça enquanto houver regra; sem regra, volte ao ancestral mais próximo que ainda tem alternativa.**
 
 Backtracking: pilha, sai o último que entrou. Afunda num ramo.
 
-A fronteira do projeto, em `core/search_tree/frontier.py`, tem as três filas usadas pelos algoritmos: a pilha do backtracking, a fila da largura e a fila por custo da ordenada.""",
+O contrato da fronteira fica em `core/search_tree/frontier.py`. Cada algoritmo traz a sua implementação ao lado, na própria pasta: a pilha do backtracking, a fila da largura e a fila por custo da ordenada.""",
     loop="""1. Olha o topo da pilha. É o objetivo? **SUCESSO**.
 2. Primeira vez nele: guarda as regras válidas, na ordem da estratégia, sem as que voltam a um estado do caminho (poda). Lista vazia é impasse.
 3. Ainda tem regra guardada: aplica a próxima e empilha o filho.
@@ -203,7 +205,8 @@ A fronteira do projeto, em `core/search_tree/frontier.py`, tem as três filas us
 BREADTH_FIRST_SECTION = AlgorithmSection(
     title="Busca em largura",
     name="breadth_first",
-    module="core/algorithms/breadth_first.py",
+    module="core/algorithms/breadth_first/algorithm.py",
+    frontier="core/algorithms/breadth_first/frontier.py",
     subtitle="Torre de Londres: três hastes, três discos. A árvore é varrida nível por nível.",
     idea="""**Analise todos os nós de um nível antes de descer para o próximo.**
 
@@ -372,7 +375,8 @@ Cada estado do espaço como objetivo, sempre a partir da mesma posição inicial
 ORDERED_SECTION = AlgorithmSection(
     title="Busca ordenada",
     name="ordered",
-    module="core/algorithms/ordered.py",
+    module="core/algorithms/ordered/algorithm.py",
+    frontier="core/algorithms/ordered/frontier.py",
     subtitle="Cada regra tem um custo, e ABERTOS vira uma fila ordenada pelo custo acumulado desde a raiz.",
     idea="""**Expanda sempre o nó aberto de menor custo acumulado.**
 
@@ -462,6 +466,7 @@ def slide_modules() -> tuple[str, ...]:
         *RULE_MODULES,
         *STRATEGY_MODULES,
         *(spec.module for spec in ALGORITHM_SECTIONS),
+        *(spec.frontier for spec in ALGORITHM_SECTIONS if spec.frontier),
     )
 
 
@@ -514,6 +519,8 @@ def section(spec: AlgorithmSection, index: int, *, first: bool) -> tuple[Cell, .
     cells.append(markdown(f"## A ideia\n\n{spec.idea}"))
     if spec.shows_frontier:
         cells.extend(_writefiles(FRONTIER_MODULES))
+    if spec.frontier:
+        cells.extend(_writefiles((spec.frontier,)))
     if spec.frontier_demo:
         cells.append(code(f'frontier_demo("{spec.name}")'))
 

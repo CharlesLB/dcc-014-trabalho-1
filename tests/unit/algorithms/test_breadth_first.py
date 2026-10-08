@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from core.algorithms.breadth_first import BreadthFirstSearch
+from core.algorithms.breadth_first.algorithm import BreadthFirstSearch
 from core.domain.problem import Problem
 from core.domain.state_space import all_states, shortest_distance
 from core.rules.strategies.domain.registry import STRATEGIES

@@ -4,7 +4,7 @@ import heapq
 
 import pytest
 
-from core.algorithms.breadth_first import BreadthFirstSearch
+from core.algorithms.breadth_first.algorithm import BreadthFirstSearch
 from core.algorithms.domain.registry import ALGORITHMS
 from core.domain.problem import Problem
 from core.domain.state import State

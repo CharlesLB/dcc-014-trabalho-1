@@ -3,11 +3,11 @@ from __future__ import annotations
 from collections.abc import Mapping
 from types import MappingProxyType
 
-from core.algorithms.backtracking import BacktrackingSearch
-from core.algorithms.breadth_first import BreadthFirstSearch
+from core.algorithms.backtracking.algorithm import BacktrackingSearch
+from core.algorithms.breadth_first.algorithm import BreadthFirstSearch
 from core.algorithms.domain.base import SearchAlgorithm
-from core.algorithms.irrevocable import IrrevocableSearch
-from core.algorithms.ordered import OrderedSearch
+from core.algorithms.irrevocable.algorithm import IrrevocableSearch
+from core.algorithms.ordered.algorithm import OrderedSearch
 
 
 class UnknownAlgorithmError(Exception):

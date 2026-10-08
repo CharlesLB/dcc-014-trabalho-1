@@ -112,12 +112,12 @@ from __future__ import annotations
 from typing import ClassVar
 
 from config import settings
+from core.algorithms.breadth_first.frontier import QueueFrontier
 from core.algorithms.domain.base import SearchAlgorithm
 from core.domain.problem import Problem
 from core.domain.state import State
 from core.rules.domain.base import TransitionRule
 from core.rules.strategies.domain.base import ControlStrategy
-from core.search_tree.frontier import QueueFrontier
 from core.search_tree.node import Node
 from core.search_tree.outcome import Outcome
 from core.search_tree.tree import SearchTree

@@ -2,14 +2,11 @@ from __future__ import annotations
 
 import pytest
 
+from core.algorithms.backtracking.frontier import StackFrontier
+from core.algorithms.breadth_first.frontier import QueueFrontier
+from core.algorithms.ordered.frontier import PriorityFrontier
 from core.domain.state import State
-from core.search_tree.frontier import (
-    EmptyFrontierError,
-    Frontier,
-    PriorityFrontier,
-    QueueFrontier,
-    StackFrontier,
-)
+from core.search_tree.frontier import EmptyFrontierError, Frontier
 from core.search_tree.node import Node
 from core.search_tree.tree import SearchTree
 

@@ -70,10 +70,10 @@ from __future__ import annotations
 from collections import deque
 from typing import ClassVar
 
+from core.algorithms.backtracking.frontier import StackFrontier
 from core.algorithms.domain.base import SearchAlgorithm
 from core.domain.problem import Problem
 from core.rules.domain.base import TransitionRule
-from core.search_tree.frontier import StackFrontier
 from core.search_tree.node import Node
 from core.search_tree.outcome import Outcome
 

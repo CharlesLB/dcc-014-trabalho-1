@@ -6,7 +6,7 @@ from itertools import pairwise
 import pytest
 
 from core.algorithms.domain.registry import ALGORITHMS
-from core.algorithms.ordered import OrderedSearch
+from core.algorithms.ordered.algorithm import OrderedSearch
 from core.domain.problem import INITIAL_STATE, Problem
 from core.domain.state import State
 from core.domain.state_space import all_states, cheapest_cost, shortest_distance

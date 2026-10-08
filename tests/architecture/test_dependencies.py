@@ -126,23 +126,38 @@ def test_runner_is_the_only_layer_that_knows_every_other() -> None:
         assert not touches_all or layer == "runner", f"{module} conhece todas as libs"
 
 
+def _algorithm_modules() -> tuple[Path, ...]:
+    root = SOURCE_ROOT / "core" / "algorithms"
+    return tuple(
+        sorted(
+            folder / "algorithm.py"
+            for folder in root.iterdir()
+            if folder.is_dir() and folder.name not in {"domain", "__pycache__"}
+        )
+    )
+
+
+def test_each_algorithm_folder_has_an_algorithm_module() -> None:
+    for module in _algorithm_modules():
+        assert module.is_file(), f"{module.parent} nao tem algorithm.py"
+
+
 @pytest.mark.parametrize(
-    ("package", "registry"),
+    ("modules", "registry"),
     [
-        ("core/algorithms", ALGORITHMS),
-        ("core/rules/strategies", STRATEGIES),
+        (_algorithm_modules(), ALGORITHMS),
+        (_direct_children("core/rules/strategies"), STRATEGIES),
     ],
     ids=["algorithms", "strategies"],
 )
 def test_plural_package_holds_only_registered_implementations(
-    package: str, registry: Mapping[str, object]
+    modules: tuple[Path, ...], registry: Mapping[str, object]
 ) -> None:
     registered = {
         value if isinstance(value, type) else type(value) for value in registry.values()
     }
-    children = _direct_children(package)
-    assert children
-    for module in children:
+    assert modules
+    for module in modules:
         namespace = importlib.import_module(_dotted_name(module))
         declared = {
             member

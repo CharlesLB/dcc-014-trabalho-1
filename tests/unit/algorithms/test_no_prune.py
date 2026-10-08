@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from core.algorithms.breadth_first import BreadthFirstSearch
+from core.algorithms.breadth_first.algorithm import BreadthFirstSearch
 from core.algorithms.domain.registry import ALGORITHMS
-from core.algorithms.ordered import OrderedSearch
+from core.algorithms.ordered.algorithm import OrderedSearch
 from core.domain.problem import Problem
 from core.domain.state_space import all_states, cheapest_cost
 from core.rules.strategies.domain.registry import STRATEGIES

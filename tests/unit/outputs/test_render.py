@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from core.algorithms.backtracking import BacktrackingSearch
-from core.algorithms.irrevocable import IrrevocableSearch
+from core.algorithms.backtracking.algorithm import BacktrackingSearch
+from core.algorithms.irrevocable.algorithm import IrrevocableSearch
 from core.domain.problem import Problem, all_goal_problems
 from core.domain.state import Peg, State
 from core.rules.strategies.domain.registry import STRATEGIES

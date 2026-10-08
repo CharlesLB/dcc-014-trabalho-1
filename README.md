@@ -58,13 +58,13 @@ src/
 │   │       ├── ascending.py
 │   │       └── descending.py
 │   ├── domain/                estados, invariantes, cartas, enumeração
-│   ├── search_tree/           nó, árvore, fronteira, caminho, métricas, trace
+│   ├── search_tree/           nó, árvore, contrato da fronteira, caminho, métricas, trace
 │   └── algorithms/
 │       ├── domain/            contrato e registro
-│       ├── irrevocable.py
-│       ├── backtracking.py
-│       ├── breadth_first.py
-│       └── ordered.py
+│       ├── irrevocable/       algorithm.py
+│       ├── backtracking/      algorithm.py + frontier.py (pilha)
+│       ├── breadth_first/     algorithm.py + frontier.py (fila)
+│       └── ordered/           algorithm.py + frontier.py (fila por custo)
 ├── libs/                      bibliotecas de borda
 │   ├── inputs/                linha de comando → requisição validada
 │   ├── outputs/               única camada que escreve no terminal e em disco
@@ -75,7 +75,7 @@ src/
 
 Duas convenções sustentam a leitura da árvore:
 
-- **Uma pasta no plural contém apenas implementações.** `algorithms/` tem quatro arquivos, um por algoritmo. O contrato e o registro de cada família vivem num `domain/` interno.
+- **Uma pasta no plural contém apenas implementações.** `algorithms/` tem uma pasta por algoritmo, com o laço (`algorithm.py`) e a fronteira que ele usa (`frontier.py`) lado a lado. O contrato e o registro de cada família vivem num `domain/` interno.
 - **Não há `__init__.py`.** O que cada camada é fica documentado aqui e nos ADRs, e é verificado por teste, não por um arquivo vazio em cada pasta.
 
 ### Regra de dependência
@@ -88,7 +88,7 @@ core/rules/  ←  core/  ←  runner/  →  libs/
 - `core/` não conhece `libs/` nem `runner/`.
 - `core/search_tree/` não conhece `core/algorithms/`.
 - Nenhum `print` existe fora de `libs/outputs/`.
-- Todo módulo direto de `algorithms/` e de `strategies/` declara uma implementação registrada.
+- Todo `algorithm.py` de `algorithms/` e todo módulo direto de `strategies/` declara uma implementação registrada.
 
 Tudo isso é verificado na AST por [tests/architecture/test_dependencies.py](tests/architecture/test_dependencies.py), não por convenção.
 
@@ -213,6 +213,14 @@ make graphs
 ## Notebooks para o Colab
 
 `apps/notebook/` gera a apresentação num notebook. Cada seção de algoritmo segue a ordem dos slides (problema, ideia, laço e listas, regras, estratégia, árvore sem e com poda, pseudocódigo com o código do projeto, caminho solução, comparativos e complexidade). O que é código e não está nos slides, como o Setup, vem marcado com (ignore). O notebook é gerado a partir de `src/` e roda sozinho no Colab, sem clonar o repositório. Veja [apps/notebook/README.md](apps/notebook/README.md).
+
+Destaques:
+
+- **Tabela contra os outros algoritmos** com o vencedor de cada critério (custo, nível da solução, iterações, nós gerados e expandidos, pico de ABERTOS, retrocessos) em verde.
+- **Lógica dos custos na busca ordenada**, uma parte por vez: o 10 por jogada; a distância, com o exemplo G17 (dois caminhos de 4 movimentos que empatam em 46 só com o peso e se separam em 48 e 50 com a distância); o peso, com o exemplo G11 (41 na largura contra 39 na ordenada). Cada jogada aparece desenhada com o cálculo do seu custo.
+- **Ganho real do modelo de custo**: nos 1.260 pares, a ordenada sai em média 0,4% mais barata que a largura. O estudo compara os modelos também pela maior economia, nós gerados em relação à largura, trocas de nó por execução e movimentos a mais.
+- **Comparativo nos 36 objetivos** na seção da ordenada: boxplot e quartis de nós expandidos, iterações, nós gerados e custo da solução, para todas as combinações de algoritmo e estratégia, além do custo da solução só em P1.
+- **Tabelas de complexidade** com o algoritmo na primeira coluna, no mesmo formato da tabela consolidada da comparação.
 
 ```bash
 make notebooks

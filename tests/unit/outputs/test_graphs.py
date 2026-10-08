@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from core.algorithms.backtracking import BacktrackingSearch
-from core.algorithms.irrevocable import IrrevocableSearch
+from core.algorithms.backtracking.algorithm import BacktrackingSearch
+from core.algorithms.irrevocable.algorithm import IrrevocableSearch
 from core.domain.problem import Problem
 from core.rules.strategies.domain.registry import STRATEGIES
 from core.search_tree.metrics import MetricsCollector

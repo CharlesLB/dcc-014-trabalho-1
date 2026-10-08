@@ -79,8 +79,11 @@ from IPython.display import SVG, display
 from config import settings
 from core.algorithms.domain.registry import ALGORITHM_NAMES
 from core.domain.problem import INITIAL_STATE, get_problem
-from core.algorithms.breadth_first import BreadthFirstSearch
-from core.algorithms.ordered import OrderedSearch
+from core.algorithms.breadth_first.algorithm import BreadthFirstSearch
+from core.algorithms.ordered.algorithm import OrderedSearch
+from core.algorithms.backtracking.frontier import StackFrontier
+from core.algorithms.breadth_first.frontier import QueueFrontier
+from core.algorithms.ordered.frontier import PriorityFrontier
 from core.domain.problem import Problem
 from core.domain.state_space import all_states, applicable_rules, shortest_distance, successors
 from core.rules.domain.base import CAPACITIES, DISK_WEIGHTS, Disk
@@ -88,7 +91,6 @@ from core.rules.domain.catalog import INVERSE_RULE_ID, RULE_BY_ID, RULES
 from core.rules.moves import MOVE_COST
 from core.rules.strategies.domain.registry import STRATEGIES as STRATEGY_REGISTRY
 from core.rules.strategies.domain.registry import STRATEGY_NAMES
-from core.search_tree.frontier import PriorityFrontier, QueueFrontier, StackFrontier
 from core.search_tree.outcome import Outcome
 from core.search_tree.trace import TraceEvent
 from core.search_tree.tree import SearchTree

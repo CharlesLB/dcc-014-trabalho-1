@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from core.algorithms.irrevocable import IrrevocableSearch
+from core.algorithms.irrevocable.algorithm import IrrevocableSearch
 from core.domain.problem import INITIAL_STATE, Problem
 from core.domain.state import State, build_state
 from core.rules.domain.base import Disk
