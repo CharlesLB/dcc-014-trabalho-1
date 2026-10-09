@@ -22,37 +22,25 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from core.algorithms.domain.base import SearchAlgorithm
+from core.algorithms.irrevocable.algorithm import IrrevocableSearch
 from core.domain.heuristic import misplacement
 from core.domain.problem import Problem
-from core.search_tree.outcome import Outcome
+from core.rules.domain.base import TransitionRule
+from core.search_tree.node import Node
 
 
-class GreedySearch(SearchAlgorithm):
+class GreedySearch(IrrevocableSearch):
     name: ClassVar[str] = "greedy"
 
-    def _search(self, problem: Problem) -> Outcome:
-        """Desce sempre pelo filho de menor heurística, sem voltar atrás.
+    def _choose(
+        self, node: Node, candidates: tuple[TransitionRule, ...], problem: Problem
+    ) -> TransitionRule:
+        """O filho de menor heurística; sem voltar atrás, como na irrevogável.
 
         A estratégia só desempata filhos de mesma heurística: `min` fica com
         o primeiro deles na ordem dela.
         """
-        node = self._require_context().root
-        self._observe_frontier(1)
-        while True:
-            if not self._next_iteration():
-                return Outcome.CUTOFF
-            if problem.is_goal(node.state):
-                return self._succeed(node)
-
-            self._visit(node)
-            candidates = self._applicable_rules(node)
-            if not candidates:
-                self._deadlock(node)
-                return Outcome.DEADLOCK
-
-            best = min(
-                candidates,
-                key=lambda rule: misplacement(rule.apply(node.state), problem.goal),
-            )
-            node = self._expand(node, best)
+        return min(
+            candidates,
+            key=lambda rule: misplacement(rule.apply(node.state), problem.goal),
+        )

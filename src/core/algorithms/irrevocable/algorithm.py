@@ -29,6 +29,8 @@ from typing import ClassVar
 
 from core.algorithms.domain.base import SearchAlgorithm
 from core.domain.problem import Problem
+from core.rules.domain.base import TransitionRule
+from core.search_tree.node import Node
 from core.search_tree.outcome import Outcome
 
 
@@ -50,4 +52,13 @@ class IrrevocableSearch(SearchAlgorithm):
                 self._deadlock(node)
                 return Outcome.DEADLOCK
 
-            node = self._expand(node, candidates[0])
+            node = self._expand(node, self._choose(node, candidates, problem))
+
+    def _choose(
+        self, node: Node, candidates: tuple[TransitionRule, ...], problem: Problem
+    ) -> TransitionRule:
+        """A regra que a descida aplica: aqui, a primeira na ordem da estratégia.
+
+        A gulosa sobrescreve para escolher pela heurística.
+        """
+        return candidates[0]
