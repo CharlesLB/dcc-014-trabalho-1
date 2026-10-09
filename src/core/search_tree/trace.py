@@ -57,6 +57,7 @@ class TraceRecorder:
         event: TraceEvent,
         node: Node,
         rule_id: str | None = None,
+        state: State | None = None,
     ) -> None:
         parent = node.parent
         self._steps.append(
@@ -67,23 +68,20 @@ class TraceRecorder:
                 parent_order=None if parent is None else parent.order,
                 depth=node.depth,
                 rule_id=rule_id if rule_id is not None else _rule_id_of(node),
-                state=node.state,
+                state=node.state if state is None else state,
             )
         )
 
     def record_prune(
         self, *, iteration: int, node: Node, rule_id: str, state: State
     ) -> None:
-        self._steps.append(
-            TraceStep(
-                iteration=iteration,
-                event=TraceEvent.PRUNE,
-                node_order=node.order,
-                parent_order=None if node.parent is None else node.parent.order,
-                depth=node.depth,
-                rule_id=rule_id,
-                state=state,
-            )
+        """A regra podada sai de `node`; `state` é o estado que ela produziria."""
+        self.record(
+            iteration=iteration,
+            event=TraceEvent.PRUNE,
+            node=node,
+            rule_id=rule_id,
+            state=state,
         )
 
     def seal(self) -> Trace:

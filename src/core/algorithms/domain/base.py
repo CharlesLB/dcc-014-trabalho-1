@@ -122,12 +122,7 @@ class SearchAlgorithm(ABC):
         for rule in self._strategy.order(tuple(applicable)):
             successor = rule.apply(node.state)
             if self._prune and self._is_repetition(node, rule, successor):
-                context.trace.record_prune(
-                    iteration=context.metrics.iterations,
-                    node=node,
-                    rule_id=rule.id,
-                    state=successor,
-                )
+                self._record_prune(node, rule.id, successor)
                 continue
             allowed.append(rule)
         return tuple(allowed)
@@ -157,11 +152,7 @@ class SearchAlgorithm(ABC):
         """
         context = self._require_context()
         if context.metrics.iterations >= self._max_iterations:
-            context.trace.record(
-                iteration=context.metrics.iterations,
-                event=TraceEvent.CUTOFF,
-                node=context.root,
-            )
+            self._record(TraceEvent.CUTOFF, context.root)
             return False
         context.metrics.count_iteration()
         return True
@@ -172,32 +163,23 @@ class SearchAlgorithm(ABC):
 
     def _visit(self, node: Node) -> None:
         """Só contabilidade: registra que o nó foi olhado. Uma vez por nó."""
-        context = self._require_context()
-        context.metrics.count_visited()
-        context.trace.record(
-            iteration=context.metrics.iterations, event=TraceEvent.VISIT, node=node
-        )
+        self._require_context().metrics.count_visited()
+        self._record(TraceEvent.VISIT, node)
 
     def _expand(self, node: Node, rule: TransitionRule) -> Node:
         """Aplica a regra e cria o nó filho.
 
         É o único ponto do motor que faz a árvore crescer.
         """
-        context = self._require_context()
         child = self._tree.expand(node, rule)
-        context.metrics.count_generated(child.depth)
-        context.trace.record(
-            iteration=context.metrics.iterations, event=TraceEvent.GENERATE, node=child
-        )
+        self._require_context().metrics.count_generated(child.depth)
+        self._record(TraceEvent.GENERATE, child)
         return child
 
     def _succeed(self, node: Node) -> Outcome:
         """Guarda o nó objetivo, de onde o caminho solução é reconstruído."""
-        context = self._require_context()
-        context.goal_node = node
-        context.trace.record(
-            iteration=context.metrics.iterations, event=TraceEvent.GOAL, node=node
-        )
+        self._require_context().goal_node = node
+        self._record(TraceEvent.GOAL, node)
         return Outcome.SUCCESS
 
     def _deadlock(self, node: Node) -> None:
@@ -206,11 +188,8 @@ class SearchAlgorithm(ABC):
         Não encerra busca alguma. Quem decide o que fazer com o impasse é o
         algoritmo: a irrevogável desiste, o backtracking retrocede.
         """
-        context = self._require_context()
-        context.metrics.count_deadlock()
-        context.trace.record(
-            iteration=context.metrics.iterations, event=TraceEvent.DEADLOCK, node=node
-        )
+        self._require_context().metrics.count_deadlock()
+        self._record(TraceEvent.DEADLOCK, node)
 
     def _backtrack(self, node: Node) -> None:
         """Só contabilidade: um retrocesso aconteceu.
@@ -218,18 +197,27 @@ class SearchAlgorithm(ABC):
         Nada é desfeito aqui. O retrocesso em si é o algoritmo deixando de
         devolver o nó à pilha.
         """
-        context = self._require_context()
-        context.metrics.count_backtrack()
-        context.trace.record(
-            iteration=context.metrics.iterations, event=TraceEvent.BACKTRACK, node=node
-        )
+        self._require_context().metrics.count_backtrack()
+        self._record(TraceEvent.BACKTRACK, node)
 
     def _exhausted(self) -> Outcome:
         """Fim de linha: nada mais a explorar e nenhum objetivo encontrado."""
+        self._record(TraceEvent.EXHAUSTED, self._require_context().root)
+        return Outcome.FAILURE
+
+    def _record(self, event: TraceEvent, node: Node) -> None:
+        """Anota o evento no trace, carimbado com a iteração corrente."""
         context = self._require_context()
         context.trace.record(
-            iteration=context.metrics.iterations,
-            event=TraceEvent.EXHAUSTED,
-            node=context.root,
+            iteration=context.metrics.iterations, event=event, node=node
         )
-        return Outcome.FAILURE
+
+    def _record_prune(self, node: Node, rule_id: str, state: State) -> None:
+        """Anota que a regra `rule_id`, saindo de `node`, foi podada."""
+        context = self._require_context()
+        context.trace.record_prune(
+            iteration=context.metrics.iterations,
+            node=node,
+            rule_id=rule_id,
+            state=state,
+        )

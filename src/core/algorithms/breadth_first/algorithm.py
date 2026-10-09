@@ -16,32 +16,21 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from config import settings
 from core.algorithms.breadth_first.frontier import QueueFrontier
 from core.algorithms.domain.base import SearchAlgorithm
 from core.domain.problem import Problem
 from core.domain.state import State
 from core.rules.domain.base import TransitionRule
-from core.rules.strategies.domain.base import ControlStrategy
 from core.search_tree.node import Node
 from core.search_tree.outcome import Outcome
-from core.search_tree.tree import SearchTree
 
 
 class BreadthFirstSearch(SearchAlgorithm):
     name: ClassVar[str] = "breadth_first"
 
-    def __init__(
-        self,
-        tree: SearchTree,
-        strategy: ControlStrategy,
-        *,
-        max_iterations: int = settings.MAX_ITERATIONS,
-        prune: bool = True,
-    ) -> None:
-        super().__init__(tree, strategy, max_iterations=max_iterations, prune=prune)
-        self._closed: set[State] = set()
-        self._open_states: set[State] = set()
+    # Estado da execução corrente, reiniciado no começo de cada `_search`.
+    _closed: set[State]
+    _open_states: set[State]
 
     def _search(self, problem: Problem) -> Outcome:
         context = self._require_context()

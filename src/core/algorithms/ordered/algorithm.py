@@ -35,34 +35,23 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from config import settings
 from core.algorithms.domain.base import SearchAlgorithm
 from core.algorithms.ordered.frontier import PriorityFrontier
 from core.domain.heuristic import misplacement
 from core.domain.problem import Problem
 from core.domain.state import State
 from core.rules.domain.base import TransitionRule
-from core.rules.strategies.domain.base import ControlStrategy
 from core.search_tree.node import Node
 from core.search_tree.outcome import Outcome
-from core.search_tree.tree import SearchTree
 
 
 class OrderedSearch(SearchAlgorithm):
     name: ClassVar[str] = "ordered"
 
-    def __init__(
-        self,
-        tree: SearchTree,
-        strategy: ControlStrategy,
-        *,
-        max_iterations: int = settings.MAX_ITERATIONS,
-        prune: bool = True,
-    ) -> None:
-        super().__init__(tree, strategy, max_iterations=max_iterations, prune=prune)
-        self._best_cost: dict[State, int] = {}
-        self._open: dict[State, Node] = {}
-        self._closed: set[State] = set()
+    # Estado da execução corrente, reiniciado no começo de cada `_search`.
+    _best_cost: dict[State, int]
+    _open: dict[State, Node]
+    _closed: set[State]
 
     def _search(self, problem: Problem) -> Outcome:
         """Sempre expande o nó aberto de menor heurística.
@@ -127,12 +116,6 @@ class OrderedSearch(SearchAlgorithm):
 
     def _discard(self, node: Node) -> None:
         """Só contabilidade: registra o nó substituído como poda do pai."""
-        context = self._require_context()
         parent, rule = node.parent, node.rule
         assert parent is not None and rule is not None
-        context.trace.record_prune(
-            iteration=context.metrics.iterations,
-            node=parent,
-            rule_id=rule.id,
-            state=node.state,
-        )
+        self._record_prune(parent, rule.id, node.state)
