@@ -1,6 +1,6 @@
 # Torre de Londres
 
-Resolvedor do problema da Torre de Londres (3 hastes, 3 discos) com busca irrevogável, backtracking, busca em largura e busca ordenada sobre uma mesma abstração de árvore de busca, com estratégia de controle parametrizável, métricas instrumentadas e placar comparativo.
+Resolvedor do problema da Torre de Londres (3 hastes, 3 discos) com busca irrevogável, backtracking, busca em largura, busca ordenada e busca gulosa sobre uma mesma abstração de árvore de busca, com estratégia de controle parametrizável, métricas instrumentadas e placar comparativo.
 
 Python 3.12+, zero dependências de runtime.
 
@@ -64,7 +64,8 @@ src/
 │       ├── irrevocable/       algorithm.py
 │       ├── backtracking/      algorithm.py + frontier.py (pilha)
 │       ├── breadth_first/     algorithm.py + frontier.py (fila)
-│       └── ordered/           algorithm.py + frontier.py (fila por custo)
+│       ├── ordered/           algorithm.py + frontier.py (fila pela heurística)
+│       └── greedy/            algorithm.py
 ├── libs/                      bibliotecas de borda
 │   ├── inputs/                linha de comando → requisição validada
 │   ├── outputs/               única camada que escreve no terminal e em disco
@@ -96,13 +97,13 @@ Tudo isso é verificado na AST por [tests/architecture/test_dependencies.py](tes
 
 - Código inteiramente em inglês.
 - **Sem comentários e sem docstrings de função.** O contrato de cada função é a assinatura tipada, garantida por `mypy --strict`. Só diretivas de ferramenta (`# noqa`, `# type:`) aparecem no meio do código.
-- **A modelagem do problema é documentada no topo dos módulos que a carregam**, e só neles: [problem.py](src/core/domain/problem.py) (posição inicial e catálogo de cartas), [state_space.py](src/core/domain/state_space.py) (os 36 estados, conexidade, o oráculo) e os quatro algoritmos, cada um com a execução de P1 resolvida passo a passo, listas ABERTOS e FECHADOS, árvore de busca e caminho solução.
+- **A modelagem do problema é documentada no topo dos módulos que a carregam**, e só neles: [problem.py](src/core/domain/problem.py) (posição inicial e catálogo de cartas), [state_space.py](src/core/domain/state_space.py) (os 36 estados, conexidade, o oráculo) [heuristic.py](src/core/domain/heuristic.py) (a heurística) e os cinco algoritmos, cada um com a execução de P1 resolvida passo a passo, listas ABERTOS e FECHADOS, árvore de busca e caminho solução.
 - Estado imutável em todo lugar: `tuple`, frozen dataclass, enum.
 - Texto apresentado ao usuário só em `libs/outputs/theme.py` e `config/settings.py`.
 
 ## Algoritmos
 
-Os quatro compartilham o motor: `visita` conta e registra o vértice, `gera` cria um filho pela regra, `poda` descarta a regra cujo sucessor repetiria um estado. Estourar o limite de iterações encerra qualquer um deles com LIMITE. O que muda é a fronteira e a decisão em cada vértice.
+Os cinco compartilham o motor: `visita` conta e registra o vértice, `gera` cria um filho pela regra, `poda` descarta a regra cujo sucessor repetiria um estado. Estourar o limite de iterações encerra qualquer um deles com LIMITE. O que muda é a fronteira e a decisão em cada vértice.
 
 ### Busca irrevogável
 
@@ -158,37 +159,61 @@ flowchart TD
     E --> B
 ```
 
-Nada de profundidade d+1 antes de esgotar d, então o primeiro caminho até um estado é o mais curto. O objetivo encontrado é o ótimo em número de movimentos, e por isso este método é a referência dos outros em comprimento; em custo, a referência é a busca ordenada. A poda aqui é global: um estado descoberto por qualquer ramo nunca é gerado de novo. Em P1: R4, R1, R1, 3 movimentos em 12 iterações.
+Nada de profundidade d+1 antes de esgotar d, então o primeiro caminho até um estado é o mais curto. O objetivo encontrado é o ótimo em número de movimentos, e por isso este método é a referência dos outros em comprimento. Como toda jogada custa 1, também é a referência em custo. A poda aqui é global: um estado descoberto por qualquer ramo nunca é gerado de novo. Em P1: R4, R1, R1, 3 movimentos em 12 iterações.
+
+### Heurística
+
+Toda jogada custa 1. A busca ordenada e a gulosa usam a heurística de discos mal posicionados ([core/domain/heuristic.py](src/core/domain/heuristic.py)). Cada disco contribui com o mínimo de movimentos que ainda precisa fazer:
+
+| disco | contribui |
+|---|---|
+| bem posicionado: haste e altura certas, e tudo abaixo dele também | 0 |
+| em outra haste | 1 |
+| na haste certa, mas mal posicionado | 2 |
+
+**h(estado)** é a soma dos três discos. Estar na haste certa fora do lugar pesa mais que estar na haste errada, porque o disco precisa sair e voltar. A heurística é admissível: cada movimento leva um disco só, então h nunca passa do número de movimentos que falta. Os testes verificam isso nos 1.296 pares de estados.
 
 ### Busca ordenada
 
-Aplicar uma regra custa **10 + peso do disco × distância**: 10 por jogada; distância 1 entre hastes vizinhas e 2 de H1 para H3; peso 1 para o verde, 2 para o vermelho e 3 para o azul. ABERTOS vira uma fila ordenada pelo custo acumulado desde a raiz.
-
-- **10 por jogada** pesa mais que o esforço, que vai de 1 a 6 por jogada: em todos os 1.260 pares início → objetivo, o caminho mais barato é um dos mais curtos, e a ordenada não troca movimentos por esforço. Sem o 10, isso falha em 3,7% das execuções.
-- **Peso × distância** escolhe, entre os caminhos mais curtos, o que carrega os discos mais pesados por menos distância. Como depende de qual disco se move, separa caminhos que a largura trata como iguais.
-
-A escolha veio de um estudo com 13 modelos de custo em todos os 1.260 pares início → objetivo. Com distância pura, a ordenada só achava algo mais barato que a largura em 0,5% dos casos e a resposta mudava com a estratégia em 15%. Com este modelo, acha em 10,3%, o ótimo é único em 85% dos pares e a resposta só muda com a estratégia em 4,6%, sempre com o mínimo de movimentos.
+ABERTOS vira uma fila ordenada pela menor heurística.
 
 ```mermaid
 flowchart TD
-    A([raiz em ABERTOS]) --> B[tira o de menor custo; no empate, o gerado primeiro]
+    A([raiz em ABERTOS]) --> B[tira o de menor heurística; no empate, o gerado primeiro]
     B --> C{é o objetivo?}
     C -- sim --> S([SUCESSO])
-    C -- não --> V[visita: regras aplicáveis na ordem da estratégia, menos as que não baixam o menor custo conhecido do estado]
-    V --> E[aplica todas; se um filho chega mais barato a um estado ainda aberto, o nó antigo sai de ABERTOS e da árvore]
+    C -- não --> V[visita: regras aplicáveis na ordem da estratégia, menos as que levam a um estado fechado ou a um estado aberto sem encurtar o caminho]
+    V --> E[aplica todas; se um filho chega por um caminho mais curto a um estado ainda aberto, o nó antigo sai de ABERTOS e da árvore]
     E --> B
 ```
 
-O objetivo só encerra a busca quando vira o estado atual, não quando é gerado, e por isso a solução é a de menor custo. A estratégia só desempata irmãos de mesmo custo. A poda segue o vetor de menor custo do material: um estado gerado de novo com custo maior ou igual é descartado, e um estado ainda aberto que reaparece mais barato troca de nó. Em P1: R4, R1, R1, custo 13 + 12 + 11 = 36 em 11 iterações, com uma troca na iteração 9.
+O objetivo só encerra a busca quando vira o estado atual, não quando é gerado. A estratégia só desempata irmãos de mesma heurística. Ordenar só por h não garante o caminho mais curto: nos 36 objetivos, a ordenada acha o mínimo de movimentos em 34 com `ascending` e em 33 com `descending`. Como FECHADOS impede repetir estado, ela sempre encontra uma solução. Em P1: R4, R1, R1 em 4 iterações.
+
+### Busca gulosa
+
+A descida da irrevogável, mas a regra aplicada é a que leva ao filho de menor heurística. A estratégia só desempata filhos de mesma heurística.
+
+```mermaid
+flowchart TD
+    A([raiz]) --> B{é o objetivo?}
+    B -- sim --> S([SUCESSO])
+    B -- não --> C[visita: regras aplicáveis na ordem da estratégia, menos as que repetem estado do caminho]
+    C --> D{sobrou regra?}
+    D -- não --> X([IMPASSE])
+    D -- sim --> E[aplica a que leva ao filho de menor heurística]
+    E --> B
+```
+
+Gera um nó por passo, mas sem fronteira não desfaz uma escolha ruim. Nos 36 objetivos, trava em 7 com `ascending` e em 8 com `descending`. Em P1: R4, R1, R1 em 4 iterações e 4 nós gerados.
 
 ## Comparação em todos os objetivos
 
 Uma carta só não diz qual método é melhor. `--all-goals` resolve cada um dos 36 estados do espaço como objetivo, sempre a partir da mesma posição inicial (cartas G01 a G36), com todo algoritmo e toda estratégia. A saída é só o resumo consolidado:
 
 - **Resumo**: para movimentos, custo, iterações e nós gerados, a média e a mediana de cada combinação. Movimentos e custo contam só os sucessos.
-- **Melhor por critério**: o menor valor pela média e pela mediana. Só concorre quem tem o maior número de sucessos, para a irrevogável não vencer resolvendo apenas os objetivos fáceis.
+- **Melhor por critério**: o menor valor pela média e pela mediana. Só concorre quem tem o maior número de sucessos, para a irrevogável e a gulosa não vencerem resolvendo apenas os objetivos fáceis.
 
-O resultado: largura e ordenada empatam em movimentos, e a ordenada tem o menor custo médio nas duas estratégias (51,33, contra 51,72 e 51,67 da largura); a largura passa do menor custo em 9 das 72 execuções. A média de iterações das duas é sempre 18,5, porque cada uma visita cada estado uma única vez, e por isso o objetivo i é encontrado na i-ésima posição de uma permutação de 1 a 36. O critério que as separa é o número de nós gerados. [tests/properties/test_all_goals.py](tests/properties/test_all_goals.py) verifica tudo isso.
+O resultado: a largura vence em movimentos (média 4,14; a ordenada fica em 4,19 e 4,25). A ordenada vence em iterações e em nós gerados: 7,44 iterações em média, contra 18,5 da largura. Com custo 1 por jogada, a coluna de custo repete a de movimentos. [tests/properties/test_all_goals.py](tests/properties/test_all_goals.py) verifica tudo isso.
 
 ## Qualidade
 
