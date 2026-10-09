@@ -17,8 +17,9 @@ from libs.inputs.exceptions import (
 from libs.inputs.selection import ExecutionRequest
 from libs.outputs import console, graph_writer, state_render
 from libs.outputs.console import ConsoleFormatter
+from libs.outputs.files import write_file
 from libs.outputs.formatter import Formatter, Report
-from libs.outputs.json_writer import JsonFormatter, write_file
+from libs.outputs.json_writer import JsonFormatter
 from runner.pipeline import build_report
 
 _FORMATTERS: dict[str, Formatter] = {

@@ -8,8 +8,9 @@ from core.domain.problem import Problem
 from core.rules.strategies.domain.registry import STRATEGIES
 from core.search_tree.tree import SearchTree
 from libs.outputs import theme
+from libs.outputs.files import write_file
 from libs.outputs.formatter import ProblemReport, Report
-from libs.outputs.json_writer import JsonFormatter, write_file
+from libs.outputs.json_writer import JsonFormatter
 
 
 def _report(problem: Problem) -> Report:

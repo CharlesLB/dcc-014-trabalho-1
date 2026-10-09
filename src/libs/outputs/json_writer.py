@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from core.domain.state import Peg, State
 from core.search_tree.result import SearchResult
@@ -24,11 +23,6 @@ class JsonFormatter:
         if report.summary is not None:
             payload["resumo"] = _summary_to_json(report.summary)
         return json.dumps(payload, ensure_ascii=False, indent=2)
-
-
-def write_file(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
 
 
 def _problem_to_json(entry: ProblemReport) -> JsonValue:
