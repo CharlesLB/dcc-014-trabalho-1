@@ -71,22 +71,18 @@ def _emit(report: Report, request: ExecutionRequest) -> None:
 
 
 def _render_catalogues() -> str:
-    problems = "\n".join(
-        f"  {problem.id}  {state_render.render_inline(problem.goal)}"
+    problems = [
+        f"{problem.id}  {state_render.render_inline(problem.goal)}"
         for problem in PROBLEMS
+    ]
+    catalogues = (
+        (settings.LIST_PROBLEMS_HEADER, problems),
+        (settings.LIST_ALGORITHMS_HEADER, ALGORITHM_NAMES),
+        (settings.LIST_STRATEGIES_HEADER, STRATEGY_NAMES),
     )
     return "\n\n".join(
-        [
-            console.render_section(settings.LIST_PROBLEMS_HEADER, problems),
-            console.render_section(
-                settings.LIST_ALGORITHMS_HEADER,
-                "\n".join(f"  {name}" for name in ALGORITHM_NAMES),
-            ),
-            console.render_section(
-                settings.LIST_STRATEGIES_HEADER,
-                "\n".join(f"  {name}" for name in STRATEGY_NAMES),
-            ),
-        ]
+        console.render_section(title, "\n".join(f"  {item}" for item in items))
+        for title, items in catalogues
     )
 
 

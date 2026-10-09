@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
 from typing import NoReturn
 
@@ -81,9 +81,9 @@ def parse(argv: Sequence[str]) -> ExecutionRequest:
     namespace = build_parser().parse_args(list(argv))
 
     select_all: bool = namespace.all
-    problems = _selected(namespace.problem, PROBLEM_IDS, select_all, upper=True)
-    algorithms = _selected(namespace.algorithm, ALGORITHM_NAMES, select_all)
-    strategies = _selected(namespace.strategy, STRATEGY_NAMES, select_all)
+    problems = _selected(namespace.problem, PROBLEM_IDS, select_all, str.upper)
+    algorithms = _selected(namespace.algorithm, ALGORITHM_NAMES, select_all, str.lower)
+    strategies = _selected(namespace.strategy, STRATEGY_NAMES, select_all, str.lower)
 
     return ExecutionRequest(
         problem_ids=problems,
@@ -109,13 +109,12 @@ def _selected(
     raw: list[str] | None,
     available: tuple[str, ...],
     select_all: bool,
-    *,
-    upper: bool = False,
+    normalise: Callable[[str], str],
 ) -> tuple[str, ...]:
     if select_all or not raw:
         return available
     names = [
-        token.strip().upper() if upper else token.strip().lower()
+        normalise(token.strip())
         for entry in raw
         for token in entry.split(",")
         if token.strip()
@@ -127,7 +126,7 @@ def _positive_int(flag: str, raw: str) -> int:
     try:
         value = int(raw)
     except ValueError:
-        raise InvalidArgumentError(f"{flag}={raw!r}") from None
+        value = 0
     if value <= 0:
         raise InvalidArgumentError(f"{flag}={raw!r}")
     return value
