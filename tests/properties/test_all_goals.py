@@ -6,7 +6,7 @@ import pytest
 
 from core.algorithms.domain.registry import ALGORITHMS
 from core.domain.problem import INITIAL_STATE, all_goal_problems
-from core.domain.state_space import all_states, cheapest_cost, shortest_distance
+from core.domain.state_space import all_states, shortest_distance
 from core.rules.strategies.domain.registry import STRATEGIES
 from core.search_tree.result import SearchResult
 from core.search_tree.tree import SearchTree
@@ -94,25 +94,36 @@ def test_breadth_first_averages_the_optimal_number_of_moves(
 
 
 @pytest.mark.parametrize("strategy", sorted(STRATEGIES))
-def test_ordered_averages_the_optimal_cost(summary: Summary, strategy: str) -> None:
-    optimum = [cheapest_cost(INITIAL_STATE, goal) or 0 for goal in all_states()]
-    cost = _row(summary, "ordered", strategy).cost
-    assert cost is not None
-    assert cost.mean == pytest.approx(fmean(optimum))
-    assert cost.median == median(optimum)
+def test_cost_is_the_number_of_moves(summary: Summary, strategy: str) -> None:
+    for row in summary.rows:
+        assert row.cost == row.moves
 
 
-def test_ordered_wins_on_cost_by_mean_and_median(summary: Summary) -> None:
-    highlight = _highlight(summary, "cost")
-    ordered = {row for row in summary.rows if row.algorithm == "ordered"}
-    assert ordered <= set(highlight.by_mean)
-    assert ordered <= set(highlight.by_median)
-
-
-def test_breadth_first_and_ordered_win_on_moves(summary: Summary) -> None:
+def test_only_breadth_first_wins_on_moves(summary: Summary) -> None:
     highlight = _highlight(summary, "moves")
-    assert _algorithms(highlight.by_mean) == {"breadth_first", "ordered"}
-    assert _algorithms(highlight.by_median) == {"breadth_first", "ordered"}
+    assert _algorithms(highlight.by_mean) == {"breadth_first"}
+
+
+@pytest.mark.parametrize("strategy", sorted(STRATEGIES))
+def test_ordered_stays_close_to_the_optimum(summary: Summary, strategy: str) -> None:
+    optimum = fmean(
+        shortest_distance(INITIAL_STATE, goal) or 0 for goal in all_states()
+    )
+    moves = _row(summary, "ordered", strategy).moves
+    assert moves is not None
+    assert optimum < moves.mean < optimum + 0.2
+
+
+def test_ordered_wins_on_iterations(summary: Summary) -> None:
+    highlight = _highlight(summary, "iterations")
+    assert _algorithms(highlight.by_mean) == {"ordered"}
+
+
+@pytest.mark.parametrize("strategy", sorted(STRATEGIES))
+def test_greedy_deadlocks_on_some_goals(summary: Summary, strategy: str) -> None:
+    row = _row(summary, "greedy", strategy)
+    assert row.deadlocks > 0
+    assert row.successes + row.deadlocks == row.runs
 
 
 def test_backtracking_and_irrevocable_never_beat_the_optimal_methods(
@@ -128,13 +139,16 @@ def test_backtracking_and_irrevocable_never_beat_the_optimal_methods(
         assert row.cost.mean > best_cost.mean
 
 
-def test_irrevocable_is_excluded_from_the_winners(summary: Summary) -> None:
+@pytest.mark.parametrize("algorithm", ["irrevocable", "greedy"])
+def test_incomplete_methods_are_excluded_from_the_winners(
+    summary: Summary, algorithm: str
+) -> None:
     for highlight in summary.highlights:
-        assert "irrevocable" not in _algorithms(highlight.by_mean)
-        assert "irrevocable" not in _algorithms(highlight.by_median)
+        assert algorithm not in _algorithms(highlight.by_mean)
+        assert algorithm not in _algorithms(highlight.by_median)
 
 
-@pytest.mark.parametrize("algorithm", ["breadth_first", "ordered"])
+@pytest.mark.parametrize("algorithm", ["breadth_first"])
 def test_mean_iterations_is_the_same_for_methods_that_visit_each_state_once(
     summary: Summary, algorithm: str
 ) -> None:

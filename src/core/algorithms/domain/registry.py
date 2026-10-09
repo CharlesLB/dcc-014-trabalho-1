@@ -6,6 +6,7 @@ from types import MappingProxyType
 from core.algorithms.backtracking.algorithm import BacktrackingSearch
 from core.algorithms.breadth_first.algorithm import BreadthFirstSearch
 from core.algorithms.domain.base import SearchAlgorithm
+from core.algorithms.greedy.algorithm import GreedySearch
 from core.algorithms.irrevocable.algorithm import IrrevocableSearch
 from core.algorithms.ordered.algorithm import OrderedSearch
 
@@ -22,6 +23,7 @@ ALGORITHMS: Mapping[str, type[SearchAlgorithm]] = MappingProxyType(
         BacktrackingSearch.name: BacktrackingSearch,
         BreadthFirstSearch.name: BreadthFirstSearch,
         OrderedSearch.name: OrderedSearch,
+        GreedySearch.name: GreedySearch,
     }
 )
 
