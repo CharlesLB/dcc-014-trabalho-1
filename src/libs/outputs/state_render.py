@@ -17,6 +17,14 @@ def render_inline(state: State) -> str:
     return " ".join(parts)
 
 
+def render_compact(state: State) -> str:
+    """Uma haste por campo, separadas por barra, como em `VR/A/` mais o traço."""
+    return "/".join(
+        "".join(theme.disk_symbol(disk) for disk in stack) or theme.EMPTY_PEG_COMPACT
+        for stack in state
+    )
+
+
 def render_pegs(state: State) -> str:
     height = max(CAPACITIES.values())
     columns = [_column(state, peg, height) for peg in Peg]

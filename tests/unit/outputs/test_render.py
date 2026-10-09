@@ -48,6 +48,12 @@ def test_inline_state_marks_the_empty_peg(initial_state: State) -> None:
     assert theme.EMPTY_PEG in state_render.render_inline(initial_state)
 
 
+def test_compact_state_uses_one_field_per_peg(initial_state: State) -> None:
+    assert (
+        state_render.render_compact(initial_state) == f"VR/A/{theme.EMPTY_PEG_COMPACT}"
+    )
+
+
 def test_pegs_drawing_shows_capacities_and_disk_names(initial_state: State) -> None:
     drawing = state_render.render_pegs(initial_state)
     assert "H1(3)" in drawing

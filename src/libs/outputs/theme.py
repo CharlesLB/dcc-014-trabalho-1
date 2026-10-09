@@ -118,6 +118,7 @@ GOAL_STATE_HEADER: Final = "Objetivo"
 ABSENT: Final = "—"
 ARROW: Final = " → "
 EMPTY_PEG: Final = "·"
+EMPTY_PEG_COMPACT: Final = "\N{EN DASH}"
 
 BOX_TOP_LEFT: Final = "╭"
 BOX_TOP_RIGHT: Final = "╮"
