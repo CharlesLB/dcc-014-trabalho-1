@@ -3,7 +3,7 @@ from __future__ import annotations
 from core.search_tree.result import SearchResult
 from core.search_tree.trace import TraceEvent, TraceStep
 from libs.outputs import state_render, theme
-from libs.outputs.tree_render import removed_edges
+from libs.outputs.tree_render import kept_generations
 
 
 def render_dot(result: SearchResult) -> str:
@@ -12,11 +12,10 @@ def render_dot(result: SearchResult) -> str:
     if not root_steps:
         return ""
 
-    goal_orders = {step.node_order for step in trace.of_event(TraceEvent.GOAL)}
-    deadlock_orders = {step.node_order for step in trace.of_event(TraceEvent.DEADLOCK)}
-    visited_orders = {step.node_order for step in trace.of_event(TraceEvent.VISIT)}
+    goal_orders = trace.orders_of(TraceEvent.GOAL)
+    deadlock_orders = trace.orders_of(TraceEvent.DEADLOCK)
+    visited_orders = trace.orders_of(TraceEvent.VISIT)
     solution_orders = {node.order for node in result.solution_path}
-    removed = removed_edges(trace)
 
     lines = [
         "digraph search {",
@@ -26,9 +25,7 @@ def render_dot(result: SearchResult) -> str:
         _node(root_steps[0], theme.GRAPH_ROOT_FILL, on_path=bool(solution_orders)),
     ]
 
-    for step in trace.of_event(TraceEvent.GENERATE):
-        if step.parent_order is None or (step.parent_order, step.rule_id) in removed:
-            continue
+    for step in kept_generations(trace):
         on_path = step.node_order in solution_orders
         if step.node_order in goal_orders:
             fill = theme.GRAPH_GOAL_FILL
@@ -60,8 +57,7 @@ def _title(result: SearchResult) -> str:
 
 def _node(step: TraceStep, fill: str, *, on_path: bool) -> str:
     label = f"#{step.node_order}\\n{state_render.render_inline(step.state)}"
-    width = theme.GRAPH_PATH_WIDTH if on_path else 1
-    color = theme.GRAPH_PATH_COLOR if on_path else theme.GRAPH_NODE_COLOR
+    color, width = _stroke(on_path=on_path)
     return (
         f'  n{step.node_order} [label="{label}", fillcolor="{fill}", '
         f'color="{color}", penwidth={width}];'
@@ -69,12 +65,18 @@ def _node(step: TraceStep, fill: str, *, on_path: bool) -> str:
 
 
 def _edge(step: TraceStep, *, on_path: bool) -> str:
-    width = theme.GRAPH_PATH_WIDTH if on_path else 1
-    color = theme.GRAPH_PATH_COLOR if on_path else theme.GRAPH_NODE_COLOR
+    color, width = _stroke(on_path=on_path)
     return (
         f'  n{step.parent_order} -> n{step.node_order} [label="{step.rule_id}", '
         f'color="{color}", fontcolor="{color}", penwidth={width}];'
     )
+
+
+def _stroke(*, on_path: bool) -> tuple[str, float]:
+    """Cor e espessura do contorno: o caminho solução sai destacado."""
+    if on_path:
+        return theme.GRAPH_PATH_COLOR, theme.GRAPH_PATH_WIDTH
+    return theme.GRAPH_NODE_COLOR, 1
 
 
 def _pruned(step: TraceStep) -> str:

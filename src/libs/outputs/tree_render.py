@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from core.search_tree.trace import Trace, TraceEvent
+from core.search_tree.trace import Trace, TraceEvent, TraceStep
 from libs.outputs import state_render, theme
 
 
@@ -10,53 +10,54 @@ def render_tree(trace: Trace) -> str:
         return ""
 
     root = root_steps[0]
-    removed = removed_edges(trace)
-    children: dict[int, list[tuple[int, str | None, str]]] = {}
-    for step in trace.of_event(TraceEvent.GENERATE):
-        if step.parent_order is None or (step.parent_order, step.rule_id) in removed:
-            continue
-        label = state_render.render_inline(step.state)
-        children.setdefault(step.parent_order, []).append(
-            (step.node_order, step.rule_id, label)
-        )
+    children: dict[int, list[TraceStep]] = {}
+    for step in kept_generations(trace):
+        assert step.parent_order is not None
+        children.setdefault(step.parent_order, []).append(step)
 
-    goal_orders = {step.node_order for step in trace.of_event(TraceEvent.GOAL)}
-    deadlock_orders = {step.node_order for step in trace.of_event(TraceEvent.DEADLOCK)}
+    goal_orders = trace.orders_of(TraceEvent.GOAL)
+    deadlock_orders = trace.orders_of(TraceEvent.DEADLOCK)
+
+    def mark(order: int) -> str:
+        if order in goal_orders:
+            return f"  ({theme.event_label(TraceEvent.GOAL)})"
+        if order in deadlock_orders:
+            return f"  ({theme.event_label(TraceEvent.DEADLOCK)})"
+        return ""
 
     lines = [f"#{root.node_order} {state_render.render_inline(root.state)}"]
-    _append_children(lines, root.node_order, children, goal_orders, deadlock_orders, "")
+
+    def append_children(parent_order: int, prefix: str) -> None:
+        siblings = children.get(parent_order, [])
+        for position, step in enumerate(siblings):
+            is_last = position == len(siblings) - 1
+            connector = theme.TREE_LAST_BRANCH if is_last else theme.TREE_BRANCH
+            label = state_render.render_inline(step.state)
+            lines.append(
+                f"{prefix}{connector}{step.rule_id} → #{step.node_order} "
+                f"{label}{mark(step.node_order)}"
+            )
+            append_children(
+                step.node_order,
+                prefix + (theme.TREE_GAP if is_last else theme.TREE_TRUNK),
+            )
+
+    append_children(root.node_order, "")
     return "\n".join(lines)
 
 
-def _append_children(
-    lines: list[str],
-    parent_order: int,
-    children: dict[int, list[tuple[int, str | None, str]]],
-    goal_orders: set[int],
-    deadlock_orders: set[int],
-    prefix: str,
-) -> None:
-    siblings = children.get(parent_order, ())
-    for position, (order, rule_id, label) in enumerate(siblings):
-        is_last = position == len(siblings) - 1
-        connector = theme.TREE_LAST_BRANCH if is_last else theme.TREE_BRANCH
-        marks = ""
-        if order in goal_orders:
-            marks = f"  ({theme.event_label(TraceEvent.GOAL)})"
-        elif order in deadlock_orders:
-            marks = f"  ({theme.event_label(TraceEvent.DEADLOCK)})"
-        lines.append(f"{prefix}{connector}{rule_id} → #{order} {label}{marks}")
-        _append_children(
-            lines,
-            order,
-            children,
-            goal_orders,
-            deadlock_orders,
-            prefix + (theme.TREE_GAP if is_last else theme.TREE_TRUNK),
-        )
+def kept_generations(trace: Trace) -> tuple[TraceStep, ...]:
+    """Os nós gerados que continuam na árvore, cada um com o pai.
 
-
-def removed_edges(trace: Trace) -> set[tuple[int, str | None]]:
-    return {
+    Fica de fora o nó que a busca ordenada substituiu por um caminho mais
+    curto: o trace registra a aresta dele como poda do pai.
+    """
+    removed = {
         (step.node_order, step.rule_id) for step in trace.of_event(TraceEvent.PRUNE)
     }
+    return tuple(
+        step
+        for step in trace.of_event(TraceEvent.GENERATE)
+        if step.parent_order is not None
+        and (step.parent_order, step.rule_id) not in removed
+    )

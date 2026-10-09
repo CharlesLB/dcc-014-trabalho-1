@@ -45,6 +45,10 @@ class Trace:
     def of_event(self, event: TraceEvent) -> tuple[TraceStep, ...]:
         return tuple(step for step in self.steps if step.event is event)
 
+    def orders_of(self, event: TraceEvent) -> frozenset[int]:
+        """A ordem de cada nó que passou pelo evento."""
+        return frozenset(step.node_order for step in self.of_event(event))
+
 
 @dataclass(slots=True)
 class TraceRecorder:
