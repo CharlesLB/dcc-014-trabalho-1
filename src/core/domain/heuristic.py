@@ -26,19 +26,25 @@ que falta.
 
 from __future__ import annotations
 
-from core.domain.state import Peg, Stack, State
+from core.domain.state import Disk, Peg, Stack, State
 
 
 def misplacement(state: State, goal: State) -> int:
-    total = 0
+    return sum(contributions(state, goal).values())
+
+
+def contributions(state: State, goal: State) -> dict[Disk, int]:
+    """O que cada disco soma em h: 0, 1 ou 2, como na tabela acima."""
+    result: dict[Disk, int] = {}
     for peg in Peg:
         stack, target = state[peg], goal[peg]
         placed = _common_base(stack, target)
         for height, disk in enumerate(stack):
             if height < placed:
-                continue
-            total += 2 if disk in target else 1
-    return total
+                result[disk] = 0
+            else:
+                result[disk] = 2 if disk in target else 1
+    return result
 
 
 def _common_base(stack: Stack, target: Stack) -> int:

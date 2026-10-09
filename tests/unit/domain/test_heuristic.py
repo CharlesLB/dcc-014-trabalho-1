@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from core.domain.heuristic import misplacement
+from core.domain.heuristic import contributions, misplacement
 from core.domain.state import State, build_state
 from core.domain.state_space import shortest_distance
 from core.rules.domain.base import Disk
@@ -22,6 +22,14 @@ P1_GOAL = build_state((), (RED, GREEN), (BLUE,))
 )
 def test_examples_from_the_docstring(state: State, expected: int) -> None:
     assert misplacement(state, P1_GOAL) == expected
+
+
+def test_contributions_give_each_disk_zero_one_or_two() -> None:
+    initial = build_state((GREEN, RED), (BLUE,), ())
+    assert contributions(initial, P1_GOAL) == {GREEN: 1, RED: 1, BLUE: 1}
+    assert contributions(P1_GOAL, P1_GOAL) == {GREEN: 0, RED: 0, BLUE: 0}
+    swapped = build_state((), (GREEN, RED), (BLUE,))
+    assert contributions(swapped, P1_GOAL) == {GREEN: 2, RED: 2, BLUE: 0}
 
 
 def test_right_peg_out_of_place_weighs_two() -> None:

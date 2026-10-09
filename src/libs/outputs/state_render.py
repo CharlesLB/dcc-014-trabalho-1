@@ -18,7 +18,7 @@ def render_inline(state: State) -> str:
 
 
 def render_compact(state: State) -> str:
-    """Uma haste por campo, separadas por barra, como em `VR/A/` mais o traço."""
+    """Uma haste por campo, separadas por barra; a haste vazia vira um traço."""
     return "/".join(
         "".join(theme.disk_symbol(disk) for disk in stack) or theme.EMPTY_PEG_COMPACT
         for stack in state
