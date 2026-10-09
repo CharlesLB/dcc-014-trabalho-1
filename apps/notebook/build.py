@@ -8,7 +8,7 @@ from pathlib import Path
 from cells import Notebook
 from pages import analysis
 from pages.algorithm import ALGORITHM_SECTIONS, flowcharts, section, slide_modules
-from pages.common import NOTEBOOK, TITLE, VIEW_HELPERS, header, members
+from pages.common import NOTEBOOK, TITLE, header, members, style_cell, view_helpers
 from source import setup_cells
 
 OUTPUT_DIR = Path(__file__).resolve().parent / "notebooks"
@@ -16,10 +16,15 @@ OUTPUT_DIR = Path(__file__).resolve().parent / "notebooks"
 
 def notebooks() -> tuple[Notebook, ...]:
     cells = (
-        header(),
+        header(ALGORITHM_SECTIONS),
         *setup_cells(
             shown=slide_modules(),
-            extras=(VIEW_HELPERS, analysis.PLOT_STYLE, flowcharts()),
+            extras=(
+                style_cell(ALGORITHM_SECTIONS),
+                view_helpers(ALGORITHM_SECTIONS),
+                analysis.PLOT_HELPERS,
+                flowcharts(),
+            ),
         ),
         *(
             cell
@@ -27,7 +32,7 @@ def notebooks() -> tuple[Notebook, ...]:
             for cell in section(spec, index, first=index == 1)
         ),
         *analysis.section(len(ALGORITHM_SECTIONS) + 1),
-        members(),
+        members(ALGORITHM_SECTIONS),
     )
     return (Notebook(NOTEBOOK, TITLE, cells),)
 

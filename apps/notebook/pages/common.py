@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from cells import IGNORE, Cell, code, markdown
+from pages.algorithm import AlgorithmSection
 
 REPOSITORY = "CharlesLB/dcc-014-trabalho-1"
 BRANCH = "main"
@@ -10,14 +13,7 @@ TITLE = "Torre de Londres"
 COLAB_URL = f"https://colab.research.google.com/github/{REPOSITORY}/blob/{BRANCH}/{NOTEBOOK_DIR}/{NOTEBOOK}"
 COLAB_BADGE = "https://colab.research.google.com/assets/colab-badge.svg"
 
-SECTIONS = (
-    "Busca irrevogável",
-    "Backtracking",
-    "Busca em largura",
-    "Busca ordenada",
-    "Comparação dos algoritmos",
-    "Integrantes",
-)
+CLOSING_SECTIONS = ("Comparação dos algoritmos", "Integrantes")
 
 MEMBERS = (
     ("Charles Lelis Braga", "202035015"),
@@ -34,8 +30,14 @@ MEMBERS = (
 )
 
 
-def header() -> Cell:
-    contents = "\n".join(f"{index}. {name}" for index, name in enumerate(SECTIONS, 1))
+def _section_titles(sections: Sequence[AlgorithmSection]) -> tuple[str, ...]:
+    return (*(spec.title for spec in sections), *CLOSING_SECTIONS)
+
+
+def header(sections: Sequence[AlgorithmSection]) -> Cell:
+    contents = "\n".join(
+        f"{index}. {name}" for index, name in enumerate(_section_titles(sections), 1)
+    )
     return markdown(
         f"""# {TITLE}
 
@@ -43,18 +45,18 @@ def header() -> Cell:
 
 DCC014 Inteligência Artificial · UFJF · Trabalho 1 · Grupo 5 · Profa. Luciana
 
-Resolvedor da Torre de Londres (3 hastes, 3 discos) com quatro algoritmos de busca sobre o mesmo motor. Cada seção de algoritmo segue a ordem dos slides: o problema, a ideia, o laço e as listas, as regras, a estratégia, a árvore sem poda e com poda, o pseudocódigo com o código do projeto, o caminho solução, os comparativos e a complexidade.
+Resolvedor da Torre de Londres (3 hastes, 3 discos) com {len(sections)} algoritmos de busca sobre o mesmo motor. Cada seção de algoritmo segue a ordem dos slides: o problema, a ideia, o laço e as listas, as regras, a estratégia, a árvore sem poda e com poda, o pseudocódigo com o código do projeto, o caminho solução, os comparativos e a complexidade.
 
 {contents}
 
-Todo o código marcado com **{IGNORE}** está no topo, na seção Setup: os módulos de apoio do projeto e as funções que desenham tabelas, figuras e gráficos. Rode **Ambiente de execução → Executar tudo** e comece a apresentação na seção 1. Dali em diante só aparece o código do projeto que vai para a apresentação (problema, regras, estratégias, fronteira, motor e algoritmos) e chamadas de uma linha que desenham as tabelas e os gráficos."""
+Todo o código marcado com **{IGNORE}** está no topo, na seção Setup: os módulos de apoio do projeto e as funções que desenham tabelas, figuras e gráficos. Rode **Ambiente de execução → Executar tudo** e comece a apresentação na seção 1. Dali em diante só aparece o código do projeto que vai para a apresentação (problema, regras, estratégias, heurística, fronteira, motor e algoritmos) e chamadas de uma linha que desenham as tabelas e os gráficos."""
     )
 
 
-def members() -> Cell:
+def members(sections: Sequence[AlgorithmSection]) -> Cell:
     rows = "\n".join(f"| {name} | {number} |" for name, number in MEMBERS)
     return markdown(
-        f"""# {len(SECTIONS)}. Integrantes
+        f"""# {len(_section_titles(sections))}. Integrantes
 
 | Integrante | Matrícula |
 |---|---|
@@ -64,13 +66,99 @@ DCC014 · Inteligência Artificial · Universidade Federal de Juiz de Fora · Pr
     )
 
 
-VIEW_HELPERS = code(
-    """#@title Funções de apresentação
-import heapq
-import shutil
+def style_cell(sections: Sequence[AlgorithmSection]) -> Cell:
+    """Cores e estilo dos gráficos. Roda antes das funções de apresentação,
+    que já desenham com eles."""
+    colors = {spec.name: spec.color for spec in sections}
+    return code(
+        f"#@title Estilo dos gráficos\n{STYLE_IMPORTS}\nALGORITHM_COLORS = {colors!r}\n{STYLE_BODY}",
+        hidden=True,
+    )
+
+
+def view_helpers(sections: Sequence[AlgorithmSection]) -> Cell:
+    """As funções de apresentação, com os dados de cada algoritmo vindos das
+    seções: rótulo, modo das listas, fronteira e quem entra nos gráficos."""
+    data = {
+        "ALGORITHM_LABELS": {spec.name: spec.label for spec in sections},
+        "LIST_MODES": {spec.name: spec.list_mode for spec in sections},
+        "FRONTIERS": {
+            spec.name: (
+                spec.frontier.removesuffix(".py").replace("/", "."),
+                spec.frontier_class,
+            )
+            for spec in sections
+            if spec.frontier and spec.frontier_class
+        },
+        "HEURISTIC_ALGORITHMS": tuple(
+            spec.name for spec in sections if spec.uses_heuristic
+        ),
+        "CHART_ALGORITHMS": tuple(spec.name for spec in sections if spec.complete),
+    }
+    assignments = "\n".join(f"{name} = {value!r}" for name, value in data.items())
+    return code(
+        f"#@title Funções de apresentação\n{VIEW_IMPORTS}\n{assignments}\n{VIEW_BODY}",
+        hidden=True,
+    )
+
+
+STYLE_IMPORTS = """import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+
+from core.rules.domain.base import Disk
+"""
+
+STYLE_BODY = """STRATEGY_COLORS = {"ascending": "#2a78d6", "descending": "#c87400"}
+DISK_COLORS = {Disk.GREEN: "#2e9e44", Disk.RED: "#d63b3b", Disk.BLUE: "#2f6fd6"}
+GOAL_COLOR = "#1baf7a"
+WIN_COLOR = "#1a8746"
+OPTIMUM_COLOR = "#b8b8b4"
+LINE_GRAY = "#c5c7cc"
+GRID_GRAY = "#e6e6e3"
+BLACK = "#0b0b0b"
+WHITE = "#ffffff"
+INK = "#52514e"
+MUTED = "#8a8984"
+
+MATPLOTLIB_VERSION = tuple(int(part) for part in matplotlib.__version__.split(".")[:2])
+HORIZONTAL = {"orientation": "horizontal"} if MATPLOTLIB_VERSION >= (3, 10) else {"vert": False}
+
+plt.rcParams.update(
+    {
+        "figure.dpi": 110,
+        "font.size": 10,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "axes.edgecolor": MUTED,
+        "axes.labelcolor": INK,
+        "axes.titlesize": 11,
+        "axes.titlecolor": BLACK,
+        "axes.grid": True,
+        "axes.axisbelow": True,
+        "grid.color": GRID_GRAY,
+        "grid.linewidth": 0.8,
+        "xtick.color": INK,
+        "ytick.color": INK,
+        "legend.frameon": False,
+    }
+)
+
+BOX_STYLE = {
+    "patch_artist": True,
+    "showmeans": True,
+    "medianprops": {"color": BLACK, "linewidth": 1.5},
+    "meanprops": {"marker": "D", "markerfacecolor": WHITE, "markeredgecolor": BLACK, "markersize": 5},
+    "flierprops": {"marker": "o", "markersize": 3, "markerfacecolor": MUTED, "markeredgecolor": "none"},
+    "whiskerprops": {"color": MUTED},
+    "capprops": {"color": MUTED},
+}"""
+
+VIEW_IMPORTS = """import shutil
 import subprocess
 from collections import Counter
 from functools import cache
+from importlib import import_module
 from pathlib import Path
 
 import pandas as pd
@@ -78,15 +166,10 @@ from IPython.display import SVG, display
 
 from config import settings
 from core.algorithms.domain.registry import ALGORITHM_NAMES
+from core.domain.heuristic import contributions, misplacement
 from core.domain.problem import INITIAL_STATE, get_problem
-from core.algorithms.breadth_first.algorithm import BreadthFirstSearch
-from core.algorithms.ordered.algorithm import OrderedSearch
-from core.algorithms.backtracking.frontier import StackFrontier
-from core.algorithms.breadth_first.frontier import QueueFrontier
-from core.algorithms.ordered.frontier import PriorityFrontier
-from core.domain.problem import Problem
-from core.domain.state_space import all_states, applicable_rules, shortest_distance, successors
-from core.rules.domain.base import CAPACITIES, DISK_WEIGHTS, Disk
+from core.domain.state_space import all_states, applicable_rules, successors
+from core.rules.domain.base import Peg
 from core.rules.domain.catalog import INVERSE_RULE_ID, RULE_BY_ID, RULES
 from core.rules.moves import MOVE_COST
 from core.rules.strategies.domain.registry import STRATEGIES as STRATEGY_REGISTRY
@@ -96,29 +179,54 @@ from core.search_tree.trace import TraceEvent
 from core.search_tree.tree import SearchTree
 from libs.inputs.selection import ExecutionRequest
 from libs.outputs import graph_writer, state_render, theme, trace_render, tree_render
+from libs.outputs.console import render_stat
 from libs.outputs.formatter import ProblemReport, Report
 from runner.pipeline import build_report
+"""
 
+VIEW_BODY = """
 LABELS = theme.REPORT_LABELS
-ALGORITHM_LABELS = {
-    "irrevocable": "Irrevogável",
-    "backtracking": "Backtracking",
-    "breadth_first": "Largura",
-    "ordered": "Ordenada",
-}
-CHART_ALGORITHMS = tuple(name for name in ALGORITHM_LABELS if name != "irrevocable")
 STRATEGY_LABELS = {"ascending": "crescente", "descending": "decrescente"}
 SHORT = {"ascending": "cresc.", "descending": "decr."}
-SLIDE_STRATEGIES = ("ascending", "descending")
+SLIDE_STRATEGIES = tuple(STRATEGY_LABELS)
 GRAPH_DIR = Path("data")
 P1 = get_problem("P1")
-LIST_MODES = {
-    "irrevocable": "single",
-    "backtracking": "stack",
-    "breadth_first": "queue",
-    "ordered": "priority",
-}
 LONG_LIST = 8
+LIST_TITLES = {
+    "stack": ("TOPO DA PILHA", "PILHA", "RETROCEDIDOS"),
+    "single": ("NÓ ATUAL", "ABERTOS", "FECHADOS"),
+    "queue": ("SAI DE ABERTOS", "ABERTOS", "FECHADOS"),
+    "priority": ("SAI DE ABERTOS", "ABERTOS", "FECHADOS"),
+}
+SITUATIONS = {0: "bem posicionado", 1: "em outra haste", 2: "na haste certa, mal posicionado"}
+compact = state_render.render_compact
+
+
+def prune_label(prune):
+    return "com poda" if prune else "sem poda"
+
+
+def label(algorithm, strategy, *, short=True, prune=None):
+    \"\"\"O nome de uma combinação, igual em todas as tabelas e gráficos.\"\"\"
+    names = SHORT if short else STRATEGY_LABELS
+    parts = [ALGORITHM_LABELS[algorithm], names[strategy]]
+    if prune is not None:
+        parts.append(prune_label(prune))
+    return " ".join(parts)
+
+
+def br(value, decimals=0):
+    \"\"\"Número no formato brasileiro: 1.234,5.\"\"\"
+    return f"{value:,.{decimals}f}".translate(str.maketrans(",.", ".,"))
+
+
+def heuristic(state, goal=P1.goal):
+    return misplacement(state, goal)
+
+
+def moved_disk(state, rule):
+    \"\"\"O disco que a regra tira do topo da origem, por extenso.\"\"\"
+    return theme.disk_name(state[rule.origin][-1]).lower()
 
 
 def run(problem_ids=("P1",), algorithms=ALGORITHM_NAMES, strategies=STRATEGY_NAMES, *, all_goals=False, prune=True, max_iterations=settings.MAX_ITERATIONS):
@@ -149,10 +257,6 @@ def goals_report():
     return run((), all_goals=True)
 
 
-def compact(state):
-    return "/".join("".join(theme.disk_symbol(disk) for disk in stack) or "–" for stack in state)
-
-
 def side_by_side(blocks, gap="      "):
     columns = [block.splitlines() for block in blocks]
     height = max(len(lines) for lines in columns)
@@ -164,16 +268,21 @@ def side_by_side(blocks, gap="      "):
     )
 
 
+def drawing(state, title=""):
+    \"\"\"Título, o estado compacto e as hastes desenhadas.\"\"\"
+    return f"{title}\\n{compact(state)}\\n\\n{state_render.render_pegs(state)}"
+
+
+def arrow(text=""):
+    return f"\\n\\n\\n  —{text}→" if text else "\\n\\n\\n  ——→"
+
+
+def show_transition(before, after, *, text="", before_title="", after_title=""):
+    print(side_by_side([drawing(before, before_title), arrow(text), drawing(after, after_title)]))
+
+
 def show_problem(problem=P1):
-    print(
-        side_by_side(
-            [
-                f"INICIAL  {compact(problem.initial)}\\n\\n{state_render.render_pegs(problem.initial)}",
-                "\\n\\n\\n  ——→",
-                f"OBJETIVO {problem.id}  {compact(problem.goal)}\\n\\n{state_render.render_pegs(problem.goal)}",
-            ]
-        )
-    )
+    show_transition(problem.initial, problem.goal, before_title="INICIAL", after_title=f"OBJETIVO {problem.id}")
 
 
 def rules_table():
@@ -184,8 +293,7 @@ def rules_table():
                 "Move de": rule.origin.name,
                 "Para": rule.destination.name,
                 "Inversa": INVERSE_RULE_ID[rule.id],
-                "Distância": rule.distance,
-                "Custo V / R / A": " / ".join(str(MOVE_COST + DISK_WEIGHTS[disk] * rule.distance) for disk in Disk),
+                "Custo": MOVE_COST,
             }
             for rule in RULES
         ]
@@ -194,18 +302,35 @@ def rules_table():
 
 def show_rule_example(rule_id="R4", state=INITIAL_STATE):
     rule = RULE_BY_ID[rule_id]
-    after = rule.apply(state)
-    print(
-        side_by_side(
-            [
-                f"S0  {compact(state)}\\n\\n{state_render.render_pegs(state)}",
-                f"\\n\\n\\n  —{rule.id}→",
-                f"{compact(after)}\\n\\n{state_render.render_pegs(after)}",
-            ]
-        )
-    )
-    moved = theme.disk_name(state[rule.origin][-1]).lower()
-    print(f"\\nExemplo: {rule.id} em S0 leva o {moved} de {rule.origin.name} para {rule.destination.name}.")
+    show_transition(state, rule.apply(state), text=rule.id, before_title="S0")
+    print(f"\\nExemplo: {rule.id} em S0 leva o {moved_disk(state, rule)} de {rule.origin.name} para {rule.destination.name}.")
+
+
+def explain_heuristic(state=INITIAL_STATE, goal=P1.goal):
+    show_transition(state, goal, before_title="ESTADO", after_title="OBJETIVO")
+    shares = contributions(state, goal)
+    rows = [
+        {
+            "Disco": theme.disk_name(disk).lower(),
+            "Está em": f"{peg.name}, altura {height + 1}",
+            "Situação": SITUATIONS[shares[disk]],
+            "Contribui": shares[disk],
+        }
+        for peg in Peg
+        for height, disk in enumerate(state[peg])
+    ]
+    terms = " + ".join(str(row["Contribui"]) for row in rows)
+    print(f"\\nh = {terms} = {heuristic(state, goal)}")
+    return pd.DataFrame(rows).set_index("Disco")
+
+
+def children_heuristics(state=INITIAL_STATE, goal=P1.goal):
+    return pd.DataFrame(
+        [
+            {"Regra": rule.id, "Filho": compact(rule.apply(state)), "h": heuristic(rule.apply(state), goal)}
+            for rule in applicable_rules(state)
+        ]
+    ).set_index("Regra")
 
 
 def strategies_table():
@@ -229,103 +354,110 @@ def _nodes(result):
     }
 
 
-def _costs(nodes):
-    costs = {}
-    for order in sorted(nodes):
-        step = nodes[order]
-        costs[order] = 0 if step.parent_order is None else costs[step.parent_order] + RULE_BY_ID[step.rule_id].cost(nodes[step.parent_order].state)
-    return costs
-
-
-def _names(orders, costs=None):
-    if costs is None:
+def _names(orders, priorities=None):
+    if priorities is None:
         return " ".join(f"S{order}" for order in orders)
-    return " ".join(f"S{order}({costs[order]})" for order in orders)
+    return " ".join(f"S{order}({priorities[order]})" for order in orders)
 
 
-def _shorten(orders, costs=None):
+def _shorten(orders, priorities=None):
     if len(orders) <= LONG_LIST:
-        return _names(orders, costs)
+        return _names(orders, priorities)
     ordered = sorted(orders)
-    if costs is None and ordered == list(range(ordered[0], ordered[-1] + 1)):
+    if priorities is None and ordered == list(range(ordered[0], ordered[-1] + 1)):
         return f"S{ordered[0]} … S{ordered[-1]}"
-    return f"{len(orders)}: {_names(orders[:3], costs)} …"
+    return f"{len(orders)}: {_names(orders[:3], priorities)} …"
+
+
+def _of(events, kind):
+    return [step for step in events if step.event is kind]
+
+
+def _current(events):
+    \"\"\"O nó em que a iteração trabalhou.\"\"\"
+    for kind in (TraceEvent.GOAL, TraceEvent.VISIT, TraceEvent.BACKTRACK):
+        steps = _of(events, kind)
+        if steps:
+            return steps[0].node_order
+    return _of(events, TraceEvent.GENERATE)[0].parent_order
+
+
+def _replaced(events, current, opened, nodes):
+    \"\"\"Os nós que um caminho mais curto tirou de ABERTOS (só na ordenada).\"\"\"
+    return [
+        next(order for order in opened if nodes[order].parent_order == step.node_order and nodes[order].rule_id == step.rule_id)
+        for step in _of(events, TraceEvent.PRUNE)
+        if step.node_order != current
+    ]
+
+
+def _advance(mode, opened, closed, current, events, nodes):
+    \"\"\"Atualiza ABERTOS e FECHADOS com o que a iteração fez; devolve os nós trocados.\"\"\"
+    generated = [step.node_order for step in _of(events, TraceEvent.GENERATE)]
+    if mode == "single":
+        closed.append(current)
+        opened[:] = generated
+        return []
+    if mode == "stack":
+        if _of(events, TraceEvent.BACKTRACK):
+            opened.remove(current)
+            closed.append(current)
+        opened.extend(generated)
+        return []
+    opened.remove(current)
+    closed.append(current)
+    swaps = _replaced(events, current, opened, nodes)
+    for order in swaps:
+        opened.remove(order)
+    opened.extend(generated)
+    return swaps
+
+
+def _made(events, swaps):
+    \"\"\"A coluna GERA: os filhos da iteração, ou o que aconteceu no lugar deles.\"\"\"
+    generated = _of(events, TraceEvent.GENERATE)
+    deadlock = bool(_of(events, TraceEvent.DEADLOCK))
+    if _of(events, TraceEvent.BACKTRACK):
+        return "impasse, retrocesso" if deadlock else "retrocesso"
+    if not generated:
+        return "nada (impasse)" if deadlock else "nada"
+    made = "  ".join(f"{step.rule_id}: S{step.node_order}" for step in generated)
+    if swaps:
+        made += "  (troca " + " ".join(f"S{order}" for order in swaps) + ")"
+    return made
 
 
 def lists_table(result):
     mode = LIST_MODES[result.algorithm]
     nodes = _nodes(result)
-    costs = _costs(nodes) if mode == "priority" else None
-    steps = {}
+    priorities = {order: heuristic(step.state) for order, step in nodes.items()} if mode == "priority" else None
+    current_title, opened_title, closed_title = LIST_TITLES[mode]
+    by_iteration = {}
     for step in result.trace:
-        steps.setdefault(step.iteration, []).append(step)
+        by_iteration.setdefault(step.iteration, []).append(step)
 
-    titles = {
-        "stack": ("TOPO DA PILHA", "PILHA", "RETROCEDIDOS"),
-        "single": ("NÓ ATUAL", "ABERTOS", "FECHADOS"),
-    }.get(mode, ("SAI DE ABERTOS", "ABERTOS", "FECHADOS"))
     opened, closed = [0], []
-    swaps = []
-    rows = [{"IT": 0, titles[0]: "", "NÍV": "", "GERA": "", "PODA": "", titles[1]: _names(opened, costs), titles[2]: ""}]
+    rows = [{"IT": 0, current_title: "", "NÍV": "", "GERA": "", "PODA": "", opened_title: _names(opened, priorities), closed_title: ""}]
     for iteration in range(1, result.metrics.iterations + 1):
-        events = steps.get(iteration, [])
-        generated = [step for step in events if step.event is TraceEvent.GENERATE]
-        goal = next((step for step in events if step.event is TraceEvent.GOAL), None)
-        visit = next((step for step in events if step.event is TraceEvent.VISIT), None)
-        back = next((step for step in events if step.event is TraceEvent.BACKTRACK), None)
-        if goal is not None:
-            current = goal.node_order
-        elif visit is not None:
-            current = visit.node_order
-        elif back is not None:
-            current = back.node_order
-        else:
-            current = generated[0].parent_order
-        pruned = [step.rule_id for step in events if step.event is TraceEvent.PRUNE and step.node_order == current]
-        replaced = [step for step in events if step.event is TraceEvent.PRUNE and step.node_order != current]
+        events = by_iteration.get(iteration, [])
+        current = _current(events)
         node = nodes[current]
         row = {
             "IT": iteration,
-            titles[0]: f"S{current}  {compact(node.state)}",
+            current_title: f"S{current}  {compact(node.state)}",
             "NÍV": node.depth,
-            "PODA": " ".join(pruned),
+            "PODA": " ".join(step.rule_id for step in _of(events, TraceEvent.PRUNE) if step.node_order == current),
         }
-        if goal is not None:
-            rows.append({**row, "GERA": "objetivo: SUCESSO", titles[1]: "", titles[2]: ""})
+        if _of(events, TraceEvent.GOAL):
+            rows.append({**row, "GERA": "objetivo: SUCESSO", opened_title: "", closed_title: ""})
             break
-        if mode == "stack":
-            if back is not None:
-                opened.remove(current)
-                closed.append(current)
-            opened.extend(step.node_order for step in generated)
-        elif mode == "single":
-            closed.append(current)
-            opened = [step.node_order for step in generated]
-        else:
-            opened.remove(current)
-            closed.append(current)
-            swaps = []
-            for step in replaced:
-                old = next(o for o in opened if nodes[o].parent_order == step.node_order and nodes[o].rule_id == step.rule_id)
-                opened.remove(old)
-                swaps.append(old)
-            opened.extend(step.node_order for step in generated)
-            if mode == "priority":
-                opened.sort(key=lambda order: (costs[order], order))
-        made = "  ".join(f"{step.rule_id}: S{step.node_order}" for step in generated)
-        if mode == "priority" and swaps:
-            made += "  (troca " + " ".join(f"S{order}" for order in swaps) + ")"
-        deadlock = any(step.event is TraceEvent.DEADLOCK for step in events)
-        if back is not None:
-            made = "impasse, retrocesso" if deadlock else "retrocesso"
-        elif not generated:
-            made = "nada (impasse)" if deadlock else "nada"
-        rows.append({**row, "GERA": made, titles[1]: _shorten(opened, costs), titles[2]: _shorten(closed)})
-        swaps = []
-    frame = pd.DataFrame(rows).set_index("IT")
+        swaps = _advance(mode, opened, closed, current, events, nodes)
+        if priorities is not None:
+            opened.sort(key=lambda order: (priorities[order], order))
+        rows.append({**row, "GERA": _made(events, swaps), opened_title: _shorten(opened, priorities), closed_title: _shorten(closed)})
     if result.outcome is Outcome.CUTOFF:
         print(f"Parou no limite de {result.metrics.iterations} iterações (LIMITE).")
-    return frame
+    return pd.DataFrame(rows).set_index("IT")
 
 
 def case(algorithm, strategy, *, prune=True, max_iterations=settings.MAX_ITERATIONS):
@@ -352,31 +484,44 @@ def summary_line(result):
         f"pico de ABERTOS {metrics.max_frontier}",
     ]
     if result.solution_length is not None:
-        parts.append(f"caminho de {result.solution_length} movimentos, custo {result.solution_cost}")
+        parts.append(f"caminho de {result.solution_length} movimentos")
     return " · ".join(parts)
 
 
+def _describe(node, algorithm):
+    if algorithm in HEURISTIC_ALGORITHMS:
+        return f"S{node.order} ({node.rule.id}, h {heuristic(node.state)})"
+    return f"S{node.order} ({node.rule.id})"
+
+
 def frontier_demo(algorithm):
+    module, name = FRONTIERS[algorithm]
+    frontier_class = getattr(import_module(module), name)
+    frontier = frontier_class(lambda node: heuristic(node.state)) if LIST_MODES[algorithm] == "priority" else frontier_class()
     tree = SearchTree()
     root = tree.root(INITIAL_STATE)
     children = [tree.expand(root, rule) for rule in applicable_rules(INITIAL_STATE)]
-    frontier = {"backtracking": StackFrontier, "breadth_first": QueueFrontier, "ordered": PriorityFrontier}[algorithm]()
     for child in children:
         frontier.push(child)
-    print("entram, nesta ordem:", "  ".join(f"S{c.order} ({c.rule.id}, custo {c.cost})" for c in children))
+    print("entram, nesta ordem:", "  ".join(_describe(child, algorithm) for child in children))
     print("saem, nesta ordem:  ", "  ".join(f"S{frontier.pop().order}" for _ in children))
 
 
 def root_children(algorithm):
+    opened_title = LIST_TITLES[LIST_MODES[algorithm]][1]
+    shows_h = algorithm in HEURISTIC_ALGORITHMS
     rows = []
     for strategy in SLIDE_STRATEGIES:
         ordered = STRATEGY_REGISTRY[strategy].order(applicable_rules(INITIAL_STATE))
         first = lists_table(solve(algorithm, strategy)).loc[1]
-        opened_title = "PILHA" if LIST_MODES[algorithm] == "stack" else "ABERTOS"
+        children = []
+        for rule in ordered:
+            child = rule.apply(INITIAL_STATE)
+            children.append(f"{rule.id} → {compact(child)}" + (f" (h {heuristic(child)})" if shows_h else ""))
         rows.append(
             {
                 "Estratégia": STRATEGY_LABELS[strategy],
-                "Regras válidas na ordem": "  ".join(f"{rule.id} → {compact(rule.apply(INITIAL_STATE))}" for rule in ordered),
+                "Regras válidas na ordem": "  ".join(children),
                 "Gera na iteração 1": first["GERA"],
                 f"{opened_title} após a iteração 1": first[opened_title],
             }
@@ -398,7 +543,7 @@ def growth(algorithm, strategy="ascending", max_iterations=settings.MAX_ITERATIO
     depth = result.solution_length
     counts, distinct = _levels(result, depth)
     total = sum(counts)
-    if len(counts) <= 8:
+    if len(counts) <= LONG_LIST:
         print("   →   ".join(f"{count} no nível {level}" for level, count in enumerate(counts)))
     else:
         print(f"{len(counts)} níveis: " + " ".join(str(count) for count in counts))
@@ -416,10 +561,10 @@ def levels_chart(algorithm, strategy="ascending", max_iterations=settings.MAX_IT
     levels = range(depth + 1)
     width = 0.4
     fig, ax = plt.subplots(figsize=(min(1.2 * len(levels) + 3, 13), 3.6))
-    gray = ax.bar([level - width / 2 for level in levels], without, width * 0.95, color="#c5c7cc", label="sem poda")
-    blue = ax.bar([level + width / 2 for level in levels], with_prune, width * 0.95, color=ALGORITHM_COLORS[algorithm], label="com poda")
+    gray = ax.bar([level - width / 2 for level in levels], without, width * 0.95, color=LINE_GRAY, label=prune_label(False))
+    colored = ax.bar([level + width / 2 for level in levels], with_prune, width * 0.95, color=ALGORITHM_COLORS[algorithm], label=prune_label(True))
     ax.bar_label(gray, fontsize=8, color=INK, padding=2)
-    ax.bar_label(blue, fontsize=8, color=INK, padding=2)
+    ax.bar_label(colored, fontsize=8, color=INK, padding=2)
     ax.set_xticks(list(levels), [f"nível {level}" for level in levels])
     ax.set_title(f"nós gerados por nível, {STRATEGY_LABELS[strategy]}", loc="left")
     ax.grid(axis="x", visible=False)
@@ -428,25 +573,29 @@ def levels_chart(algorithm, strategy="ascending", max_iterations=settings.MAX_IT
 
 
 def show_path(result):
-    if not result.solution_path:
+    path = result.solution_path
+    if not path:
         print(f"{theme.outcome_label(result.outcome)}: não há caminho solução.")
         return
-    drawings = []
-    for node in result.solution_path:
-        title = f"nível {node.depth}" if node.rule is None else f"nível {node.depth}  ({node.rule.id})"
-        drawings.append(f"{title}\\n{compact(node.state)}\\n\\n{state_render.render_pegs(node.state)}")
+    drawings = [
+        drawing(node.state, f"nível {node.depth}" if node.rule is None else f"nível {node.depth}  ({node.rule.id})")
+        for node in path
+    ]
     for start in range(0, len(drawings), 4):
         print(side_by_side(drawings[start:start + 4]))
         print()
-    for node in result.solution_path[1:]:
-        moved = theme.disk_name(node.state[node.rule.destination][-1]).lower()
-        print(f"{node.rule.id}: {moved} de {node.rule.origin.name} para {node.rule.destination.name}  (custo acumulado {node.cost})")
-    print(f"\\n{result.solution_length} movimentos, custo {result.solution_cost}.")
+    for parent, child in zip(path, path[1:]):
+        rule = child.rule
+        print(f"{rule.id}: {moved_disk(parent.state, rule)} de {rule.origin.name} para {rule.destination.name}")
+    print(f"\\n{result.solution_length} movimentos.")
+
+
+def _charted(algorithm):
+    return [name for name in ALGORITHM_NAMES if name in CHART_ALGORITHMS or name == algorithm]
 
 
 def _bold_columns(frame, algorithm):
-    label = ALGORITHM_LABELS[algorithm]
-    columns = [column for column in frame.columns if column.startswith(label)]
+    columns = [column for column in frame.columns if column.startswith(ALGORITHM_LABELS[algorithm])]
     return frame.style.set_properties(subset=columns, **{"font-weight": "bold"})
 
 
@@ -454,100 +603,96 @@ def _metrics_column(result):
     metrics = result.metrics
     return {
         "Desfecho": theme.outcome_label(result.outcome),
-        "Nível da solução": theme.ABSENT if result.solution_length is None else str(result.solution_length),
+        "Nível da solução": result.solution_length,
         "Caminho": " ".join(result.applied_rules) or theme.ABSENT,
-        "Custo": theme.ABSENT if result.solution_cost is None else str(result.solution_cost),
-        "Iterações": str(metrics.iterations),
-        "Nós gerados": str(metrics.nodes_generated),
-        "Nós expandidos": str(metrics.nodes_visited),
-        "Pico de ABERTOS": str(metrics.max_frontier),
-        "Profundidade máx": str(metrics.max_depth),
-        "Retrocessos / impasses": f"{metrics.backtracks} / {metrics.deadlocks}",
+        "Iterações": metrics.iterations,
+        "Nós gerados": metrics.nodes_generated,
+        "Nós expandidos": metrics.nodes_visited,
+        "Pico de ABERTOS": metrics.max_frontier,
+        "Profundidade máx": metrics.max_depth,
+        "Retrocessos": metrics.backtracks,
+        "Impasses": metrics.deadlocks,
     }
 
 
 def strategy_table(algorithm):
-    columns = {}
-    for prune in (False, True):
-        for strategy in SLIDE_STRATEGIES:
-            label = f"{SHORT[strategy]} {'com' if prune else 'sem'} poda"
-            columns[label] = _metrics_column(solve(algorithm, strategy, prune))
-    return pd.DataFrame(columns)
-
-
-def algorithms_table(algorithm):
     columns = {
-        f"{ALGORITHM_LABELS[name]} {SHORT[strategy]}": _metrics_column(solve(name, strategy))
-        for name in ALGORITHM_NAMES
+        f"{SHORT[strategy]} {prune_label(prune)}": _metrics_column(solve(algorithm, strategy, prune))
+        for prune in (False, True)
         for strategy in SLIDE_STRATEGIES
     }
-    frame = pd.DataFrame(columns)
-    contenders = [
-        f"{ALGORITHM_LABELS[name]} {SHORT[strategy]}"
-        for name in CHART_ALGORITHMS
-        for strategy in SLIDE_STRATEGIES
-        if solve(name, strategy).outcome.is_success
-    ]
-    return _bold_columns(frame, algorithm).apply(_champions, subset=contenders, axis=1)
+    return pd.DataFrame(columns).style.format(na_rep=theme.ABSENT)
 
 
-CHAMPION_ROWS = ("Custo", "Nível da solução", "Iterações", "Nós gerados", "Nós expandidos", "Pico de ABERTOS", "Retrocessos / impasses")
+CHAMPION_ROWS = ("Nível da solução", "Iterações", "Nós gerados", "Nós expandidos", "Pico de ABERTOS", "Retrocessos", "Impasses")
 
 
 def _champions(row):
     if row.name not in CHAMPION_ROWS:
         return ["" for _ in row]
-    values = [int(str(value).split(" / ")[0]) for value in row]
-    return ["color: #1a8746; font-weight: bold" if value == min(values) else "" for value in values]
+    best = min(value for value in row if not pd.isna(value))
+    return [f"color: {WIN_COLOR}; font-weight: bold" if value == best else "" for value in row]
 
 
-def _charted(algorithm):
-    return [name for name in ALGORITHM_NAMES if name in CHART_ALGORITHMS or name == algorithm]
+def algorithms_table(algorithm):
+    combinations = [(name, strategy) for name in ALGORITHM_NAMES for strategy in SLIDE_STRATEGIES]
+    frame = pd.DataFrame({label(name, strategy): _metrics_column(solve(name, strategy)) for name, strategy in combinations})
+    contenders = [
+        label(name, strategy)
+        for name, strategy in combinations
+        if name in _charted(algorithm) and solve(name, strategy).outcome.is_success
+    ]
+    styled = _bold_columns(frame, algorithm).apply(_champions, subset=contenders, axis=1)
+    return styled.format(na_rep=theme.ABSENT)
 
 
 def paths_plot(algorithm):
     rows = [(name, strategy, solve(name, strategy)) for name in _charted(algorithm) for strategy in SLIDE_STRATEGIES]
-    colors = {"ascending": "#2a78d6", "descending": "#c87400"}
     longest = max(len(result.applied_rules) for _, _, result in rows)
     fig, ax = plt.subplots(figsize=(min(3 + 0.45 * longest, 14), 0.75 * len(rows) + 0.6))
     for row, (name, strategy, result) in enumerate(rows):
         y = len(rows) - row
         rules = result.applied_rules
-        label = f"{ALGORITHM_LABELS[name]} {SHORT[strategy]}"
+        color = STRATEGY_COLORS[strategy]
         weight = "bold" if name == algorithm else "normal"
-        ax.text(-3.6, y, label, ha="right", va="center", color=colors[strategy], fontweight=weight, fontsize=10)
-        count = f"{len(rules)} · custo {result.solution_cost}" if result.outcome.is_success else theme.outcome_label(result.outcome).lower()
-        ax.text(-0.3, y, count, ha="right", va="center", fontweight="bold", fontsize=10, color="#0b0b0b")
+        ax.text(-3.6, y, label(name, strategy), ha="right", va="center", color=color, fontweight=weight, fontsize=10)
+        count = str(len(rules)) if result.outcome.is_success else theme.outcome_label(result.outcome).lower()
+        ax.text(-0.3, y, count, ha="right", va="center", fontweight="bold", fontsize=10, color=BLACK)
         if rules:
-            ax.plot(range(len(rules)), [y] * len(rules), color="#c5c7cc", linewidth=1, zorder=1)
+            ax.plot(range(len(rules)), [y] * len(rules), color=LINE_GRAY, linewidth=1, zorder=1)
         for position, rule_id in enumerate(rules):
             last = position == len(rules) - 1
-            ax.scatter(position, y, s=60, color="#1baf7a" if last else colors[strategy], zorder=2)
+            ax.scatter(position, y, s=60, color=GOAL_COLOR if last else color, zorder=2)
             ax.text(position, y + 0.28, rule_id, ha="center", fontsize=7, color=MUTED)
     ax.set_xlim(-7.5, longest)
     ax.set_ylim(0.3, len(rows) + 0.7)
     ax.axis("off")
-    ax.set_title("caminhos encontrados em P1 (com poda): movimentos · custo", loc="left", fontsize=10, color=INK)
+    ax.set_title("caminhos encontrados em P1 (com poda) e o número de movimentos", loc="left", fontsize=10, color=INK)
     plt.show()
 
 
+def _winners(solved, measure, unit):
+    best = min(measure(result) for _, result, _ in solved)
+    names = "; ".join(text for text, result, _ in solved if measure(result) == best)
+    return f"{names} ({unit} {best})" if unit else f"{names} ({best})"
+
+
 def expanded_chart(algorithm):
-    bars = []
-    for prune in (True, False):
-        for strategy in SLIDE_STRATEGIES:
-            result = solve(algorithm, strategy, prune)
-            label = f"{ALGORITHM_LABELS[algorithm]} {SHORT[strategy]} {'com' if prune else 'sem'} poda"
-            bars.append((label, result, algorithm))
-    for name in _charted(algorithm):
-        if name == algorithm:
-            continue
-        for strategy in SLIDE_STRATEGIES:
-            bars.append((f"{ALGORITHM_LABELS[name]} {SHORT[strategy]} com poda", solve(name, strategy), name))
-    finished = [bar for bar in bars if bar[1].outcome is not Outcome.CUTOFF]
-    finished.sort(key=lambda bar: bar[1].metrics.nodes_visited)
+    bars = [
+        (label(algorithm, strategy, prune=prune), solve(algorithm, strategy, prune), algorithm)
+        for prune in (True, False)
+        for strategy in SLIDE_STRATEGIES
+    ]
+    bars.extend(
+        (label(name, strategy, prune=True), solve(name, strategy), name)
+        for name in _charted(algorithm)
+        if name != algorithm
+        for strategy in SLIDE_STRATEGIES
+    )
+    finished = sorted((bar for bar in bars if bar[1].outcome is not Outcome.CUTOFF), key=lambda bar: bar[1].metrics.nodes_visited)
     fig, ax = plt.subplots(figsize=(9, 0.4 * len(finished) + 1))
     shown = ax.barh(
-        [label for label, _, _ in finished],
+        [text for text, _, _ in finished],
         [result.metrics.nodes_visited for _, result, _ in finished],
         color=[ALGORITHM_COLORS[name] for _, _, name in finished],
         height=0.7,
@@ -559,16 +704,12 @@ def expanded_chart(algorithm):
     ax.set_title("nós expandidos em P1", loc="left")
     ax.grid(axis="y", visible=False)
     plt.show()
-    for label, result, _ in bars:
+    for text, result, _ in bars:
         if result.outcome is Outcome.CUTOFF:
-            print(f"{label}: fora do gráfico, gira até o limite de {result.metrics.iterations} iterações.")
+            print(f"{text}: fora do gráfico, gira até o limite de {result.metrics.iterations} iterações.")
     solved = [bar for bar in finished if bar[1].outcome.is_success]
-    cheapest = min(result.solution_cost for _, result, _ in solved)
-    print("Menor custo:", "; ".join(label for label, result, _ in solved if result.solution_cost == cheapest), f"(custo {cheapest})")
-    shortest = min(result.solution_length for _, result, _ in solved)
-    print("Menor nível:", "; ".join(label for label, result, _ in solved if result.solution_length == shortest), f"(nível {shortest})")
-    fewest = min(result.metrics.nodes_visited for _, result, _ in solved)
-    print("Menos nós expandidos:", "; ".join(label for label, result, _ in solved if result.metrics.nodes_visited == fewest), f"({fewest})")
+    print("Menor nível:", _winners(solved, lambda result: result.solution_length, "nível"))
+    print("Menos nós expandidos:", _winners(solved, lambda result: result.metrics.nodes_visited, ""))
 
 
 SYMBOLS = {
@@ -577,8 +718,6 @@ SYMBOLS = {
     "m": ("profundidade máxima", "até onde o caminho desce"),
     "V": ("vértices", "os estados possíveis"),
     "E": ("arestas", "movimentos entre estados"),
-    "C*": ("custo ótimo", "custo da solução mais barata"),
-    "ε": ("menor custo de regra", "a regra mais barata"),
 }
 
 
@@ -591,32 +730,26 @@ def _max_depths(algorithm):
     return " · ".join(f"{solve(algorithm, strategy).metrics.max_depth} no {SHORT[strategy]}" for strategy in SLIDE_STRATEGIES)
 
 
-def complexity_values(algorithm, symbols):
+def complexity_values(algorithm, symbols=tuple(SYMBOLS)):
     states = all_states()
     loose = solve("breadth_first", "ascending", False)
     expanded = [step.state for step in loose.trace.of_event(TraceEvent.VISIT)]
     values = {
-        "b": f"cerca de {sum(len(successors(state)) for state in expanded) / len(expanded):.1f}".replace(".", ","),
+        "b": f"cerca de {br(sum(len(successors(state)) for state in expanded) / len(expanded), 1)}",
         "d": str(solve("breadth_first", "ascending").solution_length),
         "m": _max_depths(algorithm),
         "V": str(len(states)),
         "E": str(sum(len(successors(state)) for state in states) // 2),
-        "C*": str(solve("ordered", "ascending").solution_cost),
-        "ε": str(min(rule.cost(state) for state in states for rule in RULES if rule.is_applicable(state))),
     }
     return pd.DataFrame(
         [{"Símbolo": symbol, "Nome": SYMBOLS[symbol][0], "O que é": SYMBOLS[symbol][1], "Em P1": values[symbol]} for symbol in symbols]
     ).set_index("Símbolo")
 
 
-def _stat(value):
-    return theme.ABSENT if value is None else f"{value.mean:.2f} / {value.median:g}"
-
-
 def _bold_rows(frame, algorithm):
-    label = ALGORITHM_LABELS[algorithm]
+    name = ALGORITHM_LABELS[algorithm]
     return frame.style.apply(
-        lambda row: ["font-weight: bold" if row["Algoritmo"] == label else "" for _ in row],
+        lambda row: ["font-weight: bold" if row["Algoritmo"] == name else "" for _ in row],
         axis=1,
     ).hide(axis="index")
 
@@ -630,13 +763,12 @@ def p1_comparison(algorithm=None):
                 "Estratégia": STRATEGY_LABELS[row.result.strategy],
                 LABELS["outcome"]: theme.outcome_label(row.result.outcome),
                 LABELS["moves"]: row.result.solution_length,
-                LABELS["cost"]: row.result.solution_cost,
                 LABELS["iterations"]: row.result.metrics.iterations,
                 LABELS["nodes_generated"]: row.result.metrics.nodes_generated,
             }
             for row in p1_report().problems[0].leaderboard.rows
         ]
-    ).astype({LABELS["moves"]: "Int64", LABELS["cost"]: "Int64"})
+    ).astype({LABELS["moves"]: "Int64"})
     return frame if algorithm is None else _bold_rows(frame, algorithm)
 
 
@@ -648,278 +780,14 @@ def goals_comparison(algorithm=None):
                 "Estratégia": STRATEGY_LABELS[row.strategy],
                 "Sucessos": f"{row.successes}/{row.runs}",
                 "Impasses": row.deadlocks,
-                LABELS["moves"]: _stat(row.moves),
-                LABELS["cost"]: _stat(row.cost),
-                LABELS["iterations"]: _stat(row.iterations),
-                LABELS["nodes_generated"]: _stat(row.nodes_generated),
+                LABELS["moves"]: render_stat(row.moves),
+                LABELS["iterations"]: render_stat(row.iterations),
+                LABELS["nodes_generated"]: render_stat(row.nodes_generated),
             }
             for row in goals_report().summary.rows
         ]
     )
     return frame if algorithm is None else _bold_rows(frame, algorithm)
-
-
-def cost_table():
-    return pd.DataFrame(
-        [
-            {
-                "Regra": rule.id,
-                "Move de": rule.origin.name,
-                "Para": rule.destination.name,
-                "Distância": rule.distance,
-                **{
-                    f"{theme.disk_name(disk).lower()} (peso {DISK_WEIGHTS[disk]})": MOVE_COST + DISK_WEIGHTS[disk] * rule.distance
-                    for disk in Disk
-                },
-            }
-            for rule in RULES
-        ]
-    ).set_index("Regra")
-
-
-def explain_cost(rule_id, state=INITIAL_STATE):
-    rule = RULE_BY_ID[rule_id]
-    disk = state[rule.origin][-1]
-    weight = DISK_WEIGHTS[disk]
-    print(
-        f"{rule.id} em {compact(state)}: leva o {theme.disk_name(disk).lower()} (peso {weight}) "
-        f"de {rule.origin.name} para {rule.destination.name} (distância {rule.distance})"
-    )
-    print(f"custo = {MOVE_COST} + {weight} × {rule.distance} = {rule.cost(state)}")
-
-
-def effort_range():
-    efforts = [rule.cost(state) - MOVE_COST for state in all_states() for rule in RULES if rule.is_applicable(state)]
-    print(f"esforço por jogada (peso × distância): de {min(efforts)} a {max(efforts)}")
-    print(f"custo por jogada: de {MOVE_COST + min(efforts)} a {MOVE_COST + max(efforts)}")
-
-
-def _with_steps(result):
-    path = result.solution_path
-    steps = [f"{child.rule.id}({child.cost - parent.cost})" for parent, child in zip(path, path[1:])]
-    return " ".join(steps)
-
-
-def show_hop(before, rule_id, title=""):
-    state = INITIAL_STATE
-    for previous in before:
-        state = RULE_BY_ID[previous].apply(state)
-    rule = RULE_BY_ID[rule_id]
-    after = rule.apply(state)
-    disk = state[rule.origin][-1]
-    if title:
-        print(title)
-    print(
-        side_by_side(
-            [
-                f"{compact(state)}\\n\\n{state_render.render_pegs(state)}",
-                f"\\n\\n\\n  —{rule.id}→",
-                f"{compact(after)}\\n\\n{state_render.render_pegs(after)}",
-            ]
-        )
-    )
-    print(
-        f"\\n{rule.id} leva o {theme.disk_name(disk).lower()} (peso {DISK_WEIGHTS[disk]}) de {rule.origin.name} para "
-        f"{rule.destination.name} (distância {rule.distance}): {MOVE_COST} + {DISK_WEIGHTS[disk]} × {rule.distance} = {rule.cost(state)}\\n"
-    )
-
-
-def compare_with_breadth(goal_id, strategy):
-    problem = next(p for p in goals_report().problems if p.problem_id == goal_id)
-    rows = []
-    for name in ("breadth_first", "ordered"):
-        result = next(r for r in problem.results if r.algorithm == name and r.strategy == strategy)
-        rows.append(
-            {
-                "Algoritmo": ALGORITHM_LABELS[name],
-                "Caminho (custo de cada jogada)": _with_steps(result),
-                "Movimentos": result.solution_length,
-                "Custo": result.solution_cost,
-            }
-        )
-    breadth_cost = rows[0]["Custo"]
-    for row in rows:
-        row["Melhoria em relação à largura"] = f"{100 * (breadth_cost - row['Custo']) / breadth_cost:.1f}%".replace(".", ",")
-    print(f"{goal_id}: de {compact(problem.initial_state)} até {compact(problem.goal_state)}, ordem {STRATEGY_LABELS[strategy]}")
-    return pd.DataFrame(rows).set_index("Algoritmo")
-
-
-class PricedRule:
-    def __init__(self, rule, price):
-        self.rule = rule
-        self.price = price
-
-    id = property(lambda self: self.rule.id)
-    origin = property(lambda self: self.rule.origin)
-    destination = property(lambda self: self.rule.destination)
-    distance = property(lambda self: self.rule.distance)
-
-    def is_applicable(self, state):
-        return self.rule.is_applicable(state)
-
-    def apply(self, state):
-        return self.rule.apply(state)
-
-    def cost(self, state):
-        return self.price(state, self.rule)
-
-
-def _arm(state, rule):
-    lift = CAPACITIES[rule.origin] - len(state[rule.origin]) + 1
-    lower = CAPACITIES[rule.destination] - len(state[rule.destination])
-    return lift + rule.distance + lower
-
-
-def _weight(state, rule):
-    return DISK_WEIGHTS[state[rule.origin][-1]]
-
-
-COST_MODELS = {
-    "uniforme (1 por jogada)": lambda state, rule: 1,
-    "distância (1 ou 2)": lambda state, rule: rule.distance,
-    "distância² (1 ou 4)": lambda state, rule: rule.distance ** 2,
-    "braço físico (sobe + anda + desce)": _arm,
-    "peso × distância, sem o 10": lambda state, rule: _weight(state, rule) * rule.distance,
-    "10 + peso do disco": lambda state, rule: 10 + _weight(state, rule),
-    "10 + peso × distância (escolhido)": lambda state, rule: rule.cost(state),
-}
-
-
-def _optimal_counts(source, price):
-    dist, count, done = {source: 0}, {source: 1}, set()
-    heap, pushed = [(0, 0, source)], 1
-    while heap:
-        cost, _, state = heapq.heappop(heap)
-        if state in done:
-            continue
-        done.add(state)
-        for rule in RULES:
-            if not rule.is_applicable(state):
-                continue
-            nxt, new = rule.apply(state), cost + price(state, rule)
-            if nxt not in dist or new < dist[nxt]:
-                dist[nxt], count[nxt] = new, count[state]
-                heapq.heappush(heap, (new, pushed, nxt))
-                pushed += 1
-            elif new == dist[nxt]:
-                count[nxt] += count[state]
-    return count
-
-
-def _study(models):
-    states = all_states()
-    pairs = [(s, g) for s in states for g in states if s != g]
-    shortest = {(s, g): shortest_distance(s, g) for s, g in pairs}
-    breadth = {
-        (s, g, name): BreadthFirstSearch(SearchTree(), STRATEGY_REGISTRY[name]).solve(Problem("PAR", g, initial=s))
-        for s, g in pairs
-        for name in SLIDE_STRATEGIES
-    }
-    breadth_generated = sum(result.metrics.nodes_generated for result in breadth.values()) / len(breadth)
-    rows = []
-    for label, price in models:
-        rules = tuple(PricedRule(rule, price) for rule in RULES)
-
-        def path_cost(state, rule_ids):
-            total = 0
-            for rule_id in rule_ids:
-                rule = RULE_BY_ID[rule_id]
-                total += price(state, rule)
-                state = rule.apply(state)
-            return total
-
-        runs = minimal = cheaper = unique = depends = swaps = generated_total = extra_moves = 0
-        savings = []
-        for s in states:
-            counts = _optimal_counts(s, price)
-            for g in states:
-                if g == s:
-                    continue
-                unique += counts[g] == 1
-                paths = set()
-                for name in SLIDE_STRATEGIES:
-                    result = OrderedSearch(SearchTree(rules), STRATEGY_REGISTRY[name]).solve(Problem("PAR", g, initial=s))
-                    generated = [step.state for step in result.trace.of_event(TraceEvent.GENERATE)]
-                    reference = breadth[(s, g, name)]
-                    reference_cost = path_cost(s, reference.applied_rules)
-                    runs += 1
-                    minimal += result.solution_length == shortest[(s, g)]
-                    cheaper += result.solution_cost < reference_cost
-                    swaps += len(generated) - len(set(generated))
-                    generated_total += result.metrics.nodes_generated
-                    extra_moves += result.solution_length - reference.solution_length
-                    savings.append((reference_cost - result.solution_cost) / reference_cost)
-                    paths.add(result.applied_rules)
-                depends += len(paths) > 1
-        rows.append(
-            {
-                "Modelo de custo": label,
-                "Mínimo de movimentos": 100 * minimal / runs,
-                "Mais barato que a largura": 100 * cheaper / runs,
-                "Ótimo único": 100 * unique / len(pairs),
-                "Caminho muda com a estratégia": 100 * depends / len(pairs),
-                "Trocas de nó": swaps,
-                "Economia média de custo": 100 * sum(savings) / len(savings),
-                "Maior economia": 100 * max(savings),
-                "Nós gerados vs largura": 100 * (generated_total / runs - breadth_generated) / breadth_generated,
-                "Trocas por execução": swaps / runs,
-                "Movimentos a mais": extra_moves / runs,
-            }
-        )
-    return pd.DataFrame(rows).set_index("Modelo de custo")
-
-
-@cache
-def cost_study():
-    return _study(COST_MODELS.items())
-
-
-def _path_cost(state, rule_ids, price):
-    total = 0
-    for rule_id in rule_ids:
-        rule = RULE_BY_ID[rule_id]
-        total += price(state, rule)
-        state = rule.apply(state)
-    return total
-
-
-def _long_hops(state, rule_ids):
-    hops = []
-    for rule_id in rule_ids:
-        rule = RULE_BY_ID[rule_id]
-        if rule.distance == 2:
-            hops.append(f"{rule.id} leva o {theme.disk_name(state[rule.origin][-1]).lower()}")
-        state = rule.apply(state)
-    return ", ".join(hops)
-
-
-def distance_example(goal_id="G17", paths=(("R1", "R2", "R3", "R5"), ("R2", "R1", "R5", "R3"))):
-    problem = next(p for p in goals_report().problems if p.problem_id == goal_id)
-    weight_only = COST_MODELS["10 + peso do disco"]
-    chosen = COST_MODELS["10 + peso × distância (escolhido)"]
-    print(f"{goal_id}: de {compact(problem.initial_state)} até {compact(problem.goal_state)}")
-    return pd.DataFrame(
-        [
-            {
-                "Caminho": " ".join(path),
-                "Viagens longas (H1 ↔ H3)": _long_hops(problem.initial_state, path),
-                "Custo com 10 + peso": _path_cost(problem.initial_state, path, weight_only),
-                "Custo com 10 + peso × distância": _path_cost(problem.initial_state, path, chosen),
-            }
-            for path in paths
-        ]
-    ).set_index("Caminho")
-
-
-def distance_tiebreak(goal_id="G17"):
-    problem = next(p for p in goals_report().problems if p.problem_id == goal_id)
-    rows = []
-    for label in ("10 + peso do disco", "10 + peso × distância (escolhido)"):
-        rules = tuple(PricedRule(rule, COST_MODELS[label]) for rule in RULES)
-        for name in SLIDE_STRATEGIES:
-            result = OrderedSearch(SearchTree(rules), STRATEGY_REGISTRY[name]).solve(Problem("PAR", problem.goal_state, initial=problem.initial_state))
-            rows.append({"Custo": label, "Estratégia": STRATEGY_LABELS[name], "Caminho achado": " ".join(result.applied_rules), "Custo do caminho": result.solution_cost})
-    return pd.DataFrame(rows).set_index(["Custo", "Estratégia"])
 
 
 def show_dot(source):
@@ -931,6 +799,4 @@ def show_dot(source):
 
 def show_trace(result):
     print(trace_render.render_trace(result.trace))
-""",
-    hidden=True,
-)
+"""

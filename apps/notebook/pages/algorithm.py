@@ -14,17 +14,25 @@ RULE_MODULES = (
     "core/rules/moves.py",
     "core/rules/domain/catalog.py",
 )
-STRATEGY_MODULES = (
-    "core/rules/strategies/ascending.py",
-    "core/rules/strategies/descending.py",
-)
+STRATEGY_MODULES = ("core/rules/strategies/canonical.py",)
+HEURISTIC_MODULES = ("core/domain/heuristic.py",)
 SLIDE_STRATEGIES = (("ascending", "crescente"), ("descending", "decrescente"))
+COMPLEXITY_HEADER = ("Algoritmo", "Tempo", "Memória", "Solução", "Por quê")
+
+ComplexityRow = tuple[str, str, str, str, str]
 
 
 @dataclass(frozen=True, slots=True)
 class AlgorithmSection:
+    """Uma seção do notebook e os dados do algoritmo que as funções de
+    apresentação usam: rótulo, cor, como desenhar as listas e a fronteira."""
+
     title: str
     name: str
+    label: str
+    color: str
+    list_mode: str
+    complete: bool
     module: str
     subtitle: str
     idea: str
@@ -36,21 +44,25 @@ class AlgorithmSection:
     pseudocode: str
     path_strategy: str
     path_note: str
-    complexity: str
+    complexity: tuple[ComplexityRow, ...]
     symbols: tuple[str, ...]
     conclusion: str
     flowchart: str
     no_prune_limit: int | None = None
     frontier: str | None = None
+    frontier_class: str | None = None
+    uses_heuristic: bool = False
     shows_frontier: bool = False
     frontier_demo: bool = False
-    cost_cells: tuple[Cell, ...] = ()
+    compared_with: tuple[str, ...] = ()
+    rule_cells: tuple[Cell, ...] = ()
     goals_cells: tuple[Cell, ...] = ()
 
 
-FLOW_STYLE = """  rankdir=TB; fontname="Helvetica"; bgcolor="transparent";
-  node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", fillcolor="#ffffff", color="#333333"];
-  edge [fontname="Helvetica", fontsize=10, color="#333333"];"""
+# Os fluxogramas usam a fonte e as cores de `theme`, preenchidas no notebook.
+FLOW_STYLE = """  rankdir=TB; fontname="%(font)s"; bgcolor="transparent";
+  node [fontname="%(font)s", fontsize=11, shape=box, style="rounded,filled", fillcolor="%(fill)s", color="%(line)s"];
+  edge [fontname="%(font)s", fontsize=10, color="%(line)s"];"""
 
 RULES_LIST = "\n".join(
     f"    R{index}: mover o disco do topo da {origin} para a {destination}."
@@ -64,6 +76,10 @@ PRUNE_FLAG = "**poda** vem de `--no-prune`: desligada, a linha da poda não roda
 IRREVOCABLE_SECTION = AlgorithmSection(
     title="Busca irrevogável",
     name="irrevocable",
+    label="Irrevogável",
+    color="#2a78d6",
+    list_mode="single",
+    complete=False,
     module="core/algorithms/irrevocable/algorithm.py",
     subtitle="Um caminho só: a regra preferida da estratégia é aplicada e as outras são esquecidas.",
     idea="""**Aplique a primeira regra válida e siga em frente, sem guardar alternativas.**
@@ -93,24 +109,36 @@ Não há fila nem pilha: ABERTOS tem no máximo um nó, o filho que acabou de se
         nó = aplica a primeira regra em nó""",
     path_strategy="ascending",
     path_note="Com `descending` a busca termina em impasse na 3ª iteração e não há caminho. O caminho abaixo é o da ordem crescente: chega, mas com 14 movimentos, quando o ótimo tem 3.",
-    complexity="""| Algoritmo | Tempo | Memória | Solução | Por quê |
-|---|---|---|---|---|
-| **Irrevogável sem poda** | não termina | O(1) | pode não achar | pode girar num ciclo para sempre |
-| **Irrevogável com poda** | O(b·m²) | O(m) | pode não achar | um nó por iteração, no máximo m; cada regra é comparada com o caminho |""",
+    complexity=(
+        (
+            "Irrevogável sem poda",
+            "não termina",
+            "O(1)",
+            "pode não achar",
+            "pode girar num ciclo para sempre",
+        ),
+        (
+            "Irrevogável com poda",
+            "O(b·m²)",
+            "O(m)",
+            "pode não achar",
+            "um nó por iteração, no máximo m; cada regra é comparada com o caminho",
+        ),
+    ),
     symbols=("b", "m", "V"),
     conclusion="""## Conclusão
 
 - Em P1, `descending` trava na 3ª iteração: R4 e R5 levam a `H1[V,R,A]`, e de lá as duas regras aplicáveis voltam a estados do caminho. `ascending` chega, mas com 14 movimentos, quando o ótimo tem 3.
-- Nos 36 objetivos, resolve 18 com `ascending` e 3 com `descending`. É o único algoritmo que deixa objetivos sem solução.
+- Nos 36 objetivos, resolve 18 com `ascending` e 3 com `descending`. Com a gulosa, é um dos dois algoritmos que deixam objetivos sem solução.
 - É barata (um nó gerado por iteração), mas não garante solução nem qualidade: a estratégia decide tudo.""",
     flowchart="""digraph flow {
-%s
-  root [label="raiz", shape=oval, fillcolor="#dbe9ff"];
+%(style)s
+  root [label="raiz", shape=oval, fillcolor="%(root)s"];
   goal [label="é o objetivo?", shape=diamond];
-  success [label="SUCESSO", shape=oval, fillcolor="#c6f0c6"];
+  success [label="SUCESSO", shape=oval, fillcolor="%(goal)s"];
   visit [label="visita: regras aplicáveis na ordem da estratégia,\\nmenos as que repetem estado do caminho"];
   left [label="sobrou regra?", shape=diamond];
-  deadlock [label="IMPASSE", shape=oval, fillcolor="#f7c6c6"];
+  deadlock [label="IMPASSE", shape=oval, fillcolor="%(deadlock)s"];
   apply [label="aplica só a primeira e gera o filho"];
   root -> goal;
   goal -> success [label="sim"];
@@ -126,14 +154,19 @@ Não há fila nem pilha: ABERTOS tem no máximo um nó, o filho que acabou de se
 BACKTRACKING_SECTION = AlgorithmSection(
     title="Backtracking",
     name="backtracking",
+    label="Backtracking",
+    color="#eb6834",
+    list_mode="stack",
+    complete=True,
     module="core/algorithms/backtracking/algorithm.py",
     frontier="core/algorithms/backtracking/frontier.py",
+    frontier_class="StackFrontier",
     subtitle="A mesma descida da busca irrevogável, com as alternativas de cada nó guardadas numa pilha.",
     idea="""**Desça enquanto houver regra; sem regra, volte ao ancestral mais próximo que ainda tem alternativa.**
 
 Backtracking: pilha, sai o último que entrou. Afunda num ramo.
 
-O contrato da fronteira fica em `core/search_tree/frontier.py`. Cada algoritmo traz a sua implementação ao lado, na própria pasta: a pilha do backtracking, a fila da largura e a fila por custo da ordenada.""",
+O contrato da fronteira fica em `core/search_tree/frontier.py`. Cada algoritmo traz a sua implementação ao lado, na própria pasta: a pilha do backtracking, a fila da largura e a fila pela heurística da ordenada.""",
     loop="""1. Olha o topo da pilha. É o objetivo? **SUCESSO**.
 2. Primeira vez nele: guarda as regras válidas, na ordem da estratégia, sem as que voltam a um estado do caminho (poda). Lista vazia é impasse.
 3. Ainda tem regra guardada: aplica a próxima e empilha o filho.
@@ -161,10 +194,22 @@ O contrato da fronteira fica em `core/search_tree/frontier.py`. Cada algoritmo t
     FRACASSO""",
     path_strategy="descending",
     path_note="A ordem decrescente, a do docstring do módulo: 22 movimentos para um ótimo de 3, depois de 14 retrocessos.",
-    complexity="""| Algoritmo | Tempo | Memória | Solução | Por quê |
-|---|---|---|---|---|
-| **Backtracking sem poda** | não termina | O(L) | pode não achar | o ciclo cresce a pilha até o limite L de iterações |
-| **Backtracking com poda** | O(bᵐ) | O(m) | a primeira achada | só guarda o caminho atual |""",
+    complexity=(
+        (
+            "Backtracking sem poda",
+            "não termina",
+            "O(L)",
+            "pode não achar",
+            "o ciclo cresce a pilha até o limite L de iterações",
+        ),
+        (
+            "Backtracking com poda",
+            "O(bᵐ)",
+            "O(m)",
+            "a primeira achada",
+            "só guarda o caminho atual",
+        ),
+    ),
     symbols=("b", "m"),
     conclusion="""## Conclusão
 
@@ -172,14 +217,14 @@ O contrato da fronteira fica em `core/search_tree/frontier.py`. Cada algoritmo t
 - Nos 36 objetivos resolve todos, mas com média de 12,81 a 16,5 movimentos, contra 4,14 do ótimo. Com `descending`, a média de iterações é 82,92 e a mediana 21,5: um objetivo passa de 2 mil iterações.
 - Resolve o problema da irrevogável (o impasse vira desvio), mas para no primeiro objetivo que encontra, tenha o caminho o comprimento que tiver.""",
     flowchart="""digraph flow {
-%s
-  root [label="raiz na pilha", shape=oval, fillcolor="#dbe9ff"];
+%(style)s
+  root [label="raiz na pilha", shape=oval, fillcolor="%(root)s"];
   goal [label="topo da pilha\\né o objetivo?", shape=diamond];
-  success [label="SUCESSO", shape=oval, fillcolor="#c6f0c6"];
+  success [label="SUCESSO", shape=oval, fillcolor="%(goal)s"];
   first [label="primeira vez nele?", shape=diamond];
   visit [label="visita e guarda a lista de regras aplicáveis,\\nna ordem da estratégia, sem as que repetem estado do caminho"];
   empty [label="lista vazia?", shape=diamond];
-  deadlock [label="impasse", fillcolor="#f7c6c6"];
+  deadlock [label="impasse", fillcolor="%(deadlock)s"];
   left [label="ainda tem\\nregra guardada?", shape=diamond];
   back [label="retrocesso: sai da pilha,\\no pai volta ao topo"];
   apply [label="tira a próxima, gera o filho e o empilha"];
@@ -205,8 +250,13 @@ O contrato da fronteira fica em `core/search_tree/frontier.py`. Cada algoritmo t
 BREADTH_FIRST_SECTION = AlgorithmSection(
     title="Busca em largura",
     name="breadth_first",
+    label="Largura",
+    color="#1baf7a",
+    list_mode="queue",
+    complete=True,
     module="core/algorithms/breadth_first/algorithm.py",
     frontier="core/algorithms/breadth_first/frontier.py",
+    frontier_class="QueueFrontier",
     subtitle="Torre de Londres: três hastes, três discos. A árvore é varrida nível por nível.",
     idea="""**Analise todos os nós de um nível antes de descer para o próximo.**
 
@@ -243,23 +293,29 @@ Largura: fila, sai o primeiro que entrou. Varre por níveis.""",
     FRACASSO""",
     path_strategy="ascending",
     path_note="3 movimentos. As duas estratégias, com e sem poda, chegam a este mesmo caminho, e ele é o menor possível.",
-    complexity="""| Algoritmo | Tempo | Memória | Solução | Por quê |
-|---|---|---|---|---|
-| **Largura sem poda** | O(bᵈ) | O(bᵈ) | ótima | a fila guarda o nível inteiro |
-| **Largura com poda** | O(V + E) | O(V) | ótima | cada estado entra uma vez |
-| **Backtracking** | O(bᵐ) | O(m) | a primeira achada | só guarda o caminho atual |""",
+    complexity=(
+        (
+            "Largura sem poda",
+            "O(bᵈ)",
+            "O(bᵈ)",
+            "ótima",
+            "a fila guarda o nível inteiro",
+        ),
+        ("Largura com poda", "O(V + E)", "O(V)", "ótima", "cada estado entra uma vez"),
+    ),
+    compared_with=("backtracking",),
     symbols=("b", "d", "m", "V", "E"),
     conclusion="""## Conclusão
 
 - Em P1 as duas estratégias acham R4, R1, R1: 3 movimentos, o ótimo. A estratégia só muda a ordem dentro de um nível e, com ela, o número de iterações.
-- Nos 36 objetivos acha sempre o mínimo de movimentos (média 4,14). No custo, passa do menor em 9 das 72 execuções, porque não olha o custo das regras.
-- É a referência de comprimento para os outros algoritmos. Em custo, a referência é a busca ordenada.""",
+- Nos 36 objetivos acha sempre o mínimo de movimentos (média 4,14). Como toda jogada custa 1, é também o menor custo.
+- É a referência de comprimento para os outros algoritmos. O preço é o esforço: 18,5 iterações em média, contra 7,44 da busca ordenada.""",
     flowchart="""digraph flow {
-%s
-  root [label="raiz na fila", shape=oval, fillcolor="#dbe9ff"];
+%(style)s
+  root [label="raiz na fila", shape=oval, fillcolor="%(root)s"];
   pop [label="tira o primeiro da fila"];
   goal [label="é o objetivo?", shape=diamond];
-  success [label="SUCESSO", shape=oval, fillcolor="#c6f0c6"];
+  success [label="SUCESSO", shape=oval, fillcolor="%(goal)s"];
   visit [label="visita: regras aplicáveis na ordem da estratégia,\\nmenos as que levam a um estado já gerado por qualquer ramo"];
   apply [label="aplica todas e coloca os filhos no fim da fila"];
   root -> pop;
@@ -272,75 +328,25 @@ Largura: fila, sai o primeiro que entrou. Varre por níveis.""",
     frontier_demo=True,
 )
 
-COST_CELLS: tuple[Cell, ...] = (
+HEURISTIC_CELLS: tuple[Cell, ...] = (
     markdown(
-        """## A regra de custo
+        """## A heurística: discos mal posicionados
 
-**custo = 10 + peso do disco × distância**
+Toda jogada custa 1, então o custo de um nó é só a sua profundidade. Quem ordena ABERTOS é a heurística **h**: uma estimativa de quantos movimentos ainda faltam. Um disco está **bem posicionado** quando está na haste e na altura do objetivo e todos os discos abaixo dele também estão. Cada disco contribui com o mínimo de movimentos que ainda precisa fazer:
 
-| Parte | Valor | Por quê |
+| Situação do disco | Contribui | Por quê |
 |---|---|---|
-| custo por jogada | 10 | toda jogada conta, e conta mais que o esforço |
-| distância | 1 entre hastes vizinhas; 2 de H1 para H3 | o disco anda mais quando pula a haste do meio |
-| peso do disco | verde 1, vermelho 2, azul 3 | carregar um disco mais pesado custa mais |
+| bem posicionado | 0 | não precisa sair dali |
+| em outra haste | 1 | pode chegar ao destino com um movimento |
+| na haste certa, mas mal posicionado | 2 | precisa sair e voltar |
 
-O custo de um nó é a soma das regras do caminho desde a raiz. A tabela dá o custo de cada regra conforme o disco que está no topo da origem."""
-    ),
-    code("cost_table()"),
-    code('explain_cost("R4")'),
-    markdown(
-        """### 1. Dez por jogada: menos movimentos vem primeiro
+**h(estado)** é a soma dos três discos. Nunca passa do número de movimentos que falta (é admissível): cada movimento leva um disco só.
 
-O esforço de uma jogada (peso × distância) vai de 1 a 6; o 10 fixo pesa mais. Em todos os 1.260 pares início → objetivo, o caminho mais barato é sempre um dos de menos movimentos: a ordenada não troca movimentos por esforço. É o que a Torre de Londres mede, o número de movimentos.
-
-**Por que é boa:** sem o 10, só com peso × distância, a ordenada passa do mínimo de movimentos em 3,7% das execuções."""
+O código do projeto:"""
     ),
-    code("effort_range()"),
-    code(
-        'cost_study().loc[["peso × distância, sem o 10", "10 + peso × distância (escolhido)"], ["Mínimo de movimentos"]].round(1)'
-    ),
-    markdown(
-        """### 2. Distância: a viagem longa fica com o disco leve
-
-Hastes vizinhas (H1 ↔ H2, H2 ↔ H3) valem 1; H1 ↔ H3, que pula a do meio, vale 2. O esforço de uma jogada é **peso × distância**, como o trabalho na física (força × deslocamento): carregar o azul por duas hastes custa o dobro de carregá-lo por uma.
-
-**O que ela faz:** o peso diz *qual* disco se move; a distância diz *quanto* ele anda. Sem ela, dois caminhos que movem os mesmos discos o mesmo número de vezes empatam, e quem decide é a ordem das regras. Com ela, vence o caminho em que a viagem longa fica com o disco mais leve.
-
-Exemplo, objetivo RV / A / –: os dois caminhos têm 4 movimentos e fazem duas viagens longas. Só com o peso, empatam em 46; com a distância, o que leva o verde nas viagens longas custa 48 e o que leva o vermelho custa 50."""
-    ),
-    code(
-        'show_hop(("R1",), "R2", "R1 R2 R3 R5: o verde faz a viagem longa")\nshow_hop((), "R2", "R2 R1 R5 R3: o vermelho faz a viagem longa")'
-    ),
-    code("distance_example()"),
-    code("distance_tiebreak()"),
-    markdown(
-        """**Só com o peso:** empate em 46. A crescente acha o primeiro, a decrescente acha o segundo.
-
-**Com a distância:** as duas estratégias acham o primeiro (48), o do disco leve."""
-    ),
-    markdown(
-        """### 3. Peso do disco: o azul pesa mais
-
-Pesos: verde 1 · vermelho 2 · azul 3. Objetivo VA / R / –, ordem decrescente: os dois fazem 3 movimentos."""
-    ),
-    code(
-        'show_hop(("R4", "R1"), "R5", "Largura: R4 R1 R5, o azul anda duas hastes")\nshow_hop(("R2",), "R3", "Ordenada: R2 R3 R6, o azul anda uma haste")'
-    ),
-    code('compare_with_breadth("G11", "descending")'),
-    markdown(
-        "Total: 13 + 12 + 16 = **41** na largura, 14 + 13 + 12 = **39** na ordenada. Em média, nos 1.260 pares, a ordenada sai **0,4%** mais barata que a largura."
-    ),
-    code(
-        'cost_study().loc[["10 + peso × distância (escolhido)"], ["Economia média de custo"]].round(1)'
-    ),
-    markdown(
-        """### Ganho real: menos de 0,5% de custo
-
-Economia média: quanto o caminho da ordenada custa a menos que o da largura, em relação à largura, nos 1.260 pares início → objetivo e nas duas estratégias."""
-    ),
-    code(
-        'cost_study().loc[["distância (1 ou 2)", "10 + peso do disco", "10 + peso × distância (escolhido)"], ["Economia média de custo", "Maior economia", "Nós gerados vs largura", "Trocas por execução", "Movimentos a mais"]].round(2)'
-    ),
+    *(writefile_cell(find(f"{SOURCE_DIR}/{module}")) for module in HEURISTIC_MODULES),
+    code("explain_heuristic()"),
+    code("children_heuristics()"),
 )
 
 GOALS_CELLS: tuple[Cell, ...] = (
@@ -353,91 +359,105 @@ Cada estado do espaço como objetivo, sempre a partir da mesma posição inicial
     ),
     code('goals_boxplot("ordered", "expanded")'),
     markdown(
-        "Na ordenada e na largura, expandidos = iterações − 1: o objetivo sai de ABERTOS, mas não é expandido. Por isso os valores são sempre 0, 1, …, 35."
+        "Na ordenada e na largura, expandidos = iterações − 1: o objetivo sai de ABERTOS, mas não é expandido."
     ),
     code('goals_stats("ordered", "expanded")'),
     markdown("### Iterações nos 36 objetivos"),
     code('goals_boxplot("ordered", "iterations")'),
     markdown(
-        "Com poda, cada estado sai de ABERTOS uma vez, numa ordem que não depende do objetivo: o objetivo i é achado na posição i dessa ordem. Nos 36 objetivos, as iterações são sempre 1, 2, …, 36, só embaralhadas, para qualquer custo."
+        "Na largura, cada estado sai de ABERTOS uma vez, numa ordem que não depende do objetivo: nos 36 objetivos as iterações são sempre 1, 2, …, 36, só embaralhadas. Na ordenada a ordem depende do objetivo, porque a heurística é medida em relação a ele, e a busca vai mais direto: por isso a caixa dela fica à esquerda da largura."
     ),
     code('goals_stats("ordered", "iterations")'),
     markdown("### Nós gerados nos 36 objetivos"),
     code('goals_boxplot("ordered", "generated")'),
     code('goals_stats("ordered", "generated")'),
-    markdown("### Custo da solução: só P1"),
-    code('p1_cost_chart("ordered")'),
-    markdown("### Custo da solução: todos os 36 objetivos"),
-    code('goals_boxplot("ordered", "cost")'),
-    code('goals_stats("ordered", "cost")'),
 )
 
 ORDERED_SECTION = AlgorithmSection(
     title="Busca ordenada",
     name="ordered",
+    label="Ordenada",
+    color="#eda100",
+    list_mode="priority",
+    complete=True,
     module="core/algorithms/ordered/algorithm.py",
     frontier="core/algorithms/ordered/frontier.py",
-    subtitle="Cada regra tem um custo, e ABERTOS vira uma fila ordenada pelo custo acumulado desde a raiz.",
-    idea="""**Expanda sempre o nó aberto de menor custo acumulado.**
+    frontier_class="PriorityFrontier",
+    subtitle="ABERTOS vira uma fila ordenada pela heurística: sai primeiro o nó que parece mais perto do objetivo.",
+    idea="""**Expanda sempre o nó aberto de menor heurística.**
 
 Largura: fila, sai o primeiro que entrou.
 
-Ordenada: fila por custo, sai o mais barato; no empate, o gerado primeiro. Com o mesmo custo em todas as regras, seria a busca em largura.""",
-    loop="""1. Tira de ABERTOS o nó de menor custo; no empate, o gerado primeiro.
+Ordenada: fila pela heurística h, sai o de menor h; no empate, o gerado primeiro. Toda jogada custa 1, então o custo não ordena a fila: só decide qual de dois nós do mesmo estado fica.""",
+    loop="""1. Tira de ABERTOS o nó de menor heurística; no empate, o gerado primeiro.
 2. É o objetivo? **SUCESSO**.
 3. Não é: coloca o nó em FECHADOS.
-4. Aplica todas as regras válidas, na ordem da estratégia. O custo do filho é o do pai mais o da regra.
-5. Os filhos entram em ABERTOS na posição do seu custo. Volta ao passo 1.
+4. Aplica todas as regras válidas, na ordem da estratégia, e calcula a heurística de cada filho.
+5. Os filhos entram em ABERTOS na posição da sua heurística. Volta ao passo 1.
 
-**ABERTOS**: fila dos nós gerados que ainda não foram analisados, ordenada por custo.
+**ABERTOS**: fila dos nós gerados que ainda não foram analisados, ordenada pela heurística (entre parênteses na tabela).
 
-**FECHADOS**: nós já expandidos. Com poda, o vetor de menor custo cobre ABERTOS e FECHADOS de uma vez.""",
-    strategy_note="Na ordenada a estratégia só desempata irmãos de mesmo custo: decide quem fica na frente em ABERTOS, nunca o custo da solução. Com o custo 10 + peso × distância os empates são raros, e em P1 as duas ordens fazem as mesmas 11 iterações.",
-    root_note="Na raiz, R1 leva o vermelho por uma haste (12), R3 e R4 levam o azul por uma haste (13) e R2 leva o vermelho por duas (14). A fila fica ordenada pelo custo nas duas ordens; a estratégia só decide entre R3 e R4, que empatam em 13.",
-    no_prune="""Sem poda, estados repetidos entram de novo em ABERTOS, cada um com o custo do caminho que o gerou. A busca ainda acha o menor custo, porque só para quando o objetivo sai da fila, mas gera muito mais nós.""",
-    prune="""Técnica de poda da busca ordenada, com o **vetor de menor custo**: toda vez que um nó é gerado,
+**FECHADOS**: nós já expandidos. Com poda, um filho cujo estado já está aqui é descartado.""",
+    strategy_note="Na ordenada a estratégia só desempata irmãos de mesma heurística: decide quem fica na frente em ABERTOS. Em P1 as duas ordens fazem as mesmas 4 iterações e acham o mesmo caminho.",
+    root_note="Em S0 a heurística vale 3. Na raiz, R4 leva a h = 2, R2 e R3 a h = 3 e R1 a h = 4. R4 sai primeiro nas duas ordens; a estratégia só decide entre R2 e R3, que empatam.",
+    no_prune="""Sem poda, estados repetidos entram de novo em ABERTOS. Em P1 a heurística leva direto ao objetivo: 4 iterações, com 12 nós gerados em vez de 9. Nos 36 objetivos, porém, ordenar só pela heurística, sem poda, faz a busca girar entre estados de mesma h: 10 deles chegam ao limite de iterações.""",
+    prune="""Técnica de poda da busca ordenada, com FECHADOS e o **vetor de menor custo** (aqui, o menor número de movimentos até cada estado). Toda vez que um nó é gerado,
 
-- se é a primeira vez que o estado aparece, guarda o estado com o custo atual;
-- se o estado aparece repetido com custo maior ou igual ao do vetor, poda o nó;
-- se aparece com custo menor, atualiza o vetor, tira o nó antigo de ABERTOS e da árvore e inclui o novo.
+- se o estado já foi expandido (está em FECHADOS), poda o nó;
+- se o estado já está em ABERTOS por um caminho de mesmo tamanho ou menor, poda o nó;
+- se o novo caminho é mais curto, tira o nó antigo de ABERTOS e da árvore e inclui o novo.
 
-Com o custo 10 + peso × distância, o terceiro caso aparece em P1: na iteração 9, VA/R/– reaparece por 39 e tira de ABERTOS o nó antigo, de custo 41.""",
+Em P1 o terceiro caso não acontece; nos 36 objetivos ele aparece 2 vezes com `ascending` e 1 com `descending`.""",
     pseudocode="""busca_ordenada(problema, estratégia, poda)
-    ABERTOS = fila por custo com a raiz (custo 0)
+    ABERTOS = fila pela heurística com a raiz
     MENOR_CUSTO = {raiz: 0}
+    FECHADOS = vazio
     enquanto ABERTOS não estiver vazia:
-        nó = tira o de menor custo de ABERTOS (no empate, o mais antigo)
+        nó = tira o de menor h de ABERTOS (no empate, o mais antigo)
         se nó é o objetivo: SUCESSO
         coloca nó em FECHADOS
         para cada regra válida, na ordem da estratégia:
-            custo = custo(nó) + custo(regra)
-            se poda e custo >= MENOR_CUSTO[estado do filho]:
+            custo = custo(nó) + 1
+            se poda e (filho está em FECHADOS ou custo >= MENOR_CUSTO[filho]):
                 descarta a regra
             senão:
                 se o estado do filho está em ABERTOS: tira o nó antigo
                 MENOR_CUSTO[estado do filho] = custo
-                põe o filho em ABERTOS, na posição do custo
+                põe o filho em ABERTOS, na posição de h(filho)
     FRACASSO""",
     path_strategy="ascending",
-    path_note="R4, R1, R1: 13 + 12 + 11 = 36. Levar o azul uma haste custa 13, o vermelho 12 e o verde 11. É o menor custo possível; as duas estratégias, com e sem poda, chegam a este mesmo caminho.",
-    complexity="""| Algoritmo | Tempo | Memória | Solução | Por quê |
-|---|---|---|---|---|
-| **Ordenada sem poda** | O(b^(1 + C*/ε)) | O(b^(1 + C*/ε)) | menor custo | a fila guarda todo nó mais barato que o objetivo, repetido ou não |
-| **Ordenada com poda** | O((V + E) log V) | O(V) | menor custo | cada estado entra uma vez; o heap custa log V por operação |""",
-    symbols=("b", "C*", "ε", "V", "E"),
+    path_note="R4, R1, R1: 3 movimentos, o ótimo. As duas estratégias, com e sem poda, chegam a este mesmo caminho.",
+    complexity=(
+        (
+            "Ordenada sem poda",
+            "pode não terminar",
+            "cresce sem limite",
+            "pode não achar",
+            "sem FECHADOS, gira entre estados de mesma heurística",
+        ),
+        (
+            "Ordenada com poda",
+            "O((V + E) log V)",
+            "O(V)",
+            "não garante a mais curta",
+            "cada estado é expandido uma vez; o heap custa log V por operação",
+        ),
+    ),
+    compared_with=("breadth_first",),
+    symbols=("b", "m", "V", "E"),
     conclusion="""## Conclusão
 
-- Em P1: R4, R1, R1, custo 36, em 11 iterações e 18 nós gerados, com as duas ordens. Houve uma troca de nó: S15 entrou no lugar de S11.
-- Nos 36 objetivos acha sempre o menor custo (média 51,33, a menor de todas) e também o mínimo de movimentos. A média de iterações é 18,5, a mesma da largura.
-- A estratégia só desempata irmãos de mesmo custo: nunca muda o custo da solução.""",
+- Em P1: R4, R1, R1 (3 movimentos, o ótimo) em 4 iterações e 9 nós gerados, com as duas ordens. A largura precisa de 12 a 14 iterações.
+- Nos 36 objetivos resolve todos e acha o mínimo de movimentos em 34 (`ascending`) e 33 (`descending`): média de 4,19 e 4,25 movimentos, contra 4,14 da largura. Em troca, faz 7,44 iterações em média, contra 18,5 da largura.
+- Ordenar só pela heurística não garante o caminho mais curto: a busca segue o nó que parece mais perto do objetivo, não o que andou menos.""",
     flowchart="""digraph flow {
-%s
-  root [label="raiz em ABERTOS", shape=oval, fillcolor="#dbe9ff"];
-  pop [label="tira o de menor custo;\\nno empate, o gerado primeiro"];
+%(style)s
+  root [label="raiz em ABERTOS", shape=oval, fillcolor="%(root)s"];
+  pop [label="tira o de menor heurística;\\nno empate, o gerado primeiro"];
   goal [label="é o objetivo?", shape=diamond];
-  success [label="SUCESSO", shape=oval, fillcolor="#c6f0c6"];
-  visit [label="visita: regras aplicáveis na ordem da estratégia,\\nmenos as que não baixam o menor custo conhecido do estado"];
-  apply [label="aplica todas; se um filho chega mais barato a um estado ainda aberto,\\no nó antigo sai de ABERTOS e da árvore"];
+  success [label="SUCESSO", shape=oval, fillcolor="%(goal)s"];
+  visit [label="visita: regras aplicáveis na ordem da estratégia, menos as que levam\\na estado fechado ou já aberto por um caminho igual ou menor"];
+  apply [label="aplica todas; se um filho chega mais curto a um estado ainda aberto,\\no nó antigo sai de ABERTOS e da árvore"];
   root -> pop;
   pop -> goal;
   goal -> success [label="sim"];
@@ -446,8 +466,91 @@ Com o custo 10 + peso × distância, o terceiro caso aparece em P1: na iteraçã
   apply -> pop;
 }""",
     frontier_demo=True,
-    cost_cells=COST_CELLS,
+    uses_heuristic=True,
+    rule_cells=HEURISTIC_CELLS,
     goals_cells=GOALS_CELLS,
+)
+
+GREEDY_SECTION = AlgorithmSection(
+    title="Busca gulosa",
+    name="greedy",
+    label="Gulosa",
+    color="#8e5bd6",
+    list_mode="single",
+    complete=False,
+    module="core/algorithms/greedy/algorithm.py",
+    subtitle="A descida da irrevogável, guiada pela heurística: cada passo vai para o filho que parece mais perto do objetivo.",
+    idea="""**Aplique a regra que leva ao filho de menor heurística e siga em frente, sem guardar alternativas.**
+
+A mesma descida da irrevogável: ABERTOS tem no máximo um nó e cada passo é definitivo. Muda só a escolha: em vez da primeira regra da estratégia, a que leva ao filho de menor h, a heurística da busca ordenada. Um beco sem saída encerra a busca em IMPASSE.
+
+No código, a gulosa herda o laço da irrevogável e troca só o método que escolhe a regra, `_choose`.""",
+    loop="""1. O estado atual é o objetivo? **SUCESSO**.
+2. Não é: coloca o nó em FECHADOS.
+3. Ordena as regras válidas pela estratégia e descarta as que voltam a um estado do caminho (poda).
+4. Não sobrou regra: **IMPASSE**.
+5. Aplica a regra que leva ao filho de menor heurística; no empate, a primeira da estratégia. O filho vira o estado atual. Volta ao passo 1.
+
+**ABERTOS**: o único filho gerado, que vira o próximo estado atual.
+
+**FECHADOS**: o caminho percorrido. Com poda, serve para não voltar a um estado do caminho.""",
+    strategy_note="Na gulosa a estratégia só desempata filhos de mesma heurística. Ainda assim pode mudar o caminho e o desfecho: nos 36 objetivos, `ascending` resolve 29 e `descending` 28.",
+    root_note="Na raiz, R4 leva a h = 2, o menor: as duas ordens aplicam R4. A irrevogável, sem a heurística, aplicaria R1 com `ascending`.",
+    no_prune="""Sem poda, nada impede a gulosa de voltar a um estado já percorrido. Em P1 a heurística leva direto ao objetivo, em 4 iterações; nos 36 objetivos, porém, a gulosa sem poda gira até o limite de iterações em 12 (`ascending`) e 13 (`descending`) deles. Para caber no notebook, as execuções sem poda abaixo param em 30 iterações.""",
+    prune="""A poda descarta a regra que leva a um estado que já está no caminho, como na irrevogável. Com ela a gulosa nunca repete estado e sempre para. Parar não é chegar: a heurística escolhe o filho que parece melhor agora, e esse caminho pode terminar em IMPASSE.""",
+    pseudocode="""busca_gulosa(problema, estratégia, poda)
+    nó = raiz
+    enquanto verdadeiro:
+        se nó é o objetivo: SUCESSO
+        coloca nó em FECHADOS
+        regras = regras válidas em nó, na ordem da estratégia
+        se poda: descarta as que levam a um estado de FECHADOS
+        se não sobrou regra: IMPASSE
+        nó = aplica a regra de menor h(filho) em nó (no empate, a primeira)""",
+    uses_heuristic=True,
+    path_strategy="ascending",
+    path_note="R4, R1, R1: 3 movimentos, o ótimo, com as duas estratégias. A irrevogável faz 14 movimentos com `ascending` e trava com `descending`.",
+    complexity=(
+        (
+            "Gulosa sem poda",
+            "não termina",
+            "O(1)",
+            "pode não achar",
+            "pode girar num ciclo para sempre",
+        ),
+        (
+            "Gulosa com poda",
+            "O(b·m²)",
+            "O(m)",
+            "pode não achar",
+            "um nó por iteração; h custa O(1) por filho, e cada regra é comparada com o caminho",
+        ),
+    ),
+    compared_with=("irrevocable",),
+    symbols=("b", "m"),
+    conclusion="""## Conclusão
+
+- Em P1: R4, R1, R1 (o ótimo) em 4 iterações e 4 nós gerados, com as duas ordens: o menor esforço entre todos os algoritmos.
+- Nos 36 objetivos resolve 29 (`ascending`) e 28 (`descending`), contra 18 e 3 da irrevogável; o caminho é o mínimo em 20 deles. A média é de 6,0 e 5,33 iterações, contra 7,44 da ordenada.
+- A heurística melhora muito a descida, mas não a garante: sem guardar as alternativas, um passo que parecia bom pode levar a um impasse.""",
+    flowchart="""digraph flow {
+%(style)s
+  root [label="raiz", shape=oval, fillcolor="%(root)s"];
+  goal [label="é o objetivo?", shape=diamond];
+  success [label="SUCESSO", shape=oval, fillcolor="%(goal)s"];
+  visit [label="visita: regras aplicáveis na ordem da estratégia,\\nmenos as que repetem estado do caminho"];
+  left [label="sobrou regra?", shape=diamond];
+  deadlock [label="IMPASSE", shape=oval, fillcolor="%(deadlock)s"];
+  apply [label="aplica a que leva ao filho de menor heurística\\n(no empate, a primeira) e gera o filho"];
+  root -> goal;
+  goal -> success [label="sim"];
+  goal -> visit [label="não"];
+  visit -> left;
+  left -> deadlock [label="não"];
+  left -> apply [label="sim"];
+  apply -> goal;
+}""",
+    no_prune_limit=30,
 )
 
 ALGORITHM_SECTIONS: tuple[AlgorithmSection, ...] = (
@@ -455,7 +558,10 @@ ALGORITHM_SECTIONS: tuple[AlgorithmSection, ...] = (
     BACKTRACKING_SECTION,
     BREADTH_FIRST_SECTION,
     ORDERED_SECTION,
+    GREEDY_SECTION,
 )
+
+SECTION_BY_NAME = {spec.name: spec for spec in ALGORITHM_SECTIONS}
 
 
 def slide_modules() -> tuple[str, ...]:
@@ -465,9 +571,25 @@ def slide_modules() -> tuple[str, ...]:
         *ENGINE_MODULES,
         *RULE_MODULES,
         *STRATEGY_MODULES,
+        *HEURISTIC_MODULES,
         *(spec.module for spec in ALGORITHM_SECTIONS),
         *(spec.frontier for spec in ALGORITHM_SECTIONS if spec.frontier),
     )
+
+
+def complexity_table(rows: tuple[ComplexityRow, ...]) -> str:
+    lines = [COMPLEXITY_HEADER, ("---",) * len(COMPLEXITY_HEADER)]
+    lines.extend((f"**{name}**", *rest) for name, *rest in rows)
+    return "\n".join(f"| {' | '.join(line)} |" for line in lines)
+
+
+def all_complexity_rows() -> tuple[ComplexityRow, ...]:
+    return tuple(row for spec in ALGORITHM_SECTIONS for row in spec.complexity)
+
+
+def _complexity_rows(spec: AlgorithmSection) -> tuple[ComplexityRow, ...]:
+    compared = (SECTION_BY_NAME[name] for name in spec.compared_with)
+    return (*spec.complexity, *(row for other in compared for row in other.complexity))
 
 
 def _writefiles(modules: tuple[str, ...]) -> tuple[Cell, ...]:
@@ -528,7 +650,7 @@ def section(spec: AlgorithmSection, index: int, *, first: bool) -> tuple[Cell, .
     if first:
         cells.append(
             markdown(
-                "O motor que os quatro algoritmos compartilham: testar as regras, ordenar pela estratégia, podar, gerar o filho e contar. Cada algoritmo implementa só o próprio laço, em `_search`."
+                "O motor que todos os algoritmos compartilham: testar as regras, ordenar pela estratégia, podar, gerar o filho e contar. Cada algoritmo implementa só o próprio laço, em `_search`."
             )
         )
         cells.extend(_writefiles(ENGINE_MODULES))
@@ -536,14 +658,14 @@ def section(spec: AlgorithmSection, index: int, *, first: bool) -> tuple[Cell, .
     cells.append(
         markdown(
             "## As regras: seis regras, uma para cada par origem e destino\n\n"
-            "Vale se a origem tem disco e o destino tem espaço. Toda regra tem inversa: aplicar as duas em seguida volta ao mesmo estado."
+            "Vale se a origem tem disco e o destino tem espaço. Toda jogada custa 1. Toda regra tem inversa: aplicar as duas em seguida volta ao mesmo estado."
             f"\n\n{RULES_LIST}"
         )
     )
     if first:
         cells.extend(_writefiles(RULE_MODULES))
     cells.extend((code("rules_table()"), code('show_rule_example("R4")')))
-    cells.extend(spec.cost_cells)
+    cells.extend(spec.rule_cells)
 
     cells.append(
         markdown(
@@ -585,7 +707,7 @@ def section(spec: AlgorithmSection, index: int, *, first: bool) -> tuple[Cell, .
             markdown("## Comparativo: quem explorou menos nós"),
             code(f'expanded_chart("{spec.name}")'),
             *spec.goals_cells,
-            markdown(f"## Complexidade\n\n{spec.complexity}"),
+            markdown(f"## Complexidade\n\n{complexity_table(_complexity_rows(spec))}"),
             code(f'complexity_values("{spec.name}", {spec.symbols!r})'),
             markdown(spec.conclusion),
             *_extras(spec),
@@ -596,18 +718,26 @@ def section(spec: AlgorithmSection, index: int, *, first: bool) -> tuple[Cell, .
 
 def flowcharts() -> Cell:
     entries = "\n".join(
-        f"    {spec.name!r}: r'''{spec.flowchart % FLOW_STYLE}''',"
-        for spec in ALGORITHM_SECTIONS
+        f"    {spec.name!r}: r'''{spec.flowchart}'''," for spec in ALGORITHM_SECTIONS
     )
     return code(
         f"""#@title Fluxogramas
+FLOW_COLORS = {{
+    "font": theme.GRAPH_FONT,
+    "fill": theme.GRAPH_VISITED_FILL,
+    "line": theme.GRAPH_NODE_COLOR,
+    "root": theme.GRAPH_ROOT_FILL,
+    "goal": theme.GRAPH_GOAL_FILL,
+    "deadlock": theme.GRAPH_DEADLOCK_FILL,
+}}
+FLOW_STYLE = r'''{FLOW_STYLE}''' % FLOW_COLORS
 FLOWCHARTS = {{
 {entries}
 }}
 
 
 def show_flowchart(algorithm):
-    show_dot(FLOWCHARTS[algorithm])""",
+    show_dot(FLOWCHARTS[algorithm] % {{**FLOW_COLORS, "style": FLOW_STYLE}})""",
         hidden=True,
     )
 
@@ -622,7 +752,7 @@ def _extras(spec: AlgorithmSection) -> tuple[Cell, ...]:
         markdown("### Comparação em P1, placar lexicográfico"),
         code(f'p1_comparison("{spec.name}")'),
         markdown(
-            "### Comparação nos 36 objetivos\n\nCada métrica: média / mediana; movimentos e custo contam só os sucessos."
+            "### Comparação nos 36 objetivos\n\nCada métrica: média / mediana; movimentos contam só os sucessos."
         ),
         code(f'goals_comparison("{spec.name}")'),
     )

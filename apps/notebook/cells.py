@@ -36,10 +36,9 @@ TITLE = "#@title"
 
 
 def ignore(cell: Cell) -> Cell:
-    if cell.kind == "markdown":
-        head, _, rest = cell.source.partition("\n")
-        return Cell(cell.kind, f"{head} {IGNORE}\n{rest}".rstrip("\n"), cell.hidden)
     head, _, rest = cell.source.partition("\n")
+    if cell.kind == "markdown":
+        return Cell(cell.kind, f"{head} {IGNORE}\n{rest}".rstrip("\n"), cell.hidden)
     if head.startswith(TITLE):
         return Cell(cell.kind, f"{head} {IGNORE}\n{rest}", cell.hidden)
     if head.startswith(WRITEFILE):
