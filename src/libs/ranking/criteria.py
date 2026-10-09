@@ -34,8 +34,9 @@ def nodes_generated(result: SearchResult) -> int:
     return result.metrics.nodes_generated
 
 
-def label(result: SearchResult) -> str:
-    return f"{result.algorithm}:{result.strategy}"
+def combination(result: SearchResult) -> tuple[str, str]:
+    """Algoritmo e estratégia: identifica a execução dentro de uma carta."""
+    return (result.algorithm, result.strategy)
 
 
 @dataclass(frozen=True, slots=True)

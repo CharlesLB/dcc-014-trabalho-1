@@ -6,13 +6,13 @@ from core.search_tree.result import SearchResult
 from libs.ranking import criteria
 
 
-def lexicographic_key(result: SearchResult) -> tuple[int, int, int, int, str]:
+def lexicographic_key(result: SearchResult) -> tuple[int, int, int, int, str, str]:
     return (
         criteria.outcome_rank(result),
         criteria.solution_length(result),
         criteria.iterations(result),
         criteria.nodes_generated(result),
-        criteria.label(result),
+        *criteria.combination(result),
     )
 
 

@@ -9,14 +9,16 @@ from libs.ranking.criteria import Criterion
 MAX_SCORE = 100.0
 
 
-def score_all(results: Sequence[SearchResult]) -> Mapping[str, float]:
+def score_all(
+    results: Sequence[SearchResult],
+) -> Mapping[tuple[str, str], float]:
     if not results:
         return {}
     best = {
         criterion.name: min(criterion.measure(result) for result in results)
         for criterion in criteria.CRITERIA
     }
-    return {criteria.label(result): _score(result, best) for result in results}
+    return {criteria.combination(result): _score(result, best) for result in results}
 
 
 def _score(result: SearchResult, best: Mapping[str, int]) -> float:
@@ -28,9 +30,9 @@ def _score(result: SearchResult, best: Mapping[str, int]) -> float:
 
 
 def _normalise(criterion: Criterion, result: SearchResult, best: int) -> float:
+    # As medidas são inteiros não negativos e `best` é o menor deles; então
+    # `value == best` cobre também o caso `value == 0`.
     value = criterion.measure(result)
     if value == best:
-        return 1.0
-    if value <= 0:
         return 1.0
     return best / value if best > 0 else 1.0 / (1.0 + value)

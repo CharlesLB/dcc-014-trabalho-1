@@ -80,7 +80,7 @@ def build_leaderboard(
         LeaderboardRow(
             position=position,
             result=result,
-            score=scores.get(criteria.label(result)),
+            score=scores.get(criteria.combination(result)),
         )
         for position, result in enumerate(ordered, start=1)
     )
@@ -134,13 +134,13 @@ def _stat(values: Sequence[int]) -> Stat | None:
 
 
 def _sorted_by_score(
-    results: Sequence[SearchResult], scores: Mapping[str, float]
+    results: Sequence[SearchResult], scores: Mapping[tuple[str, str], float]
 ) -> tuple[SearchResult, ...]:
     return tuple(
         sorted(
             results,
             key=lambda result: (
-                -scores[criteria.label(result)],
+                -scores[criteria.combination(result)],
                 lexicographic_key(result),
             ),
         )
