@@ -29,69 +29,6 @@
     filho cujo estado já está em ABERTOS por um caminho de mesmo tamanho ou
     menor também. Se o novo caminho for mais curto, o nó antigo sai de
     ABERTOS e da árvore e o novo entra no lugar.
-
-4. Execução (h entre parênteses)
-
-    Expansão de S0 = ([V, R], [A], []), h 3
-        R1 → S1 = ([V], [A, R], [])      4
-        R2 → S2 = ([V], [A], [R])        3
-        R3 → S3 = ([V, R, A], [], [])    3
-        R4 → S4 = ([V, R], [], [A])      2
-        ABERTOS  = [S4(2), S2(3), S3(3), S1(4)]
-        FECHADOS = [S0]
-
-    Expansão de S4 = ([V, R], [], [A]), h 2
-        R5 → estado de S3, R6 → S0: poda
-        R1 → S5 = ([V], [R], [A])        1
-        ABERTOS  = [S5(1), S2(3), S3(3), S1(4)]
-
-    Expansão de S5 = ([V], [R], [A]), h 1
-        R3 → S4: poda
-        R1 → S6 = ([], [R, V], [A])      0   ← é Sf, mas só entra na fila
-        R5 → S7 = ([V, A], [R], [])      2
-        R6 → S8 = ([V], [R, A], [])      2
-        ABERTOS  = [S6(0), S7(2), S8(2), S2(3), S3(3), S1(4)]
-
-    Chega a vez de S6 = ([], [R, V], [A])
-        ✓ SUCESSO
-
-5. Árvore de busca (heurística entre parênteses)
-
-    S0 ([V,R], [A], [])  (3)
-    ├── R1 → S1 ([V], [A,R], [])  (4)
-    ├── R2 → S2 ([V], [A], [R])  (3)
-    ├── R3 → S3 ([V,R,A], [], [])  (3)
-    └── R4 → S4 ([V,R], [], [A])  (2)
-        └── R1 → S5 ([V], [R], [A])  (1)
-            ├── R1 → S6 ([], [R,V], [A])  (0)   (objetivo)
-            ├── R5 → S7 ([V,A], [R], [])  (2)
-            └── R6 → S8 ([V], [R,A], [])  (2)
-
-6. Caminho solução
-
-    S0 ([V,R], [A], [])   h 3
-     │ R4: azul H2 → H3
-     ↓
-    S4 ([V,R], [], [A])   h 2
-     │ R1: vermelho H1 → H2
-     ↓
-    S5 ([V], [R], [A])    h 1
-     │ R1: verde H1 → H2
-     ↓
-    Sf ([], [R,V], [A])   h 0
-
-    Número de movimentos: 3      Iterações: 4      Gerados: 9
-
-    Com a ordem decrescente: o mesmo caminho, também em 4 iterações. A
-    estratégia só muda a ordem dos irmãos empatados.
-
-7. Conclusão
-
-    A heurística leva direto ao objetivo em P1: 4 iterações, contra 12 a 14
-    da busca em largura. Ordenar só por h não garante o caminho mais curto:
-    nos 36 objetivos, a ordenada acha o mínimo de movimentos em 34 com a
-    ordem crescente e em 33 com a decrescente. Como FECHADOS impede repetir
-    estado e o espaço é conexo, ela sempre encontra uma solução.
 """
 
 from __future__ import annotations

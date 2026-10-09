@@ -21,43 +21,6 @@
     A estratégia ordena as regras válidas e a busca aplica a primeira.
     Não guarda as outras: cada passo é definitivo e não há retorno.
     Uma regra que leva a um estado já percorrido é descartada (poda).
-
-4. Execução com a ordem decrescente R6 → R5 → R4 → R3 → R2 → R1
-
-    Passo 1   S0 = ([V, R], [A], [])
-              válidas em ordem: R4, R3, R2, R1
-              aplica R4 (azul: H2 → H3)
-              ↓
-    Passo 2   S1 = ([V, R], [], [A])
-              válidas em ordem: R6, R5, R1
-              R6 volta a S0: poda.  Aplica R5 (azul: H3 → H1)
-              ↓
-    Passo 3   S2 = ([V, R, A], [], [])
-              válidas em ordem: R2, R1
-              R2 volta a S1: poda.  R1 volta a S0: poda.
-              Nenhuma regra sobrou.
-              ↓
-              ✗ IMPASSE
-
-5. Árvore de busca
-
-    S0 ([V,R], [A], [])
-    └── R4 → S1 ([V,R], [], [A])
-        └── R5 → S2 ([V,R,A], [], [])   (impasse)
-
-6. A mesma carta com a ordem crescente R1 → R2 → R3 → R4 → R5 → R6
-
-    S0 ([V,R],[A],[]) → R1 → R2 → R3 → R3 → R5 → R1 → R1 → R2 → R3 → R3
-       → R5 → R1 → R1 → R2 → Sf ([],[R,V],[A])
-
-    ✓ SUCESSO com 14 movimentos.  O caminho ótimo tem 3.
-
-7. Conclusão
-
-    O caminho nunca repete estado, então a busca sempre para, no máximo
-    depois dos 36 estados. Parar não é chegar: a ordem decrescente termina
-    em impasse e a crescente só chega depois de 14 movimentos.
-    É o único método em que a estratégia decide o desfecho.
 """
 
 from __future__ import annotations
