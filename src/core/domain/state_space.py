@@ -60,29 +60,24 @@ def successors(state: State) -> tuple[tuple[TransitionRule, State], ...]:
 
 
 def reachable_from(source: State) -> frozenset[State]:
-    seen = {source}
-    queue = deque([source])
-    while queue:
-        current = queue.popleft()
-        for _, successor in successors(current):
-            if successor not in seen:
-                seen.add(successor)
-                queue.append(successor)
-    return frozenset(seen)
+    return frozenset(state for state, _ in _breadth_first(source))
 
 
 def shortest_distance(source: State, target: State) -> int | None:
-    if source == target:
-        return 0
+    return next(
+        (depth for state, depth in _breadth_first(source) if state == target), None
+    )
+
+
+def _breadth_first(source: State) -> Iterator[tuple[State, int]]:
+    """Cada estado alcançável a partir de `source`, com a sua distância, em
+    ordem de distância crescente."""
     depths = {source: 0}
     queue = deque([source])
     while queue:
         current = queue.popleft()
+        yield current, depths[current]
         for _, successor in successors(current):
-            if successor in depths:
-                continue
-            depths[successor] = depths[current] + 1
-            if successor == target:
-                return depths[successor]
-            queue.append(successor)
-    return None
+            if successor not in depths:
+                depths[successor] = depths[current] + 1
+                queue.append(successor)
