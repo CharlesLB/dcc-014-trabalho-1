@@ -55,8 +55,7 @@ src/
 │   │   ├── moves.py           R1..R6
 │   │   └── strategies/
 │   │       ├── domain/        contrato e registro
-│   │       ├── ascending.py
-│   │       └── descending.py
+│   │       └── canonical.py   ascending e descending
 │   ├── domain/                estados, invariantes, cartas, enumeração
 │   ├── search_tree/           nó, árvore, contrato da fronteira, caminho, métricas, trace
 │   └── algorithms/
@@ -241,10 +240,9 @@ make graphs
 
 Destaques:
 
-- **Tabela contra os outros algoritmos** com o vencedor de cada critério (custo, nível da solução, iterações, nós gerados e expandidos, pico de ABERTOS, retrocessos) em verde.
-- **Lógica dos custos na busca ordenada**, uma parte por vez: o 10 por jogada; a distância, com o exemplo G17 (dois caminhos de 4 movimentos que empatam em 46 só com o peso e se separam em 48 e 50 com a distância); o peso, com o exemplo G11 (41 na largura contra 39 na ordenada). Cada jogada aparece desenhada com o cálculo do seu custo.
-- **Ganho real do modelo de custo**: nos 1.260 pares, a ordenada sai em média 0,4% mais barata que a largura. O estudo compara os modelos também pela maior economia, nós gerados em relação à largura, trocas de nó por execução e movimentos a mais.
-- **Comparativo nos 36 objetivos** na seção da ordenada: boxplot e quartis de nós expandidos, iterações, nós gerados e custo da solução, para todas as combinações de algoritmo e estratégia, além do custo da solução só em P1.
+- **Tabela contra os outros algoritmos** com o vencedor de cada critério (nível da solução, iterações, nós gerados e expandidos, pico de ABERTOS, retrocessos, impasses) em verde.
+- **A heurística na busca ordenada**: a regra dos discos mal posicionados, o código de `heuristic.py`, a conta de h em S0 disco a disco e a h de cada filho da raiz.
+- **Comparativo nos 36 objetivos** na seção da ordenada: boxplot e quartis de nós expandidos, iterações e nós gerados, para todas as combinações de algoritmo e estratégia.
 - **Tabelas de complexidade** com o algoritmo na primeira coluna, no mesmo formato da tabela consolidada da comparação.
 
 ```bash
