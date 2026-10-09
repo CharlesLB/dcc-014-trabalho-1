@@ -2,13 +2,26 @@ from __future__ import annotations
 
 import sys
 import textwrap
-from typing import TextIO
+from typing import Final, TextIO
 
 from core.search_tree.result import SearchResult
 from libs.outputs import state_render, theme, trace_render, tree_render
 from libs.outputs.formatter import ProblemReport, Report
-from libs.outputs.trace_render import render_table
+from libs.outputs.table import render_table
 from libs.ranking.leaderboard import Leaderboard, Stat, Summary, SummaryRow
+
+# Métricas da caixa de cada execução, na ordem em que aparecem, depois de
+# desfecho, movimentos, custo e caminho.
+_BOX_METRICS: Final = (
+    "iterations",
+    "nodes_generated",
+    "nodes_visited",
+    "rules_tested",
+    "backtracks",
+    "deadlocks",
+    "max_depth",
+    "max_frontier",
+)
 
 
 class ConsoleFormatter:
@@ -42,46 +55,29 @@ class ConsoleFormatter:
             f"{theme.GOAL_STATE_HEADER}: {state_render.render_inline(entry.goal_state)}",
         ]
         for result in entry.results:
-            sections.append("")
-            sections.append(render_result_box(result))
+            sections.extend(["", render_result_box(result)])
             sections.extend(_render_details(result, report))
         if entry.leaderboard is not None:
-            sections.extend(
-                [
-                    "",
-                    render_section(
-                        theme.LEADERBOARD_HEADER, render_leaderboard(entry.leaderboard)
-                    ),
-                ]
-            )
+            leaderboard = render_leaderboard(entry.leaderboard)
+            sections.extend(["", render_section(theme.LEADERBOARD_HEADER, leaderboard)])
         return "\n".join(sections)
 
 
 def render_result_box(result: SearchResult) -> str:
     metrics = result.metrics
-    moves = (
-        theme.ABSENT if result.solution_length is None else str(result.solution_length)
-    )
-    cost = theme.ABSENT if result.solution_cost is None else str(result.solution_cost)
-    path = (
-        theme.ARROW.join(result.applied_rules) if result.applied_rules else theme.ABSENT
-    )
-    rows = (
-        (theme.REPORT_LABELS["outcome"], theme.outcome_label(result.outcome)),
-        (theme.REPORT_LABELS["moves"], moves),
-        (theme.REPORT_LABELS["cost"], cost),
-        (theme.REPORT_LABELS["path"], path),
-        (theme.REPORT_LABELS["iterations"], str(metrics.iterations)),
-        (theme.REPORT_LABELS["nodes_generated"], str(metrics.nodes_generated)),
-        (theme.REPORT_LABELS["nodes_visited"], str(metrics.nodes_visited)),
-        (theme.REPORT_LABELS["rules_tested"], str(metrics.rules_tested)),
-        (theme.REPORT_LABELS["backtracks"], str(metrics.backtracks)),
-        (theme.REPORT_LABELS["deadlocks"], str(metrics.deadlocks)),
-        (theme.REPORT_LABELS["max_depth"], str(metrics.max_depth)),
-        (theme.REPORT_LABELS["max_frontier"], str(metrics.max_frontier)),
-        (theme.REPORT_LABELS["elapsed"], f"{metrics.elapsed_ms:.3f}"),
-    )
-    lines = [line for label, value in rows for line in _wrap_row(label, value)]
+    rows = [
+        ("outcome", theme.outcome_label(result.outcome)),
+        ("moves", _or_absent(result.solution_length)),
+        ("cost", _or_absent(result.solution_cost)),
+        ("path", theme.ARROW.join(result.applied_rules) or theme.ABSENT),
+        *((name, str(getattr(metrics, name))) for name in _BOX_METRICS),
+        ("elapsed", f"{metrics.elapsed_ms:.3f}"),
+    ]
+    lines = [
+        line
+        for key, value in rows
+        for line in _wrap_row(theme.REPORT_LABELS[key], value)
+    ]
     return render_box(result.label, tuple(lines))
 
 
@@ -104,14 +100,12 @@ def render_leaderboard(leaderboard: Leaderboard) -> str:
             result.algorithm,
             result.strategy,
             theme.outcome_label(result.outcome),
-            theme.ABSENT
-            if result.solution_length is None
-            else str(result.solution_length),
+            _or_absent(result.solution_length),
             str(result.metrics.iterations),
             str(result.metrics.nodes_generated),
         ]
         if scored:
-            cells.append(theme.ABSENT if row.score is None else f"{row.score:.1f}")
+            cells.append(_or_absent(row.score, "{:.1f}"))
         rows.append(tuple(cells))
     return render_table(headers, tuple(rows))
 
@@ -123,10 +117,10 @@ def render_summary(summary: Summary) -> str:
             row.strategy,
             f"{row.successes}/{row.runs}",
             str(row.deadlocks),
-            _render_stat(row.moves),
-            _render_stat(row.cost),
-            _render_stat(row.iterations),
-            _render_stat(row.nodes_generated),
+            render_stat(row.moves),
+            render_stat(row.cost),
+            render_stat(row.iterations),
+            render_stat(row.nodes_generated),
         )
         for row in summary.rows
     )
@@ -162,18 +156,17 @@ def _render_winners(winners: tuple[SummaryRow, ...], strategies: dict[str, int])
     )
 
 
-def _render_stat(stat: Stat | None) -> str:
+def render_stat(stat: Stat | None) -> str:
     if stat is None:
         return theme.ABSENT
     return f"{stat.mean:.2f} / {stat.median:g}"
 
 
 def render_box(title: str, lines: tuple[str, ...]) -> str:
+    # As linhas chegam já quebradas por `_wrap_row` para caber em
+    # MAX_BOX_WIDTH; a caixa só passa disso se o título não couber.
     content_width = max((len(line) for line in lines), default=0)
-    width = min(
-        max(content_width + 2, len(title) + 6, theme.MIN_BOX_WIDTH),
-        max(theme.MAX_BOX_WIDTH, len(title) + 6, content_width + 2),
-    )
+    width = max(content_width + 2, len(title) + 6, theme.MIN_BOX_WIDTH)
 
     header = f"{theme.BOX_HORIZONTAL} {title} "
     top = (
@@ -197,31 +190,23 @@ def render_section(title: str, body: str) -> str:
 
 
 def _render_details(result: SearchResult, report: Report) -> list[str]:
-    sections: list[str] = []
+    details: list[tuple[str, str]] = []
     if report.show_states and result.solution_path:
         drawings = "\n\n".join(
             state_render.render_pegs(node.state) for node in result.solution_path
         )
-        sections.extend(["", render_section(theme.STATES_HEADER, drawings)])
+        details.append((theme.STATES_HEADER, drawings))
     if report.show_tree:
-        sections.extend(
-            [
-                "",
-                render_section(
-                    theme.TREE_HEADER, tree_render.render_tree(result.trace)
-                ),
-            ]
-        )
+        details.append((theme.TREE_HEADER, tree_render.render_tree(result.trace)))
     if report.show_trace:
-        sections.extend(
-            [
-                "",
-                render_section(
-                    theme.TRACE_HEADER, trace_render.render_trace(result.trace)
-                ),
-            ]
-        )
-    return sections
+        details.append((theme.TRACE_HEADER, trace_render.render_trace(result.trace)))
+    return [
+        part for title, body in details for part in ("", render_section(title, body))
+    ]
+
+
+def _or_absent(value: float | None, template: str = "{}") -> str:
+    return theme.ABSENT if value is None else template.format(value)
 
 
 def write(text: str, stream: TextIO | None = None) -> None:
