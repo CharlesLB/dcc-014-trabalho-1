@@ -26,7 +26,6 @@ class SearchNotStartedError(Exception):
 
 @dataclass(slots=True)
 class _RunContext:
-    problem: Problem
     root: Node
     metrics: MetricsCollector = field(default_factory=MetricsCollector)
     trace: TraceRecorder = field(default_factory=TraceRecorder)
@@ -74,7 +73,7 @@ class SearchAlgorithm(ABC):
         Monta o contexto da execução, cronometra o `_search` do algoritmo
         concreto e sela métricas, trace e caminho no resultado.
         """
-        context = _RunContext(problem=problem, root=self._tree.root(problem.initial))
+        context = _RunContext(root=self._tree.root(problem.initial))
         self._context = context
         context.metrics.count_generated(context.root.depth)
         context.trace.record(iteration=0, event=TraceEvent.ROOT, node=context.root)

@@ -28,14 +28,6 @@ def test_path_is_ordered_from_root_to_node(initial_state: State) -> None:
     assert [node.depth for node in path.path_to(grandchild)] == [0, 1, 2]
 
 
-def test_states_on_path_collects_every_state(initial_state: State) -> None:
-    tree = SearchTree()
-    root = tree.root(initial_state)
-    rule = next(r for r in tree.rules if r.is_applicable(root.state))
-    child = tree.expand(root, rule)
-    assert path.states_on_path(child) == frozenset({root.state, child.state})
-
-
 def test_contains_state_detects_the_node_itself(initial_state: State) -> None:
     root = SearchTree().root(initial_state)
     assert path.contains_state(root, initial_state)

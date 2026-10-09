@@ -19,10 +19,6 @@ def path_to(node: Node) -> tuple[Node, ...]:
     return tuple(reversed_path)
 
 
-def states_on_path(node: Node) -> frozenset[State]:
-    return frozenset(step.state for step in path_to(node))
-
-
 def contains_state(node: Node, state: State) -> bool:
     if node.state == state:
         return True

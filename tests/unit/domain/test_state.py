@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 
 from core.domain.state import (
-    EMPTY_STATE,
     Disk,
     InvalidStateError,
     Peg,
@@ -11,8 +10,6 @@ from core.domain.state import (
     build_state,
     disks_of,
     is_valid,
-    stack_of,
-    top_of,
     validate,
 )
 
@@ -51,17 +48,11 @@ def test_validate_rejects_wrong_arity() -> None:
 
 
 def test_empty_state_is_not_valid() -> None:
-    assert not is_valid(EMPTY_STATE)
+    assert not is_valid(((), (), ()))
 
 
 def test_every_enumerated_state_is_valid(states: tuple[State, ...]) -> None:
     assert all(is_valid(state) for state in states)
-
-
-def test_stack_and_top_accessors(initial_state: State) -> None:
-    for peg in Peg:
-        stack = stack_of(initial_state, peg)
-        assert top_of(initial_state, peg) == (stack[-1] if stack else None)
 
 
 def test_disks_of_returns_the_three_disks(states: tuple[State, ...]) -> None:

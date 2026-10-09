@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
-
 from core.domain.state import State
 from core.rules.domain.base import TransitionRule
 from core.rules.domain.catalog import RULES
 from core.search_tree.node import Node
-from core.search_tree.path import ancestors
 
 
 class SearchTree:
@@ -41,6 +38,3 @@ class SearchTree:
         )
         self._nodes.append(child)
         return child
-
-    def ancestors(self, node: Node) -> Iterator[Node]:
-        return ancestors(node)

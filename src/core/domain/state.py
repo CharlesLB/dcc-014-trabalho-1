@@ -6,7 +6,6 @@ from core.rules.domain.base import CAPACITIES, TOTAL_DISKS, Disk, Peg, Stack, St
 
 __all__ = [
     "CAPACITIES",
-    "EMPTY_STATE",
     "TOTAL_DISKS",
     "Disk",
     "InvalidStateError",
@@ -16,12 +15,8 @@ __all__ = [
     "build_state",
     "disks_of",
     "is_valid",
-    "stack_of",
-    "top_of",
     "validate",
 ]
-
-EMPTY_STATE: State = ((), (), ())
 
 
 class InvalidStateError(Exception):
@@ -64,12 +59,3 @@ def is_valid(state: State) -> bool:
 
 def disks_of(state: State) -> frozenset[Disk]:
     return frozenset(disk for stack in state for disk in stack)
-
-
-def stack_of(state: State, peg: Peg) -> Stack:
-    return state[peg]
-
-
-def top_of(state: State, peg: Peg) -> Disk | None:
-    stack = state[peg]
-    return stack[-1] if stack else None

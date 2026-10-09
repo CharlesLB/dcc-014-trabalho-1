@@ -68,7 +68,6 @@ def build_parser() -> argparse.ArgumentParser:
         default=str(settings.MAX_ITERATIONS),
         help=settings.HELP_MAX_ITERATIONS,
     )
-    group.add_argument("--seed", help=settings.HELP_SEED)
     group.add_argument("--list", action="store_true", help=settings.HELP_LIST)
     group.add_argument("--verbose", action="store_true", help=settings.HELP_VERBOSE)
     return parser
@@ -103,9 +102,6 @@ def parse(argv: Sequence[str]) -> ExecutionRequest:
         verbose=namespace.verbose,
         all_goals=namespace.all_goals,
         prune=not namespace.no_prune,
-        seed=None
-        if namespace.seed is None
-        else _positive_int("--seed", namespace.seed),
     )
 
 

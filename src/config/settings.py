@@ -57,7 +57,6 @@ HELP_SVG_DIR: Final = (
 )
 HELP_RANK_MODE: Final = "Critério do placar."
 HELP_MAX_ITERATIONS: Final = "Guarda contra execução patológica."
-HELP_SEED: Final = "Reservado; a execução é determinística por construção."
 HELP_LIST: Final = "Lista cartas, algoritmos e estratégias disponíveis e encerra."
 HELP_VERBOSE: Final = "Habilita log de diagnóstico na saída de erro."
 

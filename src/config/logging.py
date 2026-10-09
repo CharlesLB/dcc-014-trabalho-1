@@ -16,7 +16,3 @@ def configure_logging(*, verbose: bool = False) -> logging.Logger:
         handler.setFormatter(logging.Formatter(LOG_FORMAT))
         logger.addHandler(handler)
     return logger
-
-
-def get_logger(suffix: str) -> logging.Logger:
-    return logging.getLogger(f"{LOGGER_NAME}.{suffix}")

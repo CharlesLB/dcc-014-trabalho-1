@@ -81,19 +81,12 @@ def test_defaults_come_from_settings() -> None:
     assert request.rank_mode == settings.DEFAULT_RANK_MODE
     assert request.max_iterations == settings.MAX_ITERATIONS
     assert request.output_path is None
-    assert request.seed is None
 
 
 @pytest.mark.parametrize("raw", ["zero", "0", "-3"])
 def test_max_iterations_must_be_a_positive_integer(raw: str) -> None:
     with pytest.raises(InvalidArgumentError):
         parse(["--max-iterations", raw])
-
-
-def test_seed_must_be_a_positive_integer() -> None:
-    with pytest.raises(InvalidArgumentError):
-        parse(["--seed", "abc"])
-    assert parse(["--seed", "7"]).seed == 7
 
 
 def test_unknown_flag_is_rejected() -> None:

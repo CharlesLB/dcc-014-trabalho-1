@@ -78,13 +78,6 @@ def test_tree_records_generated_nodes(initial_state: State) -> None:
     assert tree.nodes == (root, child)
 
 
-def test_tree_ancestors_walks_up_to_the_root(initial_state: State) -> None:
-    tree = SearchTree()
-    root = tree.root(initial_state)
-    child = tree.expand(root, R1)
-    assert list(tree.ancestors(child)) == [root]
-
-
 def test_expand_rejects_non_applicable_rule(initial_state: State) -> None:
     tree = SearchTree()
     root = tree.root(initial_state)

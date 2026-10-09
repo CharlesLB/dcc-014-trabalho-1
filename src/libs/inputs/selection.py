@@ -22,7 +22,6 @@ class ExecutionRequest:
     list_only: bool = False
     show_help: bool = False
     verbose: bool = False
-    seed: int | None = None
     all_goals: bool = False
     prune: bool = True
 

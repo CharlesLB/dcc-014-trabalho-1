@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,7 +24,7 @@ class MetricsCollector:
     rules_tested: int = 0
     backtracks: int = 0
     deadlocks: int = 0
-    max_depth: int = field(default=0)
+    max_depth: int = 0
     max_frontier: int = 0
 
     def count_iteration(self) -> None:
