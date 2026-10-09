@@ -12,20 +12,18 @@ Contagem:
 Propriedades:
     - Grafo não dirigido: toda regra tem inversa exata.
     - Grafo conexo: todo objetivo é alcançável de qualquer inicial. Logo
-      backtracking e largura sempre terminam em SUCESSO neste problema; só a
-      busca irrevogável pode terminar em IMPASSE.
+      backtracking, largura e ordenada sempre terminam em SUCESSO neste
+      problema; só a irrevogável e a gulosa podem terminar em IMPASSE.
     - Fator de ramificação: 2 a 4 regras aplicáveis por estado.
     - Profundidade máxima de um caminho sem repetição: 36.
 
 `shortest_distance` é uma busca em largura escrita à parte do motor, sem árvore,
 nó ou estratégia. É o oráculo contra o qual a otimalidade de `breadth_first` é
-verificada. `cheapest_cost` faz o mesmo papel para a busca ordenada: um
-Dijkstra sobre o custo das regras, também fora do motor.
+verificada. Como toda jogada custa 1, ela também dá o menor custo.
 """
 
 from __future__ import annotations
 
-import heapq
 from collections import deque
 from collections.abc import Iterator
 from itertools import permutations
@@ -87,23 +85,4 @@ def shortest_distance(source: State, target: State) -> int | None:
             if successor == target:
                 return depths[successor]
             queue.append(successor)
-    return None
-
-
-def cheapest_cost(source: State, target: State) -> int | None:
-    costs = {source: 0}
-    heap: list[tuple[int, int, State]] = [(0, 0, source)]
-    pushed = 1
-    while heap:
-        cost, _, current = heapq.heappop(heap)
-        if current == target:
-            return cost
-        if cost > costs[current]:
-            continue
-        for rule, successor in successors(current):
-            candidate = cost + rule.cost(current)
-            if candidate < costs.get(successor, candidate + 1):
-                costs[successor] = candidate
-                heapq.heappush(heap, (candidate, pushed, successor))
-                pushed += 1
     return None

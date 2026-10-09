@@ -4,9 +4,7 @@ import pytest
 
 from core.algorithms.breadth_first.algorithm import BreadthFirstSearch
 from core.algorithms.domain.registry import ALGORITHMS
-from core.algorithms.ordered.algorithm import OrderedSearch
 from core.domain.problem import Problem
-from core.domain.state_space import all_states, cheapest_cost
 from core.rules.strategies.domain.registry import STRATEGIES
 from core.search_tree.outcome import Outcome
 from core.search_tree.result import SearchResult
@@ -75,16 +73,6 @@ def test_pruning_is_on_by_default(problems: tuple[Problem, ...]) -> None:
         search = algorithm(SearchTree(), STRATEGIES["ascending"])
         assert search.prune
         assert search.solve(problems[0]).pruned
-
-
-@pytest.mark.parametrize("strategy", sorted(STRATEGIES))
-def test_ordered_stays_optimal_without_pruning(strategy: str) -> None:
-    for goal in all_states():
-        problem = Problem("SYNTHETIC", goal)
-        result = OrderedSearch(SearchTree(), STRATEGIES[strategy], prune=False).solve(
-            problem
-        )
-        assert result.solution_cost == cheapest_cost(problem.initial, goal)
 
 
 @pytest.mark.parametrize("algorithm", sorted(ALGORITHMS))

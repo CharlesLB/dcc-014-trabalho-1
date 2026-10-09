@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from core.domain.state import CAPACITIES, Peg, State, disks_of, is_valid
-from core.rules.domain.base import DISK_WEIGHTS, Disk, TransitionRule
+from core.rules.domain.base import Disk, TransitionRule
 from core.rules.domain.catalog import RULES, inverse_of
 from core.rules.domain.exceptions import RuleNotApplicableError
 from core.rules.moves import MOVE_COST, R1, R2, R3, R4, R5, R6, Move
@@ -36,42 +36,11 @@ def test_each_rule_declares_its_pegs(rule: Move, origin: Peg, destination: Peg) 
     assert rule.destination is destination
 
 
-@pytest.mark.parametrize(
-    ("rule", "distance"),
-    [(R1, 1), (R2, 2), (R3, 1), (R4, 1), (R5, 2), (R6, 1)],
-)
-def test_each_rule_spans_the_distance_between_its_pegs(
-    rule: Move, distance: int
-) -> None:
-    assert rule.distance == distance
-
-
-def test_cost_is_ten_plus_weight_times_distance(states: tuple[State, ...]) -> None:
-    for state in states:
-        for rule in RULES:
-            if not rule.is_applicable(state):
-                continue
-            disk = state[rule.origin][-1]
-            assert rule.cost(state) == MOVE_COST + DISK_WEIGHTS[disk] * rule.distance
-
-
-def test_cost_of_r4_on_the_initial_state(initial_state: State) -> None:
-    assert R4.cost(initial_state) == 10 + 3 * 1
-
-
-def test_a_rule_and_its_inverse_cost_the_same(states: tuple[State, ...]) -> None:
+def test_every_move_costs_one(states: tuple[State, ...]) -> None:
     for state in states:
         for rule in RULES:
             if rule.is_applicable(state):
-                back = inverse_of(rule)
-                assert back.cost(rule.apply(state)) == rule.cost(state)
-
-
-def test_any_move_costs_more_than_any_difference_in_effort(
-    states: tuple[State, ...],
-) -> None:
-    costs = [rule.cost(s) for s in states for rule in RULES if rule.is_applicable(s)]
-    assert max(costs) - min(costs) < MOVE_COST
+                assert rule.cost(state) == MOVE_COST == 1
 
 
 def test_cost_of_a_non_applicable_rule_fails_loudly() -> None:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pytest
 
 from core.algorithms.backtracking.frontier import StackFrontier
@@ -45,9 +47,13 @@ def _priced(initial_state: State, *costs: int) -> tuple[Node, ...]:
     )
 
 
-def test_priority_pops_the_cheapest_first(initial_state: State) -> None:
+def _by_cost() -> PriorityFrontier:
+    return PriorityFrontier(lambda node: node.cost)
+
+
+def test_priority_pops_the_lowest_first(initial_state: State) -> None:
     nodes = _priced(initial_state, 5, 6, 6, 1)
-    frontier = PriorityFrontier()
+    frontier = _by_cost()
     for node in nodes:
         frontier.push(node)
     assert [frontier.pop().order for _ in range(4)] == [3, 0, 1, 2]
@@ -55,7 +61,7 @@ def test_priority_pops_the_cheapest_first(initial_state: State) -> None:
 
 def test_priority_breaks_ties_by_generation_order(initial_state: State) -> None:
     nodes = _priced(initial_state, 6, 6, 6)
-    frontier = PriorityFrontier()
+    frontier = _by_cost()
     for node in reversed(nodes):
         frontier.push(node)
     assert [frontier.pop().order for _ in range(3)] == [0, 1, 2]
@@ -63,7 +69,7 @@ def test_priority_breaks_ties_by_generation_order(initial_state: State) -> None:
 
 def test_priority_skips_removed_nodes(initial_state: State) -> None:
     cheap, middle, dear = _priced(initial_state, 1, 2, 3)
-    frontier = PriorityFrontier()
+    frontier = _by_cost()
     for node in (cheap, middle, dear):
         frontier.push(node)
     frontier.remove(cheap)
@@ -73,9 +79,9 @@ def test_priority_skips_removed_nodes(initial_state: State) -> None:
     assert len(frontier) == 0
 
 
-@pytest.mark.parametrize("factory", [StackFrontier, QueueFrontier, PriorityFrontier])
+@pytest.mark.parametrize("factory", [StackFrontier, QueueFrontier, _by_cost])
 def test_length_tracks_the_content(
-    factory: type[Frontier], initial_state: State
+    factory: Callable[[], Frontier], initial_state: State
 ) -> None:
     root, first, _ = _three_nodes(initial_state)
     frontier = factory()
@@ -87,8 +93,8 @@ def test_length_tracks_the_content(
     assert len(frontier) == 1
 
 
-@pytest.mark.parametrize("factory", [StackFrontier, QueueFrontier, PriorityFrontier])
-def test_pop_on_empty_frontier_raises(factory: type[Frontier]) -> None:
+@pytest.mark.parametrize("factory", [StackFrontier, QueueFrontier, _by_cost])
+def test_pop_on_empty_frontier_raises(factory: Callable[[], Frontier]) -> None:
     frontier = factory()
     with pytest.raises(EmptyFrontierError):
         frontier.pop()
@@ -98,7 +104,7 @@ def test_priority_pop_raises_when_only_removed_nodes_remain(
     initial_state: State,
 ) -> None:
     (node,) = _priced(initial_state, 1)
-    frontier = PriorityFrontier()
+    frontier = _by_cost()
     frontier.push(node)
     frontier.remove(node)
     with pytest.raises(EmptyFrontierError):
