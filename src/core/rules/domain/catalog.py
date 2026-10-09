@@ -13,8 +13,14 @@ RULE_BY_ID: Mapping[str, TransitionRule] = MappingProxyType(
     {rule.id: rule for rule in RULES}
 )
 
+# A inversa de uma regra é a que faz o caminho oposto: troca origem e destino.
 INVERSE_RULE_ID: Mapping[str, str] = MappingProxyType(
-    {"R1": "R3", "R3": "R1", "R2": "R5", "R5": "R2", "R4": "R6", "R6": "R4"}
+    {
+        rule.id: inverse.id
+        for rule in RULES
+        for inverse in RULES
+        if (inverse.origin, inverse.destination) == (rule.destination, rule.origin)
+    }
 )
 
 

@@ -4,8 +4,7 @@ import pytest
 
 from core.rules.domain.base import TransitionRule
 from core.rules.domain.exceptions import UnknownStrategyError
-from core.rules.strategies.ascending import ASCENDING
-from core.rules.strategies.descending import DESCENDING
+from core.rules.strategies.canonical import ASCENDING, DESCENDING
 from core.rules.strategies.domain.base import ControlStrategy
 from core.rules.strategies.domain.registry import STRATEGIES, get_strategy
 

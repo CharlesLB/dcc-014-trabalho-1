@@ -4,8 +4,7 @@ from collections.abc import Mapping
 from types import MappingProxyType
 
 from core.rules.domain.exceptions import UnknownStrategyError
-from core.rules.strategies.ascending import ASCENDING
-from core.rules.strategies.descending import DESCENDING
+from core.rules.strategies.canonical import ASCENDING, DESCENDING
 from core.rules.strategies.domain.base import ControlStrategy
 
 STRATEGIES: Mapping[str, ControlStrategy] = MappingProxyType(
