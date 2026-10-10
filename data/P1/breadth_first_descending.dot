@@ -1,5 +1,5 @@
 digraph search {
-  label="P1 · breadth_first · descending · SUCESSO · 3 movimentos · custo 36"; labelloc=t; fontname="Helvetica";
+  label="P1 · breadth_first · descending · SUCESSO · 3 movimentos · custo 3"; labelloc=t; fontname="Helvetica";
   node [shape=box, style="rounded,filled", fontname="monospace", fontsize=10];
   edge [fontname="Helvetica", fontsize=9];
   n0 [label="#0\nH1[V,R] H2[A] H3[·]", fillcolor="#dbe9ff", color="#1a56b8", penwidth=2.5];

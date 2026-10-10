@@ -1,0 +1,16 @@
+digraph search {
+  label="P1 · greedy · ascending · SUCESSO · 3 movimentos · custo 3"; labelloc=t; fontname="Helvetica";
+  node [shape=box, style="rounded,filled", fontname="monospace", fontsize=10];
+  edge [fontname="Helvetica", fontsize=9];
+  n0 [label="#0\nH1[V,R] H2[A] H3[·]", fillcolor="#dbe9ff", color="#1a56b8", penwidth=2.5];
+  n1 [label="#1\nH1[V,R] H2[·] H3[A]", fillcolor="#ffffff", color="#1a56b8", penwidth=2.5];
+  n0 -> n1 [label="R4", color="#1a56b8", fontcolor="#1a56b8", penwidth=2.5];
+  n2 [label="#2\nH1[V] H2[R] H3[A]", fillcolor="#ffffff", color="#1a56b8", penwidth=2.5];
+  n1 -> n2 [label="R1", color="#1a56b8", fontcolor="#1a56b8", penwidth=2.5];
+  n3 [label="#3\nH1[·] H2[R,V] H3[A]", fillcolor="#c6f0c6", color="#1a56b8", penwidth=2.5];
+  n2 -> n3 [label="R1", color="#1a56b8", fontcolor="#1a56b8", penwidth=2.5];
+  p1_R6 [label="R6", shape=plaintext, style=solid, fontcolor="#999999", fontsize=8];
+  n1 -> p1_R6 [style=dotted, color="#999999", arrowhead=none];
+  p2_R3 [label="R3", shape=plaintext, style=solid, fontcolor="#999999", fontsize=8];
+  n2 -> p2_R3 [style=dotted, color="#999999", arrowhead=none];
+}

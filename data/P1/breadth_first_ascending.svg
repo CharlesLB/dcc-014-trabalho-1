@@ -9,7 +9,7 @@
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 391)">
 <title>search</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-391 1521.5,-391 1521.5,4 -4,4"/>
-<text text-anchor="middle" x="758.75" y="-371.8" font-family="Helvetica,sans-Serif" font-size="14.00">P1 · breadth_first · ascending · SUCESSO · 3 movimentos · custo 36</text>
+<text text-anchor="middle" x="758.75" y="-371.8" font-family="Helvetica,sans-Serif" font-size="14.00">P1 · breadth_first · ascending · SUCESSO · 3 movimentos · custo 3</text>
 <!-- n0 -->
 <g id="node1" class="node">
 <title>n0</title>
