@@ -4,6 +4,8 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from plain import without_comments
+
 NBFORMAT = 4
 NBFORMAT_MINOR = 4
 
@@ -31,19 +33,14 @@ class Cell:
 
 
 IGNORE = "(ignore)"
-WRITEFILE = "%%writefile"
 TITLE = "#@title"
 
 
 def ignore(cell: Cell) -> Cell:
-    head, _, rest = cell.source.partition("\n")
-    if cell.kind == "markdown":
-        return Cell(cell.kind, f"{head} {IGNORE}\n{rest}".rstrip("\n"), cell.hidden)
-    if head.startswith(TITLE):
-        return Cell(cell.kind, f"{head} {IGNORE}\n{rest}", cell.hidden)
-    if head.startswith(WRITEFILE):
-        return Cell(cell.kind, f"{head}\n# {IGNORE}\n{rest}", cell.hidden)
-    return Cell(cell.kind, f"# {IGNORE}\n{cell.source}", cell.hidden)
+    head, separator, rest = cell.source.partition("\n")
+    if cell.kind == "markdown" or head.startswith(TITLE):
+        return Cell(cell.kind, f"{head} {IGNORE}{separator}{rest}", cell.hidden)
+    return cell
 
 
 def markdown(source: str) -> Cell:
@@ -51,7 +48,7 @@ def markdown(source: str) -> Cell:
 
 
 def code(source: str, *, hidden: bool = False) -> Cell:
-    return Cell("code", source, hidden=hidden)
+    return Cell("code", without_comments(source), hidden=hidden)
 
 
 @dataclass(frozen=True, slots=True)

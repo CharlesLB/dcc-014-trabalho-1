@@ -2,7 +2,7 @@
 
 Gera o notebook da apresentação, `notebooks/torre_de_londres.ipynb`, a partir do código de `src/`. Ele roda sozinho no Colab: o código do projeto vai dentro dele.
 
-A apresentação é feita pelo próprio Colab. Todo código marcado com **(ignore)** fica no topo, na seção Setup. Depois dela, cada seção de algoritmo segue a ordem dos slides: o código do projeto que é apresentado fica no ponto do slide, como `%%writefile` no mesmo caminho de `src/`, e o resto são chamadas de uma linha às funções do Setup.
+A apresentação é feita pelo próprio Colab. Todo o código de apoio fica no topo, na seção Setup, com os títulos marcados com **(ignore)**. Depois dela, cada seção de algoritmo segue a ordem dos slides: o código do projeto que é apresentado fica no ponto do slide, como `%%writefile` no mesmo caminho de `src/`, e o resto são chamadas de uma linha às funções do Setup.
 
 | Seção | Conteúdo |
 |---|---|
@@ -18,6 +18,8 @@ Depois dos comparativos, a seção da ordenada tem ainda os 36 objetivos: boxplo
 A primeira seção (busca irrevogável) mostra os módulos compartilhados: legenda e cartas no slide do problema, o motor no slide do laço, as regras e as estratégias nos slides delas. O contrato da fronteira aparece no slide da ideia do backtracking, o primeiro algoritmo que usa uma; cada algoritmo com fronteira mostra a sua (pilha, fila ou fila pela heurística) no próprio slide da ideia.
 
 Os dados de cada algoritmo usados pelas funções de apresentação (rótulo, cor, modo das listas, fronteira, se usa a heurística e se entra nos gráficos) ficam num lugar só, nas seções de `pages/algorithm.py`, e são injetados nas células do Setup.
+
+O código do notebook não tem comentários nem docstrings: o gerador tira os dois de toda célula de código, inclusive dos módulos copiados de `src/`, que continuam comentados no projeto. A explicação vai em texto: cada módulo mostrado vem logo depois de uma célula de markdown que diz o que ele faz. O texto dos módulos compartilhados fica em `MODULE_NOTES` e o de cada algoritmo no campo `code_note` da seção, os dois em `pages/algorithm.py`.
 
 ## Gerar
 
@@ -40,6 +42,7 @@ Rode **Ambiente de execução → Executar tudo**. O notebook usa pandas, matplo
 apps/notebook/
 ├── build.py           entrada: gera o notebook ou verifica se está em dia
 ├── cells.py           células, marcador (ignore) e notebook no formato .ipynb
+├── plain.py           tira comentários e docstrings do código das células
 ├── source.py          lê src/ na ordem das pastas e monta a seção Setup
 ├── pages/
 │   ├── common.py      cabeçalho, integrantes, estilo e funções de apresentação

@@ -49,7 +49,9 @@ Resolvedor da Torre de Londres (3 hastes, 3 discos) com {len(sections)} algoritm
 
 {contents}
 
-Todo o código marcado com **{IGNORE}** está no topo, na seção Setup: os módulos de apoio do projeto e as funções que desenham tabelas, figuras e gráficos. Rode **Ambiente de execução → Executar tudo** e comece a apresentação na seção 1. Dali em diante só aparece o código do projeto que vai para a apresentação (problema, regras, estratégias, heurística, fronteira, motor e algoritmos) e chamadas de uma linha que desenham as tabelas e os gráficos."""
+A seção Setup, marcada com **{IGNORE}**, fica no topo: são os módulos de apoio do projeto e as funções que desenham tabelas, figuras e gráficos. Rode **Ambiente de execução → Executar tudo** e comece a apresentação na seção 1. Dali em diante só aparece o código do projeto que vai para a apresentação (problema, regras, estratégias, heurística, fronteira, motor e algoritmos) e chamadas de uma linha que desenham as tabelas e os gráficos.
+
+O código do notebook não tem comentários. Cada trecho do projeto vem depois de um texto que diz o que ele faz."""
     )
 
 

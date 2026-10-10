@@ -21,6 +21,90 @@ COMPLEXITY_HEADER = ("Algoritmo", "Tempo", "Memória", "Solução", "Por quê")
 
 ComplexityRow = tuple[str, str, str, str, str]
 
+MODULE_NOTES = {
+    "core/rules/domain/base.py": """a legenda do problema.
+
+- **Discos**: verde, vermelho e azul. São distintos só pela cor: não há ordem de tamanho.
+- **Hastes**: H1 comporta até 3 discos, H2 até 2 e H3 até 1. A capacidade é a única restrição do problema e faz o papel da ordem de tamanho da Torre de Hanói.
+- **Estado**: uma tupla de três pilhas, cada uma escrita da base para o topo. É imutável.
+- **`TransitionRule`**: o contrato de uma regra. `is_applicable` diz se o movimento vale no estado, `apply` devolve o estado que resulta dele (um estado novo; o recebido não muda) e `cost` devolve o custo, sempre 1.
+
+A busca só conhece esse contrato: ela testa a regra e aplica a que passou, sem saber o que é disco ou haste.""",
+    "core/domain/problem.py": """o estado inicial e as cartas.
+
+- **`INITIAL_STATE`**: o estado inicial, fixo: verde e vermelho em H1, azul em H2 e H3 vazia.
+- **`Problem`**: uma carta, que é um objetivo a alcançar a partir do estado inicial. Inicial e objetivo são validados quando a carta é criada.
+- **`PROBLEMS`**: o catálogo de cartas. Hoje só tem P1.
+- **`all_goal_problems`**: cria uma carta para cada um dos 36 estados do espaço (G01 a G36), todas a partir do mesmo estado inicial. São as cartas usadas na comparação dos algoritmos.""",
+    "core/algorithms/domain/base.py": """o motor que todos os algoritmos compartilham.
+
+`solve` é a entrada da busca: cria a raiz, cronometra o `_search` do algoritmo e monta o resultado, com o desfecho, o caminho, as métricas e o trace. Cada algoritmo implementa só o próprio laço, em `_search`, e usa os métodos abaixo.
+
+| Método | O que faz |
+|---|---|
+| `_applicable_rules` | Testa as seis regras no nó, ordena as válidas pela estratégia e, com poda, descarta as que repetem estado. |
+| `_is_repetition` | O critério da poda. No motor: o estado já está no caminho do nó. A largura e a ordenada trocam esse critério. |
+| `_next_iteration` | Conta mais uma iteração. Devolve falso quando o limite estoura, e a busca termina em LIMITE. |
+| `_visit` | Registra que o nó foi expandido. |
+| `_expand` | Aplica a regra e cria o nó filho. É o único ponto em que a árvore cresce. |
+| `_succeed` | Guarda o nó objetivo, de onde o caminho solução é reconstruído, e devolve SUCESSO. |
+| `_deadlock` | Registra um impasse: o nó não tem regra para aplicar. Não encerra a busca; quem decide o que fazer é o algoritmo. |
+| `_backtrack` | Registra um retrocesso. O retrocesso em si é feito pelo algoritmo. |
+| `_exhausted` | Não há mais nada a explorar e o objetivo não apareceu: devolve FRACASSO. |
+| `_observe_frontier` | Guarda o maior tamanho que ABERTOS já teve. |
+| `_record` e `_record_prune` | Anotam no trace cada evento e cada regra podada, com a iteração em que aconteceram. |""",
+    "core/rules/domain/constraints.py": """as duas condições para uma regra valer.
+
+1. A haste de origem tem pelo menos um disco.
+2. A haste de destino ainda tem espaço: com mais um disco, não passa da capacidade.
+
+As duas dependem só do estado atual. Não voltar a um estado do caminho depende do percurso, e por isso fica na poda dos algoritmos, não aqui.""",
+    "core/rules/moves.py": """as seis regras.
+
+`Move` guarda a origem e o destino de uma regra. `apply` tira o disco do topo da origem e o põe no topo do destino, devolvendo um estado novo. Aplicar uma regra que não vale no estado é erro. `MOVE_COST` é o custo de toda jogada: 1.""",
+    "core/rules/domain/catalog.py": """o catálogo das regras.
+
+`RULES` tem as seis regras na ordem R1 a R6. `INVERSE_RULE_ID` dá a inversa de cada uma, que é a regra com origem e destino trocados: R1 e R3, R2 e R5, R4 e R6.""",
+    "core/rules/strategies/canonical.py": """as duas estratégias de controle.
+
+`CanonicalOrder` ordena as regras válidas pela posição no catálogo: `ascending` de R1 a R6 e `descending` de R6 a R1.""",
+    "core/domain/heuristic.py": """a heurística no código.
+
+- **`contributions`**: quanto cada disco soma em h (0, 1 ou 2), como na tabela acima.
+- **`misplacement`**: h do estado, a soma das três contribuições.
+- **`_common_base`**: quantos discos de uma haste, de baixo para cima, já coincidem com o objetivo. Esses são os bem posicionados.""",
+    "core/search_tree/frontier.py": """o contrato da fronteira, a lista de ABERTOS.
+
+A fronteira guarda os nós já gerados que ainda não foram analisados. São três operações: `push` guarda um nó, `pop` tira um nó e `len` conta quantos ainda esperam. Fronteira vazia encerra a busca.
+
+O contrato não diz qual nó o `pop` devolve. É a única coisa que muda entre as implementações, e é o que define cada busca.""",
+    "core/algorithms/backtracking/frontier.py": """a pilha do backtracking.
+
+O nó entra e sai pelo topo: sai o último que entrou. Depois de `push` de S1, S2 e S3, o `pop` devolve S3. O filho recém-gerado é sempre o próximo a ser analisado, e por isso a busca afunda num ramo até o fim.""",
+    "core/algorithms/breadth_first/frontier.py": """a fila da busca em largura.
+
+O nó entra pelo fim e sai pelo início: sai o primeiro que entrou. Depois de `push` de S1, S2 e S3, o `pop` devolve S1. Os filhos esperam atrás de todo o nível atual, e por isso a busca varre nível por nível.
+
+A única linha diferente da pilha é a do `pop`. A fila usa `deque` porque tirar do início de uma `list` custa O(n), e de um `deque`, O(1).""",
+    "core/algorithms/ordered/frontier.py": """a fila pela heurística da busca ordenada.
+
+Sai o nó de menor prioridade (aqui, a heurística); no empate, o que foi gerado primeiro. Depois de `push` de S1(5), S2(6), S3(6) e S4(1), o `pop` devolve S4, S1, S2 e S3. Irmãos de mesma prioridade são gerados na ordem da estratégia, então é ela que desempata entre eles.
+
+A fila é um heap de (prioridade, ordem de geração, nó). `remove` tira um nó que ainda está na fila, o que a poda usa quando um caminho mais curto chega ao mesmo estado. A remoção é adiada: o nó só é descartado quando chegaria a vez dele no `pop`.""",
+}
+
+
+def _writefiles(modules: tuple[str, ...]) -> tuple[Cell, ...]:
+    """Cada módulo mostrado: o texto que o explica e, em seguida, o código."""
+    return tuple(
+        cell
+        for module in modules
+        for cell in (
+            markdown(f"**`{SOURCE_DIR}/{module}`**: {MODULE_NOTES[module]}"),
+            writefile_cell(find(f"{SOURCE_DIR}/{module}")),
+        )
+    )
+
 
 @dataclass(frozen=True, slots=True)
 class AlgorithmSection:
@@ -42,6 +126,7 @@ class AlgorithmSection:
     no_prune: str
     prune: str
     pseudocode: str
+    code_note: str
     path_strategy: str
     path_note: str
     complexity: tuple[ComplexityRow, ...]
@@ -107,6 +192,7 @@ Não há fila nem pilha: ABERTOS tem no máximo um nó, o filho que acabou de se
         se poda: descarta as que levam a um estado de FECHADOS
         se não sobrou regra: IMPASSE
         nó = aplica a primeira regra em nó""",
+    code_note="""`_search` é o laço do pseudocódigo. `_choose` devolve a regra que a descida aplica: aqui, a primeira na ordem da estratégia. A busca gulosa reaproveita este laço e troca só o `_choose`.""",
     path_strategy="ascending",
     path_note="Com `descending` a busca termina em impasse na 3ª iteração e não há caminho. O caminho abaixo é o da ordem crescente: chega, mas com 14 movimentos, quando o ótimo tem 3.",
     complexity=(
@@ -192,8 +278,13 @@ O contrato da fronteira fica em `core/search_tree/frontier.py`. Cada algoritmo t
         senão:
             desempilha nó (retrocesso)
     FRACASSO""",
+    code_note="""`path` é a PILHA, com o caminho atual. `untried` guarda, para cada nó do caminho, as regras que ele ainda não tentou.
+
+A cada iteração o topo sai da pilha. Se ele ainda tem regra, volta para a pilha e o filho entra por cima: a busca desce. Se não tem, ele não volta: é o retrocesso, e o pai passa a ser o topo.
+
+`_remaining_rules` monta a lista de regras na primeira vez no nó, já com a poda, e registra o impasse se ela nascer vazia. Nas voltas seguintes ao nó, só devolve o que sobrou da lista.""",
     path_strategy="descending",
-    path_note="A ordem decrescente, a do docstring do módulo: 22 movimentos para um ótimo de 3, depois de 14 retrocessos.",
+    path_note="Com a ordem decrescente: 22 movimentos para um ótimo de 3, depois de 14 retrocessos.",
     complexity=(
         (
             "Backtracking sem poda",
@@ -291,6 +382,7 @@ Largura: fila, sai o primeiro que entrou. Varre por níveis.""",
                 descarta a regra
             senão: põe filho no fim de ABERTOS
     FRACASSO""",
+    code_note="""`_closed` guarda os estados de FECHADOS e `_open_states` os de ABERTOS. `_is_repetition` troca o critério de poda do motor: descarta a regra cujo estado gerado está em qualquer um dos dois.""",
     path_strategy="ascending",
     path_note="3 movimentos. As duas estratégias, com e sem poda, chegam a este mesmo caminho, e ele é o menor possível.",
     complexity=(
@@ -341,10 +433,9 @@ Toda jogada custa 1, então o custo de um nó é só a sua profundidade. Quem or
 | na haste certa, mas mal posicionado | 2 | precisa sair e voltar |
 
 **h(estado)** é a soma dos três discos. Nunca passa do número de movimentos que falta (é admissível): cada movimento leva um disco só.
-
-O código do projeto:"""
+"""
     ),
-    *(writefile_cell(find(f"{SOURCE_DIR}/{module}")) for module in HEURISTIC_MODULES),
+    *_writefiles(HEURISTIC_MODULES),
     code("explain_heuristic()"),
     code("children_heuristics()"),
 )
@@ -425,6 +516,13 @@ Em P1 o terceiro caso não acontece; nos 36 objetivos ele aparece 2 vezes com `a
                 MENOR_CUSTO[estado do filho] = custo
                 põe o filho em ABERTOS, na posição de h(filho)
     FRACASSO""",
+    code_note="""- **`_best_cost`**: o vetor de menor custo, com o menor número de movimentos já gerado até cada estado.
+- **`_open`**: o nó de cada estado que está em ABERTOS, para poder tirá-lo de lá quando um caminho mais curto aparece.
+- **`_closed`**: os estados de FECHADOS.
+- **`_is_repetition`**: os dois primeiros casos da poda. Descarta o filho de estado já fechado e o que não encurta o caminho conhecido.
+- **`_discard`**: registra como poda o nó que foi trocado.
+
+O terceiro caso da poda está no laço: quando o filho chega mais curto a um estado ainda aberto, `frontier.remove` tira o nó antigo.""",
     path_strategy="ascending",
     path_note="R4, R1, R1: 3 movimentos, o ótimo. As duas estratégias, com e sem poda, chegam a este mesmo caminho.",
     complexity=(
@@ -507,6 +605,7 @@ No código, a gulosa herda o laço da irrevogável e troca só o método que esc
         se poda: descarta as que levam a um estado de FECHADOS
         se não sobrou regra: IMPASSE
         nó = aplica a regra de menor h(filho) em nó (no empate, a primeira)""",
+    code_note="""A classe herda o laço da irrevogável e troca só o `_choose`: ele devolve a regra cujo filho tem a menor heurística. No empate, `min` fica com a primeira na ordem da estratégia.""",
     uses_heuristic=True,
     path_strategy="ascending",
     path_note="R4, R1, R1: 3 movimentos, o ótimo, com as duas estratégias. A irrevogável faz 14 movimentos com `ascending` e trava com `descending`.",
@@ -592,10 +691,6 @@ def _complexity_rows(spec: AlgorithmSection) -> tuple[ComplexityRow, ...]:
     return (*spec.complexity, *(row for other in compared for row in other.complexity))
 
 
-def _writefiles(modules: tuple[str, ...]) -> tuple[Cell, ...]:
-    return tuple(writefile_cell(find(f"{SOURCE_DIR}/{module}")) for module in modules)
-
-
 def _limit(spec: AlgorithmSection) -> str:
     return (
         "" if spec.no_prune_limit is None else f", max_iterations={spec.no_prune_limit}"
@@ -630,11 +725,6 @@ def section(spec: AlgorithmSection, index: int, *, first: bool) -> tuple[Cell, .
         ),
     ]
     if first:
-        cells.append(
-            markdown(
-                "A legenda (discos, hastes e capacidades) e o catálogo de cartas, como estão no projeto:"
-            )
-        )
         cells.extend(_writefiles(PROBLEM_MODULES))
     cells.append(code("show_problem()"))
 
@@ -648,11 +738,6 @@ def section(spec: AlgorithmSection, index: int, *, first: bool) -> tuple[Cell, .
 
     cells.append(markdown(f"## O laço e as listas\n\n{spec.loop}"))
     if first:
-        cells.append(
-            markdown(
-                "O motor que todos os algoritmos compartilham: testar as regras, ordenar pela estratégia, podar, gerar o filho e contar. Cada algoritmo implementa só o próprio laço, em `_search`."
-            )
-        )
         cells.extend(_writefiles(ENGINE_MODULES))
 
     cells.append(
@@ -688,9 +773,10 @@ def section(spec: AlgorithmSection, index: int, *, first: bool) -> tuple[Cell, .
             code(f'levels_chart("{spec.name}"{limit})'),
             *_runs(spec, prune=True),
             markdown(
-                f"## Pseudocódigo\n\n```text\n{spec.pseudocode}\n```\n\n{PRUNE_FLAG}\n\nO código do projeto:"
+                f"## Pseudocódigo\n\n```text\n{spec.pseudocode}\n```\n\n{PRUNE_FLAG}"
             ),
-            *_writefiles((spec.module,)),
+            markdown(f"**`{SOURCE_DIR}/{spec.module}`**: {spec.code_note}"),
+            writefile_cell(find(f"{SOURCE_DIR}/{spec.module}")),
             markdown(f"## Caminho solução\n\n{spec.path_note}"),
             code(f'show_path(solve("{spec.name}", "{spec.path_strategy}"))'),
             markdown(

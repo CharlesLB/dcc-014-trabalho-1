@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from cells import Cell, code, ignore, markdown
+from plain import without_comments
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SOURCE_DIR = "src"
@@ -68,7 +69,9 @@ def writefile_cell(item: ProjectFile) -> Cell:
 
 
 def install_cell(title: str, files: Iterable[ProjectFile]) -> Cell:
-    entries = "\n".join(f"    {item.path!r}: {item.text!r}," for item in files)
+    entries = "\n".join(
+        f"    {item.path!r}: {without_comments(item.text)!r}," for item in files
+    )
     return code(
         f"""#@title {title}
 from pathlib import Path
