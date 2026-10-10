@@ -8,6 +8,8 @@ from typing import ClassVar
 from config import settings
 from core.domain.problem import Problem
 from core.domain.state import State
+from core.heuristics.domain.base import Heuristic
+from core.heuristics.domain.registry import DEFAULT_HEURISTIC
 from core.rules.domain.base import TransitionRule
 from core.rules.strategies.domain.base import ControlStrategy
 from core.search_tree import path
@@ -48,11 +50,13 @@ class SearchAlgorithm(ABC):
         *,
         max_iterations: int = settings.MAX_ITERATIONS,
         prune: bool = True,
+        heuristic: Heuristic = DEFAULT_HEURISTIC,
     ) -> None:
         self._tree = tree
         self._strategy = strategy
         self._max_iterations = max_iterations
         self._prune = prune
+        self._heuristic = heuristic
         self._context: _RunContext | None = None
 
     @property
@@ -66,6 +70,10 @@ class SearchAlgorithm(ABC):
     @property
     def prune(self) -> bool:
         return self._prune
+
+    @property
+    def heuristic(self) -> Heuristic:
+        return self._heuristic
 
     def solve(self, problem: Problem) -> SearchResult:
         """Porta de entrada da busca.

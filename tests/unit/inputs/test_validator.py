@@ -22,6 +22,7 @@ def test_default_request_is_valid() -> None:
         (lambda r: replace(r, problem_ids=("P999",)), "problem"),
         (lambda r: replace(r, algorithm_names=("astar",)), "algorithm"),
         (lambda r: replace(r, strategy_names=("random",)), "strategy"),
+        (lambda r: replace(r, heuristic_name="manhattan"), "heuristic"),
         (lambda r: replace(r, output_format="xml"), "format"),
         (lambda r: replace(r, rank_mode="elo"), "rank_mode"),
     ],

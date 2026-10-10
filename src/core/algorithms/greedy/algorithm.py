@@ -4,10 +4,14 @@
 
     S0 = ([V, R], [A], [])          Sf = ([], [R, V], [A])
 
-2. Heurística: a mesma da busca ordenada (core/domain/heuristic.py)
+2. Heurística: a mesma da busca ordenada, escolhida em core/heuristics/
 
-    0 por disco bem posicionado, 1 em outra haste, 2 na haste certa mas mal
+    Padrão, discos mal posicionados (core/heuristics/misplacement.py): 0 por
+    disco bem posicionado, 1 em outra haste, 2 na haste certa mas mal
     posicionado. h(estado) = soma dos três discos.
+
+    Alternativa, cor e distância (core/heuristics/color_distance.py): peso da
+    cor x hastes até a do objetivo, somado nos três discos.
 
 3. Critério
 
@@ -23,7 +27,6 @@ from __future__ import annotations
 from typing import ClassVar
 
 from core.algorithms.irrevocable.algorithm import IrrevocableSearch
-from core.domain.heuristic import misplacement
 from core.domain.problem import Problem
 from core.rules.domain.base import TransitionRule
 from core.search_tree.node import Node
@@ -42,5 +45,7 @@ class GreedySearch(IrrevocableSearch):
         """
         return min(
             candidates,
-            key=lambda rule: misplacement(rule.apply(node.state), problem.goal),
+            key=lambda rule: self._heuristic.estimate(
+                rule.apply(node.state), problem.goal
+            ),
         )

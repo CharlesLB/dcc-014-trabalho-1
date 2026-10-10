@@ -10,7 +10,7 @@
 Toda regra tem inversa exata: R1<->R3, R2<->R5, R4<->R6.
 
 Toda jogada custa 1: o custo de um caminho é o número de movimentos. Quem
-ordena a busca ordenada e a gulosa é a heurística (`core/domain/heuristic.py`),
+ordena a busca ordenada e a gulosa é a heurística (`core/heuristics/`),
 não o custo das regras.
 
 `apply` exige `is_applicable` como pré-condição: aplicar regra inválida é erro de

@@ -29,6 +29,7 @@ def test_list_reports_the_catalogues() -> None:
     assert settings.LIST_PROBLEMS_HEADER in completed.stdout
     assert settings.LIST_ALGORITHMS_HEADER in completed.stdout
     assert settings.LIST_STRATEGIES_HEADER in completed.stdout
+    assert settings.LIST_HEURISTICS_HEADER in completed.stdout
 
 
 def test_help_is_written_to_stdout() -> None:

@@ -39,6 +39,7 @@ python main.py --algorithm backtracking --show-tree --show-trace
 python main.py --show-states
 python main.py --rank-mode score
 python main.py --all-goals             # os 36 estados finais; só o resumo, com média e mediana
+python main.py --heuristic color_distance  # troca a heurística da ordenada e da gulosa
 python main.py --no-prune              # sem poda: a árvore aceita estados repetidos
 python main.py --format json --output resultados.json
 python main.py --svg-dir data          # árvore de cada execução em data/<carta>/<algoritmo>_<estratégia>.svg
@@ -57,6 +58,10 @@ src/
 │   │       ├── domain/        contrato e registro
 │   │       └── canonical.py   ascending e descending
 │   ├── domain/                estados, invariantes, cartas, enumeração
+│   ├── heuristics/
+│   │   ├── domain/            contrato e registro
+│   │   ├── misplacement.py    discos mal posicionados (padrão)
+│   │   └── color_distance.py  peso da cor × distância
 │   ├── search_tree/           nó, árvore, contrato da fronteira, caminho, métricas, trace
 │   └── algorithms/
 │       ├── domain/            contrato e registro
@@ -96,7 +101,7 @@ Tudo isso é verificado na AST por [tests/architecture/test_dependencies.py](tes
 
 - Código inteiramente em inglês.
 - **Sem comentários e sem docstrings de função.** O contrato de cada função é a assinatura tipada, garantida por `mypy --strict`. Só diretivas de ferramenta (`# noqa`, `# type:`) aparecem no meio do código.
-- **A modelagem do problema é documentada no topo dos módulos que a carregam**, e só neles: [problem.py](src/core/domain/problem.py) (posição inicial e catálogo de cartas), [state_space.py](src/core/domain/state_space.py) (os 36 estados, conexidade, o oráculo) [heuristic.py](src/core/domain/heuristic.py) (a heurística) e os cinco algoritmos, cada um com a carta P1 e o critério de busca.
+- **A modelagem do problema é documentada no topo dos módulos que a carregam**, e só neles: [problem.py](src/core/domain/problem.py) (posição inicial e catálogo de cartas), [state_space.py](src/core/domain/state_space.py) (os 36 estados, conexidade, o oráculo) [misplacement.py](src/core/heuristics/misplacement.py) e [color_distance.py](src/core/heuristics/color_distance.py) (as heurísticas) e os cinco algoritmos, cada um com a carta P1 e o critério de busca.
 - Estado imutável em todo lugar: `tuple`, frozen dataclass, enum.
 - Texto apresentado ao usuário só em `libs/outputs/theme.py` e `config/settings.py`.
 
@@ -162,7 +167,7 @@ Nada de profundidade d+1 antes de esgotar d, então o primeiro caminho até um e
 
 ### Heurística
 
-Toda jogada custa 1. A busca ordenada e a gulosa usam a heurística de discos mal posicionados ([core/domain/heuristic.py](src/core/domain/heuristic.py)). Cada disco contribui com o mínimo de movimentos que ainda precisa fazer:
+Toda jogada custa 1. A busca ordenada e a gulosa recebem a heurística por parâmetro: cada uma é um módulo de [core/heuristics/](src/core/heuristics/), registrado pelo nome e escolhido com `--heuristic`. O padrão é a de discos mal posicionados ([misplacement.py](src/core/heuristics/misplacement.py)). Cada disco contribui com o mínimo de movimentos que ainda precisa fazer:
 
 | disco | contribui |
 |---|---|
@@ -171,6 +176,17 @@ Toda jogada custa 1. A busca ordenada e a gulosa usam a heurística de discos ma
 | na haste certa, mas mal posicionado | 2 |
 
 **h(estado)** é a soma dos três discos. Estar na haste certa fora do lugar pesa mais que estar na haste errada, porque o disco precisa sair e voltar. A heurística é admissível: cada movimento leva um disco só, então h nunca passa do número de movimentos que falta. Os testes verificam isso nos 1.296 pares de estados.
+
+A segunda heurística é a de cor e distância ([color_distance.py](src/core/heuristics/color_distance.py)), escolhida com `--heuristic color_distance`. Cada disco fora da haste do objetivo contribui com o peso da sua cor (verde 1, vermelho 2, azul 3) vezes a distância em hastes até a haste em que deve ficar (1 entre vizinhas, 2 entre H1 e H3). Ela só olha a haste, não a altura: um disco na haste certa contribui com 0 mesmo fora do lugar, então h pode ser 0 fora do objetivo. Não é admissível.
+
+| 36 objetivos, com poda | discos mal posicionados | cor e distância |
+|---|---|---|
+| gulosa `ascending`: sucessos | 29 | 25 |
+| gulosa `descending`: sucessos | 28 | 23 |
+| ordenada: sucessos | 36 | 36 |
+| ordenada `ascending`: movimentos (média) | 4,19 | 5,17 |
+
+Em P1 as duas levam ao mesmo caminho, R4, R1, R1.
 
 ### Busca ordenada
 
@@ -241,7 +257,7 @@ make graphs
 Destaques:
 
 - **Tabela contra os outros algoritmos** com o vencedor de cada critério (nível da solução, iterações, nós gerados e expandidos, pico de ABERTOS, retrocessos, impasses) em verde.
-- **A heurística na busca ordenada**: a regra dos discos mal posicionados, o código de `heuristic.py`, a conta de h em S0 disco a disco e a h de cada filho da raiz.
+- **A heurística na busca ordenada**: a regra dos discos mal posicionados, o código de `misplacement.py`, a conta de h em S0 disco a disco e a h de cada filho da raiz.
 - **Comparativo nos 36 objetivos** na seção da ordenada: boxplot e quartis de nós expandidos, iterações e nós gerados, para todas as combinações de algoritmo e estratégia.
 - **Tabelas de complexidade** com o algoritmo na primeira coluna, no mesmo formato da tabela consolidada da comparação.
 

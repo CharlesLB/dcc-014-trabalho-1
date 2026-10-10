@@ -11,7 +11,7 @@ A apresentação é feita pelo próprio Colab. Todo o código de apoio fica no t
 | Comparação dos algoritmos | Matriz completa (5 algoritmos × 2 estratégias) em P1, com a carta desenhada sobre o gráfico, e nos 36 objetivos, em boxplot; qualidade da solução, tabela de complexidade de todos os algoritmos e a análise. Os gráficos deixam de fora a irrevogável e a gulosa, que não garantem solução; as tabelas mostram todos. |
 | Integrantes | O grupo. |
 
-Toda jogada custa 1. A seção da busca ordenada tem, logo depois das regras, a heurística de discos mal posicionados: a tabela das contribuições (0, 1 ou 2 por disco), o código de `heuristic.py`, a conta de h em S0 disco a disco e a h de cada filho da raiz. A gulosa, que vem depois, usa a mesma heurística.
+Toda jogada custa 1. A seção da busca ordenada tem, logo depois das regras, a heurística de discos mal posicionados: a tabela das contribuições (0, 1 ou 2 por disco), o código de `misplacement.py`, a conta de h em S0 disco a disco e a h de cada filho da raiz. A gulosa, que vem depois, usa a mesma heurística.
 
 Depois dos comparativos, a seção da ordenada tem ainda os 36 objetivos: boxplot e quartis de nós expandidos, iterações e nós gerados para todas as combinações, da menor para a maior média.
 

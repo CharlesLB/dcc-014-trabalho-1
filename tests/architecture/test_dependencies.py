@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from core.algorithms.domain.registry import ALGORITHMS
+from core.heuristics.domain.registry import HEURISTICS
 from core.rules.strategies.domain.registry import STRATEGIES
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -147,8 +148,9 @@ def test_each_algorithm_folder_has_an_algorithm_module() -> None:
     [
         (_algorithm_modules(), ALGORITHMS),
         (_direct_children("core/rules/strategies"), STRATEGIES),
+        (_direct_children("core/heuristics"), HEURISTICS),
     ],
-    ids=["algorithms", "strategies"],
+    ids=["algorithms", "strategies", "heuristics"],
 )
 def test_plural_package_holds_only_registered_implementations(
     modules: tuple[Path, ...], registry: Mapping[str, object]

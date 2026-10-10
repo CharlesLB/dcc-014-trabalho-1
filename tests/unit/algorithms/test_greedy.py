@@ -3,10 +3,11 @@ from __future__ import annotations
 import pytest
 
 from core.algorithms.greedy.algorithm import GreedySearch
-from core.domain.heuristic import misplacement
 from core.domain.problem import Problem
 from core.domain.state import State
 from core.domain.state_space import all_states
+from core.heuristics.domain.base import Heuristic
+from core.heuristics.domain.registry import DEFAULT_HEURISTIC, HEURISTICS
 from core.rules.strategies.domain.registry import STRATEGIES
 from core.search_tree.outcome import Outcome
 from core.search_tree.result import SearchResult
@@ -15,9 +16,15 @@ from core.search_tree.tree import SearchTree
 
 
 def _solve(
-    strategy_name: str, problem: Problem, tree: SearchTree | None = None
+    strategy_name: str,
+    problem: Problem,
+    tree: SearchTree | None = None,
+    heuristic: Heuristic = DEFAULT_HEURISTIC,
 ) -> SearchResult:
-    return GreedySearch(tree or SearchTree(), STRATEGIES[strategy_name]).solve(problem)
+    search = GreedySearch(
+        tree or SearchTree(), STRATEGIES[strategy_name], heuristic=heuristic
+    )
+    return search.solve(problem)
 
 
 @pytest.mark.parametrize("strategy_name", sorted(STRATEGIES))
@@ -31,13 +38,14 @@ def test_p1_matches_the_presentation(
     assert result.metrics.nodes_generated == 4
 
 
+@pytest.mark.parametrize("heuristic", HEURISTICS.values(), ids=list(HEURISTICS))
 def test_each_step_takes_the_child_with_the_lowest_heuristic(
-    initial_state: State,
+    heuristic: Heuristic, initial_state: State
 ) -> None:
     for goal in all_states():
         problem = Problem("SYNTHETIC", goal, initial=initial_state)
         for name in STRATEGIES:
-            result = _solve(name, problem)
+            result = _solve(name, problem, heuristic=heuristic)
             generated = result.trace.of_event(TraceEvent.GENERATE)
             states = [initial_state, *(step.state for step in generated)]
             for index in range(1, len(states)):
@@ -48,8 +56,8 @@ def test_each_step_takes_the_child_with_the_lowest_heuristic(
                     if rule.is_applicable(parent)
                     and rule.apply(parent) not in states[:index]
                 ]
-                assert misplacement(child, goal) == min(
-                    misplacement(option, goal) for option in options
+                assert heuristic.estimate(child, goal) == min(
+                    heuristic.estimate(option, goal) for option in options
                 )
 
 

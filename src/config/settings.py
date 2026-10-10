@@ -33,6 +33,9 @@ HELP_HELP: Final = "Mostra esta ajuda e encerra."
 HELP_PROBLEM: Final = "Cartas a resolver (repetível ou separado por vírgula)."
 HELP_ALGORITHM: Final = "Algoritmos a executar (repetível ou separado por vírgula)."
 HELP_STRATEGY: Final = "Estratégias de controle (repetível ou separado por vírgula)."
+HELP_HEURISTIC: Final = (
+    "Heurística usada pela busca ordenada e pela gulosa; as outras buscas a ignoram."
+)
 HELP_ALL: Final = (
     "Produto cartesiano completo: todas as cartas, algoritmos e estratégias."
 )
@@ -57,13 +60,16 @@ HELP_SVG_DIR: Final = (
 )
 HELP_RANK_MODE: Final = "Critério do placar."
 HELP_MAX_ITERATIONS: Final = "Guarda contra execução patológica."
-HELP_LIST: Final = "Lista cartas, algoritmos e estratégias disponíveis e encerra."
+HELP_LIST: Final = (
+    "Lista cartas, algoritmos, estratégias e heurísticas disponíveis e encerra."
+)
 HELP_VERBOSE: Final = "Habilita log de diagnóstico na saída de erro."
 
 KIND_LABELS: Final[Mapping[str, str]] = {
     "problem": "Carta não reconhecida",
     "algorithm": "Algoritmo não reconhecido",
     "strategy": "Estratégia não reconhecida",
+    "heuristic": "Heurística não reconhecida",
     "format": "Formato de saída não reconhecido",
     "rank_mode": "Modo de ranqueamento não reconhecido",
 }
@@ -79,6 +85,7 @@ OPTIONS_TITLE: Final = "Opções"
 LIST_PROBLEMS_HEADER: Final = "Cartas disponíveis"
 LIST_ALGORITHMS_HEADER: Final = "Algoritmos disponíveis"
 LIST_STRATEGIES_HEADER: Final = "Estratégias disponíveis"
+LIST_HEURISTICS_HEADER: Final = "Heurísticas disponíveis"
 OUTPUT_WRITTEN: Final = "Saída gravada em {path}"
 GRAPHS_WRITTEN: Final = "{count} arquivos de árvore gravados em {path}"
 GRAPHVIZ_MISSING: Final = (

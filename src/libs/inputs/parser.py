@@ -8,6 +8,7 @@ from typing import NoReturn
 from config import settings
 from core.algorithms.domain.registry import ALGORITHM_NAMES
 from core.domain.problem import PROBLEM_IDS
+from core.heuristics.domain.registry import DEFAULT_HEURISTIC
 from core.rules.strategies.domain.registry import STRATEGY_NAMES
 from libs.inputs.exceptions import InvalidArgumentError
 from libs.inputs.selection import ExecutionRequest
@@ -45,6 +46,9 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--problem", action="append", help=settings.HELP_PROBLEM)
     group.add_argument("--algorithm", action="append", help=settings.HELP_ALGORITHM)
     group.add_argument("--strategy", action="append", help=settings.HELP_STRATEGY)
+    group.add_argument(
+        "--heuristic", default=DEFAULT_HEURISTIC.name, help=settings.HELP_HEURISTIC
+    )
     group.add_argument("--all", action="store_true", help=settings.HELP_ALL)
     group.add_argument("--all-goals", action="store_true", help=settings.HELP_ALL_GOALS)
     group.add_argument("--no-prune", action="store_true", help=settings.HELP_NO_PRUNE)
@@ -102,6 +106,7 @@ def parse(argv: Sequence[str]) -> ExecutionRequest:
         verbose=namespace.verbose,
         all_goals=namespace.all_goals,
         prune=not namespace.no_prune,
+        heuristic_name=namespace.heuristic.lower(),
     )
 
 

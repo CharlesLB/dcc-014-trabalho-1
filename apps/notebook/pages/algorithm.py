@@ -15,7 +15,7 @@ RULE_MODULES = (
     "core/rules/domain/catalog.py",
 )
 STRATEGY_MODULES = ("core/rules/strategies/canonical.py",)
-HEURISTIC_MODULES = ("core/domain/heuristic.py",)
+HEURISTIC_MODULES = ("core/heuristics/misplacement.py",)
 SLIDE_STRATEGIES = (("ascending", "crescente"), ("descending", "decrescente"))
 COMPLEXITY_HEADER = ("Algoritmo", "Tempo", "Memória", "Solução", "Por quê")
 
@@ -68,7 +68,7 @@ As duas dependem só do estado atual. Não voltar a um estado do caminho depende
     "core/rules/strategies/canonical.py": """as duas estratégias de controle.
 
 `CanonicalOrder` ordena as regras válidas pela posição no catálogo: `ascending` de R1 a R6 e `descending` de R6 a R1.""",
-    "core/domain/heuristic.py": """a heurística no código.
+    "core/heuristics/misplacement.py": """a heurística no código.
 
 - **`contributions`**: quanto cada disco soma em h (0, 1 ou 2), como na tabela acima.
 - **`misplacement`**: h do estado, a soma das três contribuições.

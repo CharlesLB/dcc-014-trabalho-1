@@ -3,10 +3,10 @@ from __future__ import annotations
 import pytest
 
 from core.algorithms.ordered.algorithm import OrderedSearch
-from core.domain.heuristic import misplacement
 from core.domain.problem import Problem
 from core.domain.state import State, build_state
 from core.domain.state_space import all_states, shortest_distance
+from core.heuristics.misplacement import misplacement
 from core.rules.domain.base import Disk
 from core.rules.strategies.domain.registry import STRATEGIES
 from core.search_tree.outcome import Outcome

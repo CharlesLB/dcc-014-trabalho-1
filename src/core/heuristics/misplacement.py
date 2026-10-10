@@ -26,6 +26,8 @@ que falta.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from core.domain.state import Disk, Peg, Stack, State
 
 
@@ -55,3 +57,14 @@ def _common_base(stack: Stack, target: Stack) -> int:
             break
         count += 1
     return count
+
+
+@dataclass(frozen=True, slots=True)
+class MisplacedDisks:
+    name: str = "misplacement"
+
+    def estimate(self, state: State, goal: State) -> int:
+        return misplacement(state, goal)
+
+
+MISPLACEMENT = MisplacedDisks()

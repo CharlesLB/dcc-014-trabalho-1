@@ -7,6 +7,7 @@ from config import settings
 from config.logging import configure_logging
 from core.algorithms.domain.registry import ALGORITHM_NAMES
 from core.domain.problem import PROBLEMS
+from core.heuristics.domain.registry import HEURISTIC_NAMES
 from core.rules.strategies.domain.registry import STRATEGY_NAMES
 from libs.inputs import parser, validator
 from libs.inputs.exceptions import (
@@ -79,6 +80,7 @@ def _render_catalogues() -> str:
         (settings.LIST_PROBLEMS_HEADER, problems),
         (settings.LIST_ALGORITHMS_HEADER, ALGORITHM_NAMES),
         (settings.LIST_STRATEGIES_HEADER, STRATEGY_NAMES),
+        (settings.LIST_HEURISTICS_HEADER, HEURISTIC_NAMES),
     )
     return "\n\n".join(
         console.render_section(title, "\n".join(f"  {item}" for item in items))

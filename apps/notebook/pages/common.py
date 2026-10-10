@@ -168,7 +168,7 @@ from IPython.display import SVG, display
 
 from config import settings
 from core.algorithms.domain.registry import ALGORITHM_NAMES
-from core.domain.heuristic import contributions, misplacement
+from core.heuristics.misplacement import contributions, misplacement
 from core.domain.problem import INITIAL_STATE, get_problem
 from core.domain.state_space import all_states, applicable_rules, successors
 from core.rules.domain.base import Peg

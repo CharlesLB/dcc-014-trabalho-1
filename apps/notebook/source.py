@@ -17,6 +17,8 @@ FOLDERS: tuple[str, ...] = (
     "core/rules/strategies/domain",
     "core/rules/strategies",
     "core/domain",
+    "core/heuristics",
+    "core/heuristics/domain",
     "core/search_tree",
     "core/algorithms/domain",
     "core/algorithms/irrevocable",

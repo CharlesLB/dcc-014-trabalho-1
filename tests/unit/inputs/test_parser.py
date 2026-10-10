@@ -114,3 +114,8 @@ def test_all_goals_is_a_flag() -> None:
 def test_no_prune_turns_pruning_off() -> None:
     assert parse([]).prune is True
     assert parse(["--no-prune"]).prune is False
+
+
+def test_heuristic_defaults_to_misplacement_and_is_normalised() -> None:
+    assert parse([]).heuristic_name == "misplacement"
+    assert parse(["--heuristic", "Color_Distance"]).heuristic_name == "color_distance"

@@ -4,7 +4,7 @@
 
     S0 = ([V, R], [A], [])          Sf = ([], [R, V], [A])
 
-2. Heurística (core/domain/heuristic.py)
+2. Heurística (padrão: core/heuristics/misplacement.py)
 
     Cada disco contribui com o mínimo de movimentos que ainda precisa fazer:
 
@@ -37,7 +37,6 @@ from typing import ClassVar
 
 from core.algorithms.domain.base import SearchAlgorithm
 from core.algorithms.ordered.frontier import PriorityFrontier
-from core.domain.heuristic import misplacement
 from core.domain.problem import Problem
 from core.domain.state import State
 from core.rules.domain.base import TransitionRule
@@ -60,7 +59,9 @@ class OrderedSearch(SearchAlgorithm):
         é gerado, como em toda busca com fila ordenada.
         """
         context = self._require_context()
-        frontier = PriorityFrontier(lambda node: misplacement(node.state, problem.goal))
+        frontier = PriorityFrontier(
+            lambda node: self._heuristic.estimate(node.state, problem.goal)
+        )
         frontier.push(context.root)
 
         # Vetor de menor custo: o caminho mais curto já gerado até cada

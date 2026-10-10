@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from config import settings
+from core.heuristics.domain.registry import DEFAULT_HEURISTIC
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +25,7 @@ class ExecutionRequest:
     verbose: bool = False
     all_goals: bool = False
     prune: bool = True
+    heuristic_name: str = DEFAULT_HEURISTIC.name
 
     @property
     def execution_count(self) -> int:

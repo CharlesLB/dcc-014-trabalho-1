@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from core.domain.heuristic import contributions, misplacement
 from core.domain.state import State, build_state
 from core.domain.state_space import shortest_distance
+from core.heuristics.misplacement import contributions, misplacement
 from core.rules.domain.base import Disk
 
 GREEN, RED, BLUE = Disk.GREEN, Disk.RED, Disk.BLUE

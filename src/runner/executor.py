@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from core.algorithms.domain.registry import get_algorithm
 from core.domain.problem import Problem, all_goal_problems, get_problem
+from core.heuristics.domain.registry import get_heuristic
 from core.rules.strategies.domain.registry import get_strategy
 from core.search_tree.result import SearchResult
 from core.search_tree.tree import SearchTree
@@ -17,6 +18,7 @@ def run_problem(
             get_strategy(strategy_name),
             max_iterations=request.max_iterations,
             prune=request.prune,
+            heuristic=get_heuristic(request.heuristic_name),
         ).solve(problem)
         for algorithm_name in request.algorithm_names
         for strategy_name in request.strategy_names
