@@ -4,30 +4,28 @@
 
     S0 = ([V, R], [A], [])          Sf = ([], [R, V], [A])
 
-2. Heurística (padrão: core/heuristics/misplacement.py)
+2. Custo real (core/costs/)
 
-    Cada disco contribui com o mínimo de movimentos que ainda precisa fazer:
+    Cada jogada tem um custo real, dado pela função de custo escolhida. O
+    custo de um nó é a soma dos custos das jogadas da raiz até ele.
 
-        0   bem posicionado: haste e altura certas, e tudo abaixo dele também
-        1   em outra haste
-        2   na haste certa, mas mal posicionado: precisa sair e voltar
+    Padrão, peso e distância (core/costs/weight_distance.py): peso do disco
+    movido (verde 1, vermelho 2, azul 3) x distância em hastes. Em S0, R4
+    leva o azul de H2 para H3: 3 x 1 = 3.
 
-    h(estado) = soma dos três discos. Em S0: V e R em H1, A em H2, todos em
-    haste errada: h = 1 + 1 + 1 = 3.
-
-    Toda jogada custa 1, então o custo de um nó é a sua profundidade. O custo
-    não ordena a fila: só decide qual de dois nós do mesmo estado fica.
+    Alternativa, unitário (core/costs/unit.py): toda jogada custa 1.
 
 3. Critério
 
-    ABERTOS é ordenada pela MENOR heurística. No empate, sai o nó gerado
-    primeiro; entre irmãos de mesma heurística, decide a estratégia (aqui, a
-    ordem crescente R1 → R2 → R3 → R4 → R5 → R6). A busca só encerra quando
-    o objetivo vira o estado atual, não quando ele é gerado.
+    ABERTOS é ordenada pelo MENOR custo real acumulado. No empate, sai o nó
+    gerado primeiro; entre irmãos de mesmo custo, decide a estratégia (aqui,
+    a ordem crescente R1 → R2 → R3 → R4 → R5 → R6). A busca só encerra quando
+    o objetivo vira o estado atual, não quando ele é gerado: por isso a
+    solução encontrada é a de menor custo.
 
     Poda: o filho cujo estado já foi expandido (FECHADOS) é descartado; o
-    filho cujo estado já está em ABERTOS por um caminho de mesmo tamanho ou
-    menor também. Se o novo caminho for mais curto, o nó antigo sai de
+    filho cujo estado já está em ABERTOS por um caminho de custo igual ou
+    menor também. Se o novo caminho for mais barato, o nó antigo sai de
     ABERTOS e da árvore e o novo entra no lugar.
 """
 
@@ -53,25 +51,22 @@ class OrderedSearch(SearchAlgorithm):
     _closed: set[State]
 
     def _search(self, problem: Problem) -> Outcome:
-        """Sempre expande o nó aberto de menor heurística.
+        """Sempre expande o nó aberto de menor prioridade.
 
         O objetivo só encerra a busca quando vira o estado atual, não quando
         é gerado, como em toda busca com fila ordenada.
         """
         context = self._require_context()
-        frontier = PriorityFrontier(
-            lambda node: self._heuristic.estimate(node.state, problem.goal)
-        )
+        frontier = PriorityFrontier(lambda node: self._priority(node, problem))
         frontier.push(context.root)
 
-        # Vetor de menor custo: o caminho mais curto já gerado até cada
+        # Vetor de menor custo: o caminho mais barato já gerado até cada
         # estado. Decide qual de dois nós do mesmo estado fica em ABERTOS.
         self._best_cost = {context.root.state: 0}
         # O nó de cada estado que ainda espera em ABERTOS, para poder tirá-lo
-        # de lá quando um caminho mais curto até o mesmo estado aparecer.
+        # de lá quando um caminho mais barato até o mesmo estado aparecer.
         self._open = {context.root.state: context.root}
-        # FECHADOS: a fila não sai por custo, então um estado expandido ainda
-        # pode reaparecer mais barato. Ele não é reaberto: é podado.
+        # FECHADOS: os estados já expandidos. Nenhum deles é reaberto.
         self._closed = set()
         self._observe_frontier(len(frontier))
 
@@ -95,7 +90,7 @@ class OrderedSearch(SearchAlgorithm):
                 child = self._expand(node, rule)
                 older = self._open.get(child.state) if self.prune else None
                 if older is not None:
-                    # Chegou mais curto a um estado que ainda está aberto:
+                    # Chegou mais barato a um estado que ainda está aberto:
                     # o nó antigo sai de ABERTOS e da árvore.
                     frontier.remove(older)
                     self._discard(older)
@@ -106,14 +101,24 @@ class OrderedSearch(SearchAlgorithm):
 
         return self._exhausted()
 
+    def _priority(self, node: Node, problem: Problem) -> int:
+        """O que ordena ABERTOS: aqui, o custo real acumulado até o nó.
+
+        A gulosa sobrescreve para ordenar pela heurística.
+        """
+        return node.cost
+
     def _is_repetition(
         self, node: Node, rule: TransitionRule, successor: State
     ) -> bool:
-        """Poda o filho já fechado ou que não encurta o caminho conhecido."""
+        """Poda o filho já fechado ou que não barateia o caminho conhecido."""
         if successor in self._closed:
             return True
         best = self._best_cost.get(successor)
-        return best is not None and node.cost + rule.cost(node.state) >= best
+        return (
+            best is not None
+            and node.cost + self._tree.step_cost(rule, node.state) >= best
+        )
 
     def _discard(self, node: Node) -> None:
         """Só contabilidade: registra o nó substituído como poda do pai."""

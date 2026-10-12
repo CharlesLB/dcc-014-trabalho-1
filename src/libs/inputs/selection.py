@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from config import settings
+from core.costs.domain.registry import DEFAULT_COST
 from core.heuristics.domain.registry import DEFAULT_HEURISTIC
 
 
@@ -26,6 +27,7 @@ class ExecutionRequest:
     all_goals: bool = False
     prune: bool = True
     heuristic_name: str = DEFAULT_HEURISTIC.name
+    cost_name: str = DEFAULT_COST.name
 
     @property
     def execution_count(self) -> int:

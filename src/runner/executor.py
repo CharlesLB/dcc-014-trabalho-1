@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from core.algorithms.domain.registry import get_algorithm
+from core.costs.domain.registry import get_cost
 from core.domain.problem import Problem, all_goal_problems, get_problem
 from core.heuristics.domain.registry import get_heuristic
 from core.rules.strategies.domain.registry import get_strategy
@@ -14,7 +15,7 @@ def run_problem(
 ) -> tuple[SearchResult, ...]:
     return tuple(
         get_algorithm(algorithm_name)(
-            SearchTree(),
+            SearchTree(cost=get_cost(request.cost_name)),
             get_strategy(strategy_name),
             max_iterations=request.max_iterations,
             prune=request.prune,

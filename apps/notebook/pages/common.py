@@ -168,12 +168,12 @@ from IPython.display import SVG, display
 
 from config import settings
 from core.algorithms.domain.registry import ALGORITHM_NAMES
+from core.costs.domain.registry import DEFAULT_COST
 from core.heuristics.misplacement import contributions, misplacement
 from core.domain.problem import INITIAL_STATE, get_problem
 from core.domain.state_space import all_states, applicable_rules, successors
 from core.rules.domain.base import Peg
 from core.rules.domain.catalog import INVERSE_RULE_ID, RULE_BY_ID, RULES
-from core.rules.moves import MOVE_COST
 from core.rules.strategies.domain.registry import STRATEGIES as STRATEGY_REGISTRY
 from core.rules.strategies.domain.registry import STRATEGY_NAMES
 from core.search_tree.outcome import Outcome
@@ -295,7 +295,7 @@ def rules_table():
                 "Move de": rule.origin.name,
                 "Para": rule.destination.name,
                 "Inversa": INVERSE_RULE_ID[rule.id],
-                "Custo": MOVE_COST,
+                "Distância": abs(rule.destination - rule.origin),
             }
             for rule in RULES
         ]
@@ -324,6 +324,16 @@ def explain_heuristic(state=INITIAL_STATE, goal=P1.goal):
     terms = " + ".join(str(row["Contribui"]) for row in rows)
     print(f"\\nh = {terms} = {heuristic(state, goal)}")
     return pd.DataFrame(rows).set_index("Disco")
+
+
+def children_costs(state=INITIAL_STATE):
+    \"\"\"O custo real de cada jogada válida no estado, com o disco que ela move.\"\"\"
+    return pd.DataFrame(
+        [
+            {"Regra": rule.id, "Filho": compact(rule.apply(state)), "Disco": moved_disk(state, rule), "Custo": DEFAULT_COST.cost(rule, state)}
+            for rule in applicable_rules(state)
+        ]
+    ).set_index("Regra")
 
 
 def children_heuristics(state=INITIAL_STATE, goal=P1.goal):
@@ -429,10 +439,24 @@ def _made(events, swaps):
     return made
 
 
+def _priorities(algorithm, nodes):
+    \"\"\"O número que ordena ABERTOS: a heurística na gulosa, o custo real acumulado na ordenada.\"\"\"
+    if algorithm in HEURISTIC_ALGORITHMS:
+        return {order: heuristic(step.state) for order, step in nodes.items()}
+    costs = {}
+    for order in sorted(nodes):
+        step = nodes[order]
+        if step.parent_order is None:
+            costs[order] = 0
+        else:
+            costs[order] = costs[step.parent_order] + DEFAULT_COST.cost(RULE_BY_ID[step.rule_id], nodes[step.parent_order].state)
+    return costs
+
+
 def lists_table(result):
     mode = LIST_MODES[result.algorithm]
     nodes = _nodes(result)
-    priorities = {order: heuristic(step.state) for order, step in nodes.items()} if mode == "priority" else None
+    priorities = _priorities(result.algorithm, nodes) if mode == "priority" else None
     current_title, opened_title, closed_title = LIST_TITLES[mode]
     by_iteration = {}
     for step in result.trace:
@@ -493,13 +517,15 @@ def summary_line(result):
 def _describe(node, algorithm):
     if algorithm in HEURISTIC_ALGORITHMS:
         return f"S{node.order} ({node.rule.id}, h {heuristic(node.state)})"
+    if LIST_MODES[algorithm] == "priority":
+        return f"S{node.order} ({node.rule.id}, custo {node.cost})"
     return f"S{node.order} ({node.rule.id})"
 
 
 def frontier_demo(algorithm):
     module, name = FRONTIERS[algorithm]
     frontier_class = getattr(import_module(module), name)
-    frontier = frontier_class(lambda node: heuristic(node.state)) if LIST_MODES[algorithm] == "priority" else frontier_class()
+    frontier = frontier_class(lambda node: node.cost) if LIST_MODES[algorithm] == "priority" else frontier_class()
     tree = SearchTree()
     root = tree.root(INITIAL_STATE)
     children = [tree.expand(root, rule) for rule in applicable_rules(INITIAL_STATE)]
@@ -512,6 +538,7 @@ def frontier_demo(algorithm):
 def root_children(algorithm):
     opened_title = LIST_TITLES[LIST_MODES[algorithm]][1]
     shows_h = algorithm in HEURISTIC_ALGORITHMS
+    shows_cost = not shows_h and LIST_MODES[algorithm] == "priority"
     rows = []
     for strategy in SLIDE_STRATEGIES:
         ordered = STRATEGY_REGISTRY[strategy].order(applicable_rules(INITIAL_STATE))
@@ -519,7 +546,8 @@ def root_children(algorithm):
         children = []
         for rule in ordered:
             child = rule.apply(INITIAL_STATE)
-            children.append(f"{rule.id} → {compact(child)}" + (f" (h {heuristic(child)})" if shows_h else ""))
+            note = f" (h {heuristic(child)})" if shows_h else f" (custo {DEFAULT_COST.cost(rule, INITIAL_STATE)})" if shows_cost else ""
+            children.append(f"{rule.id} → {compact(child)}{note}")
         rows.append(
             {
                 "Estratégia": STRATEGY_LABELS[strategy],
@@ -765,12 +793,13 @@ def p1_comparison(algorithm=None):
                 "Estratégia": STRATEGY_LABELS[row.result.strategy],
                 LABELS["outcome"]: theme.outcome_label(row.result.outcome),
                 LABELS["moves"]: row.result.solution_length,
+                "Custo": row.result.solution_cost,
                 LABELS["iterations"]: row.result.metrics.iterations,
                 LABELS["nodes_generated"]: row.result.metrics.nodes_generated,
             }
             for row in p1_report().problems[0].leaderboard.rows
         ]
-    ).astype({LABELS["moves"]: "Int64"})
+    ).astype({LABELS["moves"]: "Int64", "Custo": "Int64"})
     return frame if algorithm is None else _bold_rows(frame, algorithm)
 
 
@@ -783,6 +812,7 @@ def goals_comparison(algorithm=None):
                 "Sucessos": f"{row.successes}/{row.runs}",
                 "Impasses": row.deadlocks,
                 LABELS["moves"]: render_stat(row.moves),
+                "Custo": render_stat(row.cost),
                 LABELS["iterations"]: render_stat(row.iterations),
                 LABELS["nodes_generated"]: render_stat(row.nodes_generated),
             }

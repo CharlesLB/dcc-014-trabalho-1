@@ -1,4 +1,4 @@
-"""FRONTEIRA DA BUSCA ORDENADA — fila de prioridade pela heurística.
+"""FRONTEIRA DA BUSCA ORDENADA E DA GULOSA — fila de prioridade.
 
 O contrato (push, pop, len) está em core/search_tree/frontier.py.
 """
@@ -13,8 +13,8 @@ from core.search_tree.node import Node
 
 
 class PriorityFrontier:
-    """FILA ORDENADA POR PRIORIDADE: sai o de menor prioridade. Usada pela
-    busca ordenada, com a heurística como prioridade.
+    """FILA ORDENADA POR PRIORIDADE: sai o de menor prioridade. A busca
+    ordenada usa o custo real acumulado como prioridade; a gulosa, a heurística.
 
     ```
     push S1(5), S2(6), S3(6), S4(1)  ->  pop devolve S4, S1, S2, S3

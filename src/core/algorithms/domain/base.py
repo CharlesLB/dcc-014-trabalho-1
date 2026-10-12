@@ -141,8 +141,8 @@ class SearchAlgorithm(ABC):
         """A política de repetição: aqui, um estado já presente no caminho.
 
         A busca em largura sobrescreve para usar o conjunto global de
-        fechados, que é uma poda mais forte. A ordenada sobrescreve para
-        comparar o custo do novo caminho com o menor já conhecido.
+        fechados, que é uma poda mais forte. A ordenada e a gulosa sobrescrevem
+        para comparar o custo do novo caminho com o menor já conhecido.
         """
         return path.contains_state(node, successor)
 

@@ -23,15 +23,10 @@ com um movimento só.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass
-from types import MappingProxyType
 
+from core.costs.weight_distance import WEIGHTS
 from core.domain.state import Disk, Peg, State
-
-WEIGHTS: Mapping[Disk, int] = MappingProxyType(
-    {Disk.GREEN: 1, Disk.RED: 2, Disk.BLUE: 3}
-)
 
 
 def color_distance(state: State, goal: State) -> int:

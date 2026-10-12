@@ -3,10 +3,10 @@ from __future__ import annotations
 import pytest
 
 from core.domain.state import CAPACITIES, Peg, State, disks_of, is_valid
-from core.rules.domain.base import Disk, TransitionRule
+from core.rules.domain.base import TransitionRule
 from core.rules.domain.catalog import RULES, inverse_of
 from core.rules.domain.exceptions import RuleNotApplicableError
-from core.rules.moves import MOVE_COST, R1, R2, R3, R4, R5, R6, Move
+from core.rules.moves import R1, R2, R3, R4, R5, R6, Move
 
 
 def test_catalog_covers_every_ordered_pair_of_pegs() -> None:
@@ -34,19 +34,6 @@ def test_catalog_covers_every_ordered_pair_of_pegs() -> None:
 def test_each_rule_declares_its_pegs(rule: Move, origin: Peg, destination: Peg) -> None:
     assert rule.origin is origin
     assert rule.destination is destination
-
-
-def test_every_move_costs_one(states: tuple[State, ...]) -> None:
-    for state in states:
-        for rule in RULES:
-            if rule.is_applicable(state):
-                assert rule.cost(state) == MOVE_COST == 1
-
-
-def test_cost_of_a_non_applicable_rule_fails_loudly() -> None:
-    empty_h3 = ((Disk.GREEN, Disk.RED), (Disk.BLUE,), ())
-    with pytest.raises(RuleNotApplicableError):
-        R5.cost(empty_h3)
 
 
 def test_rules_are_immutable() -> None:

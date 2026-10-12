@@ -19,7 +19,7 @@ Propriedades:
 
 `shortest_distance` é uma busca em largura escrita à parte do motor, sem árvore,
 nó ou estratégia. É o oráculo contra o qual a otimalidade de `breadth_first` é
-verificada. Como toda jogada custa 1, ela também dá o menor custo.
+verificada. Com o custo unitário, ela também dá o menor custo.
 """
 
 from __future__ import annotations

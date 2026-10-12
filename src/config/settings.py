@@ -19,7 +19,7 @@ PROGRAM_NAME: Final = "main.py"
 
 DESCRIPTION: Final = (
     "Resolvedor da Torre de Londres: executa busca irrevogável, backtracking, "
-    "busca em largura e busca ordenada sobre as cartas do problema, variando a "
+    "busca em largura, busca ordenada e busca gulosa sobre as cartas do problema, variando a "
     "estratégia de controle, e ranqueia os resultados."
 )
 
@@ -34,7 +34,11 @@ HELP_PROBLEM: Final = "Cartas a resolver (repetível ou separado por vírgula)."
 HELP_ALGORITHM: Final = "Algoritmos a executar (repetível ou separado por vírgula)."
 HELP_STRATEGY: Final = "Estratégias de controle (repetível ou separado por vírgula)."
 HELP_HEURISTIC: Final = (
-    "Heurística usada pela busca ordenada e pela gulosa; as outras buscas a ignoram."
+    "Heurística usada pela busca gulosa; as outras buscas a ignoram."
+)
+HELP_COST: Final = (
+    "Função de custo real das jogadas. Ordena a busca ordenada e dá o custo da "
+    "solução de todas as buscas."
 )
 HELP_ALL: Final = (
     "Produto cartesiano completo: todas as cartas, algoritmos e estratégias."
@@ -61,7 +65,8 @@ HELP_SVG_DIR: Final = (
 HELP_RANK_MODE: Final = "Critério do placar."
 HELP_MAX_ITERATIONS: Final = "Guarda contra execução patológica."
 HELP_LIST: Final = (
-    "Lista cartas, algoritmos, estratégias e heurísticas disponíveis e encerra."
+    "Lista cartas, algoritmos, estratégias, heurísticas e funções de custo "
+    "disponíveis e encerra."
 )
 HELP_VERBOSE: Final = "Habilita log de diagnóstico na saída de erro."
 
@@ -70,6 +75,7 @@ KIND_LABELS: Final[Mapping[str, str]] = {
     "algorithm": "Algoritmo não reconhecido",
     "strategy": "Estratégia não reconhecida",
     "heuristic": "Heurística não reconhecida",
+    "cost": "Função de custo não reconhecida",
     "format": "Formato de saída não reconhecido",
     "rank_mode": "Modo de ranqueamento não reconhecido",
 }
@@ -86,6 +92,7 @@ LIST_PROBLEMS_HEADER: Final = "Cartas disponíveis"
 LIST_ALGORITHMS_HEADER: Final = "Algoritmos disponíveis"
 LIST_STRATEGIES_HEADER: Final = "Estratégias disponíveis"
 LIST_HEURISTICS_HEADER: Final = "Heurísticas disponíveis"
+LIST_COSTS_HEADER: Final = "Funções de custo disponíveis"
 OUTPUT_WRITTEN: Final = "Saída gravada em {path}"
 GRAPHS_WRITTEN: Final = "{count} arquivos de árvore gravados em {path}"
 GRAPHVIZ_MISSING: Final = (

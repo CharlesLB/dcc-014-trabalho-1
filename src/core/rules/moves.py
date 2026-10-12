@@ -9,9 +9,8 @@
 
 Toda regra tem inversa exata: R1<->R3, R2<->R5, R4<->R6.
 
-Toda jogada custa 1: o custo de um caminho é o número de movimentos. Quem
-ordena a busca ordenada e a gulosa é a heurística (`core/heuristics/`),
-não o custo das regras.
+A regra não sabe quanto custa: o custo real de uma jogada é dado pela função
+de custo escolhida (`core/costs/`).
 
 `apply` exige `is_applicable` como pré-condição: aplicar regra inválida é erro de
 programação e falha alto.
@@ -20,13 +19,10 @@ programação e falha alto.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Final
 
 from core.rules.domain.base import Peg, State
 from core.rules.domain.constraints import is_move_allowed
 from core.rules.domain.exceptions import RuleNotApplicableError
-
-MOVE_COST: Final = 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,11 +30,6 @@ class Move:
     id: str
     origin: Peg
     destination: Peg
-
-    def cost(self, state: State) -> int:
-        if not self.is_applicable(state):
-            raise RuleNotApplicableError(self.id)
-        return MOVE_COST
 
     def is_applicable(self, state: State) -> bool:
         return is_move_allowed(state, self.origin, self.destination)

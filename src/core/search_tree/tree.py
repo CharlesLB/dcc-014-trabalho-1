@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from core.costs.domain.base import CostFunction
+from core.costs.domain.registry import DEFAULT_COST
 from core.domain.state import State
 from core.rules.domain.base import TransitionRule
 from core.rules.domain.catalog import RULES
@@ -7,10 +9,15 @@ from core.search_tree.node import Node
 
 
 class SearchTree:
-    __slots__ = ("_nodes", "_rules")
+    __slots__ = ("_cost", "_nodes", "_rules")
 
-    def __init__(self, rules: tuple[TransitionRule, ...] = RULES) -> None:
+    def __init__(
+        self,
+        rules: tuple[TransitionRule, ...] = RULES,
+        cost: CostFunction = DEFAULT_COST,
+    ) -> None:
         self._rules = rules
+        self._cost = cost
         self._nodes: list[Node] = []
 
     @property
@@ -34,7 +41,10 @@ class SearchTree:
             rule=rule,
             depth=node.depth + 1,
             order=len(self._nodes),
-            cost=node.cost + rule.cost(node.state),
+            cost=node.cost + self.step_cost(rule, node.state),
         )
         self._nodes.append(child)
         return child
+
+    def step_cost(self, rule: TransitionRule, state: State) -> int:
+        return self._cost.cost(rule, state)

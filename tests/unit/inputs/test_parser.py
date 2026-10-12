@@ -119,3 +119,8 @@ def test_no_prune_turns_pruning_off() -> None:
 def test_heuristic_defaults_to_misplacement_and_is_normalised() -> None:
     assert parse([]).heuristic_name == "misplacement"
     assert parse(["--heuristic", "Color_Distance"]).heuristic_name == "color_distance"
+
+
+def test_cost_defaults_to_weight_distance_and_is_normalised() -> None:
+    assert parse([]).cost_name == "weight_distance"
+    assert parse(["--cost", "UNIT"]).cost_name == "unit"

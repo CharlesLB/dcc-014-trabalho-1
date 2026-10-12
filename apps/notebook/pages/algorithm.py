@@ -16,6 +16,7 @@ RULE_MODULES = (
 )
 STRATEGY_MODULES = ("core/rules/strategies/canonical.py",)
 HEURISTIC_MODULES = ("core/heuristics/misplacement.py",)
+COST_MODULES = ("core/costs/weight_distance.py", "core/costs/unit.py")
 SLIDE_STRATEGIES = (("ascending", "crescente"), ("descending", "decrescente"))
 COMPLEXITY_HEADER = ("Algoritmo", "Tempo", "Memória", "Solução", "Por quê")
 
@@ -27,7 +28,7 @@ MODULE_NOTES = {
 - **Discos**: verde, vermelho e azul. São distintos só pela cor: não há ordem de tamanho.
 - **Hastes**: H1 comporta até 3 discos, H2 até 2 e H3 até 1. A capacidade é a única restrição do problema e faz o papel da ordem de tamanho da Torre de Hanói.
 - **Estado**: uma tupla de três pilhas, cada uma escrita da base para o topo. É imutável.
-- **`TransitionRule`**: o contrato de uma regra. `is_applicable` diz se o movimento vale no estado, `apply` devolve o estado que resulta dele (um estado novo; o recebido não muda) e `cost` devolve o custo, sempre 1.
+- **`TransitionRule`**: o contrato de uma regra. `is_applicable` diz se o movimento vale no estado, `apply` devolve o estado que resulta dele (um estado novo; o recebido não muda). A regra não sabe quanto custa: o custo real fica em `core/costs/`.
 
 A busca só conhece esse contrato: ela testa a regra e aplica a que passou, sem saber o que é disco ou haste.""",
     "core/domain/problem.py": """o estado inicial e as cartas.
@@ -43,7 +44,7 @@ A busca só conhece esse contrato: ela testa a regra e aplica a que passou, sem 
 | Método | O que faz |
 |---|---|
 | `_applicable_rules` | Testa as seis regras no nó, ordena as válidas pela estratégia e, com poda, descarta as que repetem estado. |
-| `_is_repetition` | O critério da poda. No motor: o estado já está no caminho do nó. A largura e a ordenada trocam esse critério. |
+| `_is_repetition` | O critério da poda. No motor: o estado já está no caminho do nó. A largura, a ordenada e a gulosa trocam esse critério. |
 | `_next_iteration` | Conta mais uma iteração. Devolve falso quando o limite estoura, e a busca termina em LIMITE. |
 | `_visit` | Registra que o nó foi expandido. |
 | `_expand` | Aplica a regra e cria o nó filho. É o único ponto em que a árvore cresce. |
@@ -61,13 +62,19 @@ A busca só conhece esse contrato: ela testa a regra e aplica a que passou, sem 
 As duas dependem só do estado atual. Não voltar a um estado do caminho depende do percurso, e por isso fica na poda dos algoritmos, não aqui.""",
     "core/rules/moves.py": """as seis regras.
 
-`Move` guarda a origem e o destino de uma regra. `apply` tira o disco do topo da origem e o põe no topo do destino, devolvendo um estado novo. Aplicar uma regra que não vale no estado é erro. `MOVE_COST` é o custo de toda jogada: 1.""",
+`Move` guarda a origem e o destino de uma regra. `apply` tira o disco do topo da origem e o põe no topo do destino, devolvendo um estado novo. Aplicar uma regra que não vale no estado é erro.""",
     "core/rules/domain/catalog.py": """o catálogo das regras.
 
 `RULES` tem as seis regras na ordem R1 a R6. `INVERSE_RULE_ID` dá a inversa de cada uma, que é a regra com origem e destino trocados: R1 e R3, R2 e R5, R4 e R6.""",
     "core/rules/strategies/canonical.py": """as duas estratégias de controle.
 
 `CanonicalOrder` ordena as regras válidas pela posição no catálogo: `ascending` de R1 a R6 e `descending` de R6 a R1.""",
+    "core/costs/weight_distance.py": """o custo real padrão.
+
+`WEIGHTS` dá o peso de cada disco. `WeightDistance.cost` olha o disco no topo da haste de origem e multiplica o peso dele pela distância entre a origem e o destino.""",
+    "core/costs/unit.py": """a segunda função de custo real.
+
+`UnitCost.cost` devolve 1 para qualquer jogada: o custo de um caminho vira o número de movimentos. É escolhida com `--cost unit`.""",
     "core/heuristics/misplacement.py": """a heurística no código.
 
 - **`contributions`**: quanto cada disco soma em h (0, 1 ou 2), como na tabela acima.
@@ -86,9 +93,9 @@ O nó entra e sai pelo topo: sai o último que entrou. Depois de `push` de S1, S
 O nó entra pelo fim e sai pelo início: sai o primeiro que entrou. Depois de `push` de S1, S2 e S3, o `pop` devolve S1. Os filhos esperam atrás de todo o nível atual, e por isso a busca varre nível por nível.
 
 A única linha diferente da pilha é a do `pop`. A fila usa `deque` porque tirar do início de uma `list` custa O(n), e de um `deque`, O(1).""",
-    "core/algorithms/ordered/frontier.py": """a fila pela heurística da busca ordenada.
+    "core/algorithms/ordered/frontier.py": """a fila de prioridade da busca ordenada e da gulosa.
 
-Sai o nó de menor prioridade (aqui, a heurística); no empate, o que foi gerado primeiro. Depois de `push` de S1(5), S2(6), S3(6) e S4(1), o `pop` devolve S4, S1, S2 e S3. Irmãos de mesma prioridade são gerados na ordem da estratégia, então é ela que desempata entre eles.
+Sai o nó de menor prioridade (na ordenada, o custo real acumulado; na gulosa, a heurística); no empate, o que foi gerado primeiro. Depois de `push` de S1(5), S2(6), S3(6) e S4(1), o `pop` devolve S4, S1, S2 e S3. Irmãos de mesma prioridade são gerados na ordem da estratégia, então é ela que desempata entre eles.
 
 A fila é um heap de (prioridade, ordem de geração, nó). `remove` tira um nó que ainda está na fila, o que a poda usa quando um caminho mais curto chega ao mesmo estado. A remoção é adiada: o nó só é descartado quando chegaria a vez dele no `pop`.""",
 }
@@ -192,7 +199,7 @@ Não há fila nem pilha: ABERTOS tem no máximo um nó, o filho que acabou de se
         se poda: descarta as que levam a um estado de FECHADOS
         se não sobrou regra: IMPASSE
         nó = aplica a primeira regra em nó""",
-    code_note="""`_search` é o laço do pseudocódigo. `_choose` devolve a regra que a descida aplica: aqui, a primeira na ordem da estratégia. A busca gulosa reaproveita este laço e troca só o `_choose`.""",
+    code_note="""`_search` é o laço do pseudocódigo: a cada volta, aplica a primeira regra que sobrou, na ordem da estratégia.""",
     path_strategy="ascending",
     path_note="Com `descending` a busca termina em impasse na 3ª iteração e não há caminho. O caminho abaixo é o da ordem crescente: chega, mas com 14 movimentos, quando o ótimo tem 3.",
     complexity=(
@@ -215,7 +222,7 @@ Não há fila nem pilha: ABERTOS tem no máximo um nó, o filho que acabou de se
     conclusion="""## Conclusão
 
 - Em P1, `descending` trava na 3ª iteração: R4 e R5 levam a `H1[V,R,A]`, e de lá as duas regras aplicáveis voltam a estados do caminho. `ascending` chega, mas com 14 movimentos, quando o ótimo tem 3.
-- Nos 36 objetivos, resolve 18 com `ascending` e 3 com `descending`. Com a gulosa, é um dos dois algoritmos que deixam objetivos sem solução.
+- Nos 36 objetivos, resolve 18 com `ascending` e 3 com `descending`. É o único algoritmo que deixa objetivos sem solução.
 - É barata (um nó gerado por iteração), mas não garante solução nem qualidade: a estratégia decide tudo.""",
     flowchart="""digraph flow {
 %(style)s
@@ -252,7 +259,7 @@ BACKTRACKING_SECTION = AlgorithmSection(
 
 Backtracking: pilha, sai o último que entrou. Afunda num ramo.
 
-O contrato da fronteira fica em `core/search_tree/frontier.py`. Cada algoritmo traz a sua implementação ao lado, na própria pasta: a pilha do backtracking, a fila da largura e a fila pela heurística da ordenada.""",
+O contrato da fronteira fica em `core/search_tree/frontier.py`. Cada algoritmo traz a sua implementação ao lado, na própria pasta: a pilha do backtracking, a fila da largura e a fila de prioridade da ordenada, que a gulosa reaproveita.""",
     loop="""1. Olha o topo da pilha. É o objetivo? **SUCESSO**.
 2. Primeira vez nele: guarda as regras válidas, na ordem da estratégia, sem as que voltam a um estado do caminho (poda). Lista vazia é impasse.
 3. Ainda tem regra guardada: aplica a próxima e empilha o filho.
@@ -400,8 +407,8 @@ Largura: fila, sai o primeiro que entrou. Varre por níveis.""",
     conclusion="""## Conclusão
 
 - Em P1 as duas estratégias acham R4, R1, R1: 3 movimentos, o ótimo. A estratégia só muda a ordem dentro de um nível e, com ela, o número de iterações.
-- Nos 36 objetivos acha sempre o mínimo de movimentos (média 4,14). Como toda jogada custa 1, é também o menor custo.
-- É a referência de comprimento para os outros algoritmos. O preço é o esforço: 18,5 iterações em média, contra 7,44 da busca ordenada.""",
+- Nos 36 objetivos acha sempre o mínimo de movimentos (média 4,14). Menos movimentos não é menor custo: com o custo de peso e distância, a largura paga em média 10,33 e 10,28, contra 9,89 da busca ordenada.
+- É a referência de comprimento para os outros algoritmos. O preço é o esforço: 18,5 iterações em média, contra 7,44 da busca gulosa.""",
     flowchart="""digraph flow {
 %(style)s
   root [label="raiz na fila", shape=oval, fillcolor="%(root)s"];
@@ -424,7 +431,7 @@ HEURISTIC_CELLS: tuple[Cell, ...] = (
     markdown(
         """## A heurística: discos mal posicionados
 
-Toda jogada custa 1, então o custo de um nó é só a sua profundidade. Quem ordena ABERTOS é a heurística **h**: uma estimativa de quantos movimentos ainda faltam. Um disco está **bem posicionado** quando está na haste e na altura do objetivo e todos os discos abaixo dele também estão. Cada disco contribui com o mínimo de movimentos que ainda precisa fazer:
+Na gulosa quem ordena ABERTOS é a heurística **h**: uma estimativa de quantos movimentos ainda faltam. O custo real não entra na escolha. Um disco está **bem posicionado** quando está na haste e na altura do objetivo e todos os discos abaixo dele também estão. Cada disco contribui com o mínimo de movimentos que ainda precisa fazer:
 
 | Situação do disco | Contribui | Por quê |
 |---|---|---|
@@ -433,6 +440,8 @@ Toda jogada custa 1, então o custo de um nó é só a sua profundidade. Quem or
 | na haste certa, mas mal posicionado | 2 | precisa sair e voltar |
 
 **h(estado)** é a soma dos três discos. Nunca passa do número de movimentos que falta (é admissível): cada movimento leva um disco só.
+
+A heurística é um módulo de `core/heuristics/`, escolhido com `--heuristic`. Esta é a padrão; a outra, `color_distance`, soma o peso de cada disco vezes a distância até a haste do objetivo.
 """
     ),
     *_writefiles(HEURISTIC_MODULES),
@@ -450,18 +459,38 @@ Cada estado do espaço como objetivo, sempre a partir da mesma posição inicial
     ),
     code('goals_boxplot("ordered", "expanded")'),
     markdown(
-        "Na ordenada e na largura, expandidos = iterações − 1: o objetivo sai de ABERTOS, mas não é expandido."
+        "Na ordenada, na gulosa e na largura, expandidos = iterações − 1: o objetivo sai de ABERTOS, mas não é expandido."
     ),
     code('goals_stats("ordered", "expanded")'),
     markdown("### Iterações nos 36 objetivos"),
     code('goals_boxplot("ordered", "iterations")'),
     markdown(
-        "Na largura, cada estado sai de ABERTOS uma vez, numa ordem que não depende do objetivo: nos 36 objetivos as iterações são sempre 1, 2, …, 36, só embaralhadas. Na ordenada a ordem depende do objetivo, porque a heurística é medida em relação a ele, e a busca vai mais direto: por isso a caixa dela fica à esquerda da largura."
+        "Na largura e na ordenada, cada estado sai de ABERTOS uma vez, numa ordem que não depende do objetivo (por nível numa, por custo real na outra): nos 36 objetivos as iterações são sempre 1, 2, …, 36, só embaralhadas. Na gulosa a ordem depende do objetivo, porque a heurística é medida em relação a ele, e a busca vai mais direto: por isso a caixa dela fica à esquerda das outras duas."
     ),
     code('goals_stats("ordered", "iterations")'),
     markdown("### Nós gerados nos 36 objetivos"),
     code('goals_boxplot("ordered", "generated")'),
     code('goals_stats("ordered", "generated")'),
+)
+
+COST_CELLS: tuple[Cell, ...] = (
+    markdown(
+        """## O custo real: peso e distância
+
+Cada jogada tem um **custo real**, e o custo de um nó é a soma dos custos das jogadas da raiz até ele. É esse custo acumulado que ordena ABERTOS na busca ordenada.
+
+| Parte | Vale | Por quê |
+|---|---|---|
+| peso do disco | verde 1, vermelho 2, azul 3 | mover um disco pesado custa mais |
+| distância | 1 entre hastes vizinhas, 2 de H1 para H3 | ir mais longe custa mais |
+
+**custo(jogada) = peso do disco movido × distância.** Vai de 1 (o verde, uma haste) a 6 (o azul, duas hastes).
+
+A função de custo é um módulo de `core/costs/`, escolhido com `--cost`. Esta é a padrão; a outra, `unit`, cobra 1 por jogada, e com ela a ordenada acha sempre o caminho de menos movimentos, como a largura.
+"""
+    ),
+    *_writefiles(COST_MODULES),
+    code("children_costs()"),
 )
 
 ORDERED_SECTION = AlgorithmSection(
@@ -474,70 +503,71 @@ ORDERED_SECTION = AlgorithmSection(
     module="core/algorithms/ordered/algorithm.py",
     frontier="core/algorithms/ordered/frontier.py",
     frontier_class="PriorityFrontier",
-    subtitle="ABERTOS vira uma fila ordenada pela heurística: sai primeiro o nó que parece mais perto do objetivo.",
-    idea="""**Expanda sempre o nó aberto de menor heurística.**
+    subtitle="ABERTOS vira uma fila ordenada pelo custo real: sai primeiro o nó mais barato de alcançar.",
+    idea="""**Expanda sempre o nó aberto de menor custo real acumulado.**
 
 Largura: fila, sai o primeiro que entrou.
 
-Ordenada: fila pela heurística h, sai o de menor h; no empate, o gerado primeiro. Toda jogada custa 1, então o custo não ordena a fila: só decide qual de dois nós do mesmo estado fica.""",
-    loop="""1. Tira de ABERTOS o nó de menor heurística; no empate, o gerado primeiro.
+Ordenada: fila pelo custo, sai o mais barato; no empate, o gerado primeiro. O custo de um nó é a soma dos custos reais das jogadas da raiz até ele.""",
+    loop="""1. Tira de ABERTOS o nó de menor custo; no empate, o gerado primeiro.
 2. É o objetivo? **SUCESSO**.
 3. Não é: coloca o nó em FECHADOS.
-4. Aplica todas as regras válidas, na ordem da estratégia, e calcula a heurística de cada filho.
-5. Os filhos entram em ABERTOS na posição da sua heurística. Volta ao passo 1.
+4. Aplica todas as regras válidas, na ordem da estratégia. Custo do filho = custo do pai + custo real da jogada.
+5. Os filhos entram em ABERTOS na posição do seu custo. Volta ao passo 1.
 
-**ABERTOS**: fila dos nós gerados que ainda não foram analisados, ordenada pela heurística (entre parênteses na tabela).
+**ABERTOS**: fila dos nós gerados que ainda não foram analisados, ordenada pelo custo acumulado (entre parênteses na tabela).
 
 **FECHADOS**: nós já expandidos. Com poda, um filho cujo estado já está aqui é descartado.""",
-    strategy_note="Na ordenada a estratégia só desempata irmãos de mesma heurística: decide quem fica na frente em ABERTOS. Em P1 as duas ordens fazem as mesmas 4 iterações e acham o mesmo caminho.",
-    root_note="Em S0 a heurística vale 3. Na raiz, R4 leva a h = 2, R2 e R3 a h = 3 e R1 a h = 4. R4 sai primeiro nas duas ordens; a estratégia só decide entre R2 e R3, que empatam.",
-    no_prune="""Sem poda, estados repetidos entram de novo em ABERTOS. Em P1 a heurística leva direto ao objetivo: 4 iterações, com 12 nós gerados em vez de 9. Nos 36 objetivos, porém, ordenar só pela heurística, sem poda, faz a busca girar entre estados de mesma h: 10 deles chegam ao limite de iterações.""",
-    prune="""Técnica de poda da busca ordenada, com FECHADOS e o **vetor de menor custo** (aqui, o menor número de movimentos até cada estado). Toda vez que um nó é gerado,
+    strategy_note="Na ordenada a estratégia só desempata irmãos de mesmo custo: decide quem fica na frente em ABERTOS, nunca o custo da solução. Em P1 as duas ordens fazem as mesmas 10 iterações e acham o mesmo caminho.",
+    root_note="Na raiz, R1 custa 2 (o vermelho, uma haste), R3 e R4 custam 3 (o azul, uma haste) e R2 custa 4 (o vermelho, duas hastes). R1 sai primeiro nas duas ordens; a estratégia só decide entre R3 e R4, que empatam.",
+    no_prune="""Sem poda, estados repetidos entram de novo em ABERTOS, cada vez por um caminho mais caro. A busca ainda acha o caminho de menor custo, porque o objetivo só sai da fila quando nada mais barato resta, mas paga caro por isso: em P1 são 19 iterações e 59 nós gerados, contra 10 e 17 com poda, e ABERTOS chega a 41 nós.""",
+    prune="""Técnica de poda da busca ordenada, com FECHADOS e o **vetor de menor custo** (o menor custo real já gerado até cada estado). Toda vez que um nó é gerado,
 
 - se o estado já foi expandido (está em FECHADOS), poda o nó;
-- se o estado já está em ABERTOS por um caminho de mesmo tamanho ou menor, poda o nó;
-- se o novo caminho é mais curto, tira o nó antigo de ABERTOS e da árvore e inclui o novo.
+- se o estado já está em ABERTOS por um caminho de custo igual ou menor, poda o nó;
+- se o novo caminho é mais barato, tira o nó antigo de ABERTOS e da árvore e inclui o novo.
 
-Em P1 o terceiro caso não acontece; nos 36 objetivos ele aparece 2 vezes com `ascending` e 1 com `descending`.""",
+Em P1 o terceiro caso acontece 1 vez; nos 36 objetivos, 71 vezes com `ascending` e 72 com `descending`.""",
     pseudocode="""busca_ordenada(problema, estratégia, poda)
-    ABERTOS = fila pela heurística com a raiz
+    ABERTOS = fila pelo custo com a raiz (custo 0)
     MENOR_CUSTO = {raiz: 0}
     FECHADOS = vazio
     enquanto ABERTOS não estiver vazia:
-        nó = tira o de menor h de ABERTOS (no empate, o mais antigo)
+        nó = tira o de menor custo de ABERTOS (no empate, o mais antigo)
         se nó é o objetivo: SUCESSO
         coloca nó em FECHADOS
         para cada regra válida, na ordem da estratégia:
-            custo = custo(nó) + 1
+            custo = custo(nó) + custo_real(regra, nó)
             se poda e (filho está em FECHADOS ou custo >= MENOR_CUSTO[filho]):
                 descarta a regra
             senão:
                 se o estado do filho está em ABERTOS: tira o nó antigo
                 MENOR_CUSTO[estado do filho] = custo
-                põe o filho em ABERTOS, na posição de h(filho)
+                põe o filho em ABERTOS, na posição do custo
     FRACASSO""",
-    code_note="""- **`_best_cost`**: o vetor de menor custo, com o menor número de movimentos já gerado até cada estado.
-- **`_open`**: o nó de cada estado que está em ABERTOS, para poder tirá-lo de lá quando um caminho mais curto aparece.
+    code_note="""- **`_priority`**: o que ordena ABERTOS. Aqui, o custo real acumulado do nó. A busca gulosa reaproveita este laço e troca só o `_priority`.
+- **`_best_cost`**: o vetor de menor custo, com o menor custo real já gerado até cada estado.
+- **`_open`**: o nó de cada estado que está em ABERTOS, para poder tirá-lo de lá quando um caminho mais barato aparece.
 - **`_closed`**: os estados de FECHADOS.
-- **`_is_repetition`**: os dois primeiros casos da poda. Descarta o filho de estado já fechado e o que não encurta o caminho conhecido.
+- **`_is_repetition`**: os dois primeiros casos da poda. Descarta o filho de estado já fechado e o que não barateia o caminho conhecido.
 - **`_discard`**: registra como poda o nó que foi trocado.
 
-O terceiro caso da poda está no laço: quando o filho chega mais curto a um estado ainda aberto, `frontier.remove` tira o nó antigo.""",
+O terceiro caso da poda está no laço: quando o filho chega mais barato a um estado ainda aberto, `frontier.remove` tira o nó antigo.""",
     path_strategy="ascending",
-    path_note="R4, R1, R1: 3 movimentos, o ótimo. As duas estratégias, com e sem poda, chegam a este mesmo caminho.",
+    path_note="R4, R1, R1: 3 movimentos, custo 3 + 2 + 1 = 6, o menor custo possível. As duas estratégias, com e sem poda, chegam a este mesmo caminho.",
     complexity=(
         (
             "Ordenada sem poda",
-            "pode não terminar",
-            "cresce sem limite",
-            "pode não achar",
-            "sem FECHADOS, gira entre estados de mesma heurística",
+            "exponencial",
+            "exponencial",
+            "menor custo",
+            "sem FECHADOS, o mesmo estado entra em ABERTOS por todo caminho mais barato que o objetivo",
         ),
         (
             "Ordenada com poda",
             "O((V + E) log V)",
             "O(V)",
-            "não garante a mais curta",
+            "menor custo",
             "cada estado é expandido uma vez; o heap custa log V por operação",
         ),
     ),
@@ -545,17 +575,17 @@ O terceiro caso da poda está no laço: quando o filho chega mais curto a um est
     symbols=("b", "m", "V", "E"),
     conclusion="""## Conclusão
 
-- Em P1: R4, R1, R1 (3 movimentos, o ótimo) em 4 iterações e 9 nós gerados, com as duas ordens. A largura precisa de 12 a 14 iterações.
-- Nos 36 objetivos resolve todos e acha o mínimo de movimentos em 34 (`ascending`) e 33 (`descending`): média de 4,19 e 4,25 movimentos, contra 4,14 da largura. Em troca, faz 7,44 iterações em média, contra 18,5 da largura.
-- Ordenar só pela heurística não garante o caminho mais curto: a busca segue o nó que parece mais perto do objetivo, não o que andou menos.""",
+- Em P1: R4, R1, R1 (3 movimentos, custo 6) em 10 iterações e 17 nós gerados, com as duas ordens. É o caminho de menor custo e também o mais curto.
+- Nos 36 objetivos resolve todos, sempre com o menor custo real: média de 9,89, contra 10,33 e 10,28 da largura. O caminho mais barato nem sempre é o mais curto: num objetivo ela faz 4 movimentos (custo 7) onde a largura faz 3 (custo 9).
+- Garante o menor custo, mas não olha para o objetivo: como a largura, faz 18,5 iterações em média. A busca gulosa, a seguir, troca essa garantia por velocidade.""",
     flowchart="""digraph flow {
 %(style)s
   root [label="raiz em ABERTOS", shape=oval, fillcolor="%(root)s"];
-  pop [label="tira o de menor heurística;\\nno empate, o gerado primeiro"];
+  pop [label="tira o de menor custo;\\nno empate, o gerado primeiro"];
   goal [label="é o objetivo?", shape=diamond];
   success [label="SUCESSO", shape=oval, fillcolor="%(goal)s"];
-  visit [label="visita: regras aplicáveis na ordem da estratégia, menos as que levam\\na estado fechado ou já aberto por um caminho igual ou menor"];
-  apply [label="aplica todas; se um filho chega mais curto a um estado ainda aberto,\\no nó antigo sai de ABERTOS e da árvore"];
+  visit [label="visita: regras aplicáveis na ordem da estratégia, menos as que levam\\na estado fechado ou já aberto por um caminho de custo igual ou menor"];
+  apply [label="aplica todas; se um filho chega mais barato a um estado ainda aberto,\\no nó antigo sai de ABERTOS e da árvore"];
   root -> pop;
   pop -> goal;
   goal -> success [label="sim"];
@@ -564,8 +594,7 @@ O terceiro caso da poda está no laço: quando o filho chega mais curto a um est
   apply -> pop;
 }""",
     frontier_demo=True,
-    uses_heuristic=True,
-    rule_cells=HEURISTIC_CELLS,
+    rule_cells=COST_CELLS,
     goals_cells=GOALS_CELLS,
 )
 
@@ -574,82 +603,96 @@ GREEDY_SECTION = AlgorithmSection(
     name="greedy",
     label="Gulosa",
     color="#8e5bd6",
-    list_mode="single",
-    complete=False,
+    list_mode="priority",
+    complete=True,
     module="core/algorithms/greedy/algorithm.py",
-    subtitle="A descida da irrevogável, guiada pela heurística: cada passo vai para o filho que parece mais perto do objetivo.",
-    idea="""**Aplique a regra que leva ao filho de menor heurística e siga em frente, sem guardar alternativas.**
+    subtitle="ABERTOS vira uma fila ordenada pela heurística: sai primeiro o nó que parece mais perto do objetivo.",
+    idea="""**Expanda sempre o nó aberto de menor heurística.**
 
-A mesma descida da irrevogável: ABERTOS tem no máximo um nó e cada passo é definitivo. Muda só a escolha: em vez da primeira regra da estratégia, a que leva ao filho de menor h, a heurística da busca ordenada. Um beco sem saída encerra a busca em IMPASSE.
+Ordenada: fila pelo custo real, sai o nó mais barato de alcançar.
 
-No código, a gulosa herda o laço da irrevogável e troca só o método que escolhe a regra, `_choose`.""",
-    loop="""1. O estado atual é o objetivo? **SUCESSO**.
-2. Não é: coloca o nó em FECHADOS.
-3. Ordena as regras válidas pela estratégia e descarta as que voltam a um estado do caminho (poda).
-4. Não sobrou regra: **IMPASSE**.
-5. Aplica a regra que leva ao filho de menor heurística; no empate, a primeira da estratégia. O filho vira o estado atual. Volta ao passo 1.
+Gulosa: fila pela heurística h, sai o nó que parece mais perto do objetivo; no empate, o gerado primeiro. O custo real não entra na escolha: ele só é somado nas arestas do caminho solução, para dar o custo da solução.
 
-**ABERTOS**: o único filho gerado, que vira o próximo estado atual.
+No código, a gulosa herda o laço e as duas listas da ordenada e troca só o método que dá a prioridade, `_priority`. A fila é a mesma `PriorityFrontier`.""",
+    loop="""1. Tira de ABERTOS o nó de menor heurística; no empate, o gerado primeiro.
+2. É o objetivo? **SUCESSO**: o custo da solução é a soma dos custos reais das arestas do caminho.
+3. Não é: coloca o nó em FECHADOS.
+4. Aplica todas as regras válidas, na ordem da estratégia, e calcula a heurística de cada filho.
+5. Os filhos entram em ABERTOS na posição da sua heurística. Volta ao passo 1.
 
-**FECHADOS**: o caminho percorrido. Com poda, serve para não voltar a um estado do caminho.""",
-    strategy_note="Na gulosa a estratégia só desempata filhos de mesma heurística. Ainda assim pode mudar o caminho e o desfecho: nos 36 objetivos, `ascending` resolve 29 e `descending` 28.",
-    root_note="Na raiz, R4 leva a h = 2, o menor: as duas ordens aplicam R4. A irrevogável, sem a heurística, aplicaria R1 com `ascending`.",
-    no_prune="""Sem poda, nada impede a gulosa de voltar a um estado já percorrido. Em P1 a heurística leva direto ao objetivo, em 4 iterações; nos 36 objetivos, porém, a gulosa sem poda gira até o limite de iterações em 12 (`ascending`) e 13 (`descending`) deles. Para caber no notebook, as execuções sem poda abaixo param em 30 iterações.""",
-    prune="""A poda descarta a regra que leva a um estado que já está no caminho, como na irrevogável. Com ela a gulosa nunca repete estado e sempre para. Parar não é chegar: a heurística escolhe o filho que parece melhor agora, e esse caminho pode terminar em IMPASSE.""",
+**ABERTOS**: fila dos nós gerados que ainda não foram analisados, ordenada pela heurística (entre parênteses na tabela).
+
+**FECHADOS**: nós já expandidos. Com poda, um filho cujo estado já está aqui é descartado.""",
+    strategy_note="Na gulosa a estratégia só desempata irmãos de mesma heurística: decide quem fica na frente em ABERTOS. Em P1 as duas ordens fazem as mesmas 4 iterações e acham o mesmo caminho.",
+    root_note="Em S0 a heurística vale 3. Na raiz, R4 leva a h = 2, R2 e R3 a h = 3 e R1 a h = 4. R4 sai primeiro nas duas ordens; a estratégia só decide entre R2 e R3, que empatam. A ordenada, pelo custo, tiraria R1 primeiro.",
+    no_prune="""Sem poda, estados repetidos entram de novo em ABERTOS. Em P1 a heurística leva direto ao objetivo: 4 iterações, com 12 nós gerados em vez de 9. Nos 36 objetivos, porém, ordenar só pela heurística, sem poda, faz a busca girar entre estados de mesma h: 10 deles chegam ao limite de iterações.""",
+    prune="""A poda é a da busca ordenada, com FECHADOS e o **vetor de menor custo** (o menor custo real já gerado até cada estado). Toda vez que um nó é gerado,
+
+- se o estado já foi expandido (está em FECHADOS), poda o nó;
+- se o estado já está em ABERTOS por um caminho de custo igual ou menor, poda o nó;
+- se o novo caminho é mais barato, tira o nó antigo de ABERTOS e da árvore e inclui o novo.
+
+Dois nós do mesmo estado têm a mesma heurística, então quem decide entre eles é o custo real. Em P1 o terceiro caso não acontece; nos 36 objetivos ele aparece 7 vezes com `ascending` e 9 com `descending`. Como FECHADOS impede repetir estado, a gulosa com poda sempre termina e sempre acha uma solução.""",
     pseudocode="""busca_gulosa(problema, estratégia, poda)
-    nó = raiz
-    enquanto verdadeiro:
+    ABERTOS = fila pela heurística com a raiz
+    MENOR_CUSTO = {raiz: 0}
+    FECHADOS = vazio
+    enquanto ABERTOS não estiver vazia:
+        nó = tira o de menor h de ABERTOS (no empate, o mais antigo)
         se nó é o objetivo: SUCESSO
         coloca nó em FECHADOS
-        regras = regras válidas em nó, na ordem da estratégia
-        se poda: descarta as que levam a um estado de FECHADOS
-        se não sobrou regra: IMPASSE
-        nó = aplica a regra de menor h(filho) em nó (no empate, a primeira)""",
-    code_note="""A classe herda o laço da irrevogável e troca só o `_choose`: ele devolve a regra cujo filho tem a menor heurística. No empate, `min` fica com a primeira na ordem da estratégia.""",
+        para cada regra válida, na ordem da estratégia:
+            custo = custo(nó) + custo_real(regra, nó)
+            se poda e (filho está em FECHADOS ou custo >= MENOR_CUSTO[filho]):
+                descarta a regra
+            senão:
+                se o estado do filho está em ABERTOS: tira o nó antigo
+                MENOR_CUSTO[estado do filho] = custo
+                põe o filho em ABERTOS, na posição de h(filho)
+    FRACASSO""",
+    code_note="""A classe herda o laço da ordenada e troca só o `_priority`: ele devolve a heurística do nó em vez do custo acumulado. A heurística chega pelo motor (`self._heuristic`), escolhida no registro de `core/heuristics/`.""",
     uses_heuristic=True,
+    rule_cells=HEURISTIC_CELLS,
     path_strategy="ascending",
-    path_note="R4, R1, R1: 3 movimentos, o ótimo, com as duas estratégias. A irrevogável faz 14 movimentos com `ascending` e trava com `descending`.",
+    path_note="R4, R1, R1: 3 movimentos, custo real 3 + 2 + 1 = 6. Em P1 é também o caminho de menor custo, o mesmo da ordenada, achado em 4 iterações em vez de 10.",
     complexity=(
         (
             "Gulosa sem poda",
-            "não termina",
-            "O(1)",
+            "pode não terminar",
+            "cresce sem limite",
             "pode não achar",
-            "pode girar num ciclo para sempre",
+            "sem FECHADOS, gira entre estados de mesma heurística",
         ),
         (
             "Gulosa com poda",
-            "O(b·m²)",
-            "O(m)",
-            "pode não achar",
-            "um nó por iteração; h custa O(1) por filho, e cada regra é comparada com o caminho",
+            "O((V + E) log V)",
+            "O(V)",
+            "não garante a de menor custo",
+            "cada estado é expandido uma vez; o heap custa log V por operação",
         ),
     ),
-    compared_with=("irrevocable",),
-    symbols=("b", "m"),
+    compared_with=("ordered", "breadth_first"),
+    symbols=("b", "m", "V", "E"),
     conclusion="""## Conclusão
 
-- Em P1: R4, R1, R1 (o ótimo) em 4 iterações e 4 nós gerados, com as duas ordens: o menor esforço entre todos os algoritmos.
-- Nos 36 objetivos resolve 29 (`ascending`) e 28 (`descending`), contra 18 e 3 da irrevogável; o caminho é o mínimo em 20 deles. A média é de 6,0 e 5,33 iterações, contra 7,44 da ordenada.
-- A heurística melhora muito a descida, mas não a garante: sem guardar as alternativas, um passo que parecia bom pode levar a um impasse.""",
+- Em P1: R4, R1, R1 (3 movimentos, custo 6) em 4 iterações e 9 nós gerados, com as duas ordens. A ordenada precisa de 10 iterações e a largura de 12 a 14.
+- Nos 36 objetivos resolve todos, com 7,44 e 7,61 iterações em média, contra 18,5 da ordenada e da largura.
+- Não garante a melhor solução: o custo médio é 10,39 e 10,50, contra 9,89 da ordenada, e ela acha o menor custo em 30 (`ascending`) e 27 (`descending`) dos 36 objetivos. A busca segue o nó que parece mais perto do objetivo, não o que custou menos.""",
     flowchart="""digraph flow {
 %(style)s
-  root [label="raiz", shape=oval, fillcolor="%(root)s"];
+  root [label="raiz em ABERTOS", shape=oval, fillcolor="%(root)s"];
+  pop [label="tira o de menor heurística;\\nno empate, o gerado primeiro"];
   goal [label="é o objetivo?", shape=diamond];
   success [label="SUCESSO", shape=oval, fillcolor="%(goal)s"];
-  visit [label="visita: regras aplicáveis na ordem da estratégia,\\nmenos as que repetem estado do caminho"];
-  left [label="sobrou regra?", shape=diamond];
-  deadlock [label="IMPASSE", shape=oval, fillcolor="%(deadlock)s"];
-  apply [label="aplica a que leva ao filho de menor heurística\\n(no empate, a primeira) e gera o filho"];
-  root -> goal;
+  visit [label="visita: regras aplicáveis na ordem da estratégia, menos as que levam\\na estado fechado ou já aberto por um caminho de custo igual ou menor"];
+  apply [label="aplica todas; se um filho chega mais barato a um estado ainda aberto,\\no nó antigo sai de ABERTOS e da árvore"];
+  root -> pop;
+  pop -> goal;
   goal -> success [label="sim"];
   goal -> visit [label="não"];
-  visit -> left;
-  left -> deadlock [label="não"];
-  left -> apply [label="sim"];
-  apply -> goal;
+  visit -> apply;
+  apply -> pop;
 }""",
-    no_prune_limit=30,
 )
 
 ALGORITHM_SECTIONS: tuple[AlgorithmSection, ...] = (
@@ -670,6 +713,7 @@ def slide_modules() -> tuple[str, ...]:
         *ENGINE_MODULES,
         *RULE_MODULES,
         *STRATEGY_MODULES,
+        *COST_MODULES,
         *HEURISTIC_MODULES,
         *(spec.module for spec in ALGORITHM_SECTIONS),
         *(spec.frontier for spec in ALGORITHM_SECTIONS if spec.frontier),
@@ -743,7 +787,7 @@ def section(spec: AlgorithmSection, index: int, *, first: bool) -> tuple[Cell, .
     cells.append(
         markdown(
             "## As regras: seis regras, uma para cada par origem e destino\n\n"
-            "Vale se a origem tem disco e o destino tem espaço. Toda jogada custa 1. Toda regra tem inversa: aplicar as duas em seguida volta ao mesmo estado."
+            "Vale se a origem tem disco e o destino tem espaço. O custo real de cada jogada vem da função de custo (`core/costs/`). Toda regra tem inversa: aplicar as duas em seguida volta ao mesmo estado."
             f"\n\n{RULES_LIST}"
         )
     )
