@@ -40,8 +40,8 @@ python main.py --show-states
 python main.py --rank-mode score
 python main.py --all-goals             # os 36 estados finais; só o resumo, com média e mediana
 python main.py --heuristic color_distance  # troca a heurística da busca gulosa
-python main.py --cost unit             # troca a função de custo real (padrão: weight_distance)
-python main.py --no-prune              # sem poda: a árvore aceita estados repetidos
+python main.py --cost unit             # troca a função de custo real (padrão: step_weight_distance)
+python main.py --no-prune              # sem poda: a árvore aceita estados repetidos (na ordenada e na gulosa, menos os do próprio caminho)
 python main.py --format json --output resultados.json
 python main.py --svg-dir data          # árvore de cada execução em data/<carta>/<algoritmo>_<estratégia>.svg
 python main.py --help
@@ -61,7 +61,8 @@ src/
 │   ├── domain/                estados, invariantes, cartas, enumeração
 │   ├── costs/
 │   │   ├── domain/            contrato e registro
-│   │   ├── weight_distance.py peso do disco × distância (padrão)
+│   │   ├── step_weight_distance.py  10 por jogada + peso × distância (padrão)
+│   │   ├── weight_distance.py peso do disco × distância
 │   │   └── unit.py            1 por jogada
 │   ├── heuristics/
 │   │   ├── domain/            contrato e registro
@@ -106,7 +107,7 @@ Tudo isso é verificado na AST por [tests/architecture/test_dependencies.py](tes
 
 - Código inteiramente em inglês.
 - **Sem comentários e sem docstrings de função.** O contrato de cada função é a assinatura tipada, garantida por `mypy --strict`. Só diretivas de ferramenta (`# noqa`, `# type:`) aparecem no meio do código.
-- **A modelagem do problema é documentada no topo dos módulos que a carregam**, e só neles: [problem.py](src/core/domain/problem.py) (posição inicial e catálogo de cartas), [state_space.py](src/core/domain/state_space.py) (os 36 estados, conexidade, o oráculo) [weight_distance.py](src/core/costs/weight_distance.py) e [unit.py](src/core/costs/unit.py) (as funções de custo real), [misplacement.py](src/core/heuristics/misplacement.py) e [color_distance.py](src/core/heuristics/color_distance.py) (as heurísticas) e os cinco algoritmos, cada um com a carta P1 e o critério de busca.
+- **A modelagem do problema é documentada no topo dos módulos que a carregam**, e só neles: [problem.py](src/core/domain/problem.py) (posição inicial e catálogo de cartas), [state_space.py](src/core/domain/state_space.py) (os 36 estados, conexidade, o oráculo) [step_weight_distance.py](src/core/costs/step_weight_distance.py), [weight_distance.py](src/core/costs/weight_distance.py) e [unit.py](src/core/costs/unit.py) (as funções de custo real), [misplacement.py](src/core/heuristics/misplacement.py) e [color_distance.py](src/core/heuristics/color_distance.py) (as heurísticas) e os cinco algoritmos, cada um com a carta P1 e o critério de busca.
 - Estado imutável em todo lugar: `tuple`, frozen dataclass, enum.
 - Texto apresentado ao usuário só em `libs/outputs/theme.py` e `config/settings.py`.
 
@@ -172,14 +173,17 @@ Nada de profundidade d+1 antes de esgotar d, então o primeiro caminho até um e
 
 ### Custo real
 
-Cada jogada tem um custo real, e o custo de um nó é a soma dos custos das jogadas da raiz até ele. A função de custo é um módulo de [core/costs/](src/core/costs/), registrado pelo nome e escolhido com `--cost`. São duas:
+Cada jogada tem um custo real, e o custo de um nó é a soma dos custos das jogadas da raiz até ele. A função de custo é um módulo de [core/costs/](src/core/costs/), registrado pelo nome e escolhido com `--cost`. São três:
 
 | função | custo de uma jogada |
 |---|---|
-| `weight_distance` (padrão) | peso do disco movido (verde 1, vermelho 2, azul 3) × distância em hastes (1 entre vizinhas, 2 entre H1 e H3) |
+| `step_weight_distance` (padrão) | 10 + peso do disco movido (verde 1, vermelho 2, azul 3) × distância em hastes (1 entre vizinhas, 2 entre H1 e H3) |
+| `weight_distance` | peso do disco movido × distância em hastes, sem os 10 |
 | `unit` | 1 |
 
-O custo real ordena a busca ordenada e dá o custo da solução de todas as buscas. Em P1, o caminho R4, R1, R1 custa 3 + 2 + 1 = 6 com `weight_distance` e 3 com `unit`.
+O custo real ordena a busca ordenada e dá o custo da solução de todas as buscas. Em P1, o caminho R4, R1, R1 custa 13 + 12 + 11 = 36 com `step_weight_distance`, 6 com `weight_distance` e 3 com `unit`.
+
+Os 10 por jogada pesam mais que o peso × distância, que vai de 1 a 6: um caminho com um movimento a mais nunca sai mais barato. Com a função padrão, o caminho de menor custo é sempre um dos de menos movimentos, e o peso × distância só desempata entre eles.
 
 ### Busca ordenada
 
@@ -190,19 +194,19 @@ flowchart TD
     A([raiz em ABERTOS]) --> B[tira o de menor custo; no empate, o gerado primeiro]
     B --> C{é o objetivo?}
     C -- sim --> S([SUCESSO])
-    C -- não --> V[visita: regras aplicáveis na ordem da estratégia, menos as que levam a um estado fechado ou a um estado aberto sem baratear o caminho]
+    C -- não --> V[visita: regras aplicáveis na ordem da estratégia, menos as que voltam a um estado do próprio caminho e as que não barateiam o custo do vetor de menor custo]
     V --> E[aplica todas; se um filho chega por um caminho mais barato a um estado ainda aberto, o nó antigo sai de ABERTOS e da árvore]
     E --> B
 ```
 
-O objetivo só encerra a busca quando vira o estado atual, não quando é gerado: por isso a solução é a de menor custo real. A estratégia só desempata irmãos de mesmo custo. O caminho mais barato nem sempre é o mais curto: nos 36 objetivos, com `weight_distance`, a ordenada faz um movimento a mais que a largura em um deles para gastar menos (custo 7 em 4 movimentos, contra custo 9 em 3). Com `unit` ela acha sempre o mínimo de movimentos. Em P1: R4, R1, R1, custo 6, em 10 iterações.
+O objetivo só encerra a busca quando vira o estado atual, não quando é gerado: por isso a solução é a de menor custo real. A estratégia só desempata irmãos de mesmo custo. Um nó nunca gera um estado do seu próprio caminho; a técnica de poda, com o vetor de menor custo, descarta o nó repetido que não chega mais barato e troca o nó antigo pelo novo quando chega (sem ela, `--no-prune`, os repetidos entram de novo em ABERTOS: 16 iterações em P1 em vez de 11). Com a função padrão e com `unit` ela acha sempre o mínimo de movimentos. Sem os 10 por jogada (`weight_distance`), o caminho mais barato nem sempre é o mais curto: em um dos 36 objetivos a ordenada faz um movimento a mais que a largura para gastar menos (custo 7 em 4 movimentos, contra custo 9 em 3). Em P1: R4, R1, R1, custo 36, em 11 iterações.
 
-| 36 objetivos, com poda, `ascending` | `weight_distance` | `unit` |
-|---|---|---|
-| ordenada: custo (média) | 9,89 | 4,14 |
-| ordenada: movimentos (média) | 4,17 | 4,14 |
-| largura: custo (média) | 10,33 | 4,14 |
-| gulosa: custo (média) | 10,39 | 4,19 |
+| 36 objetivos, com poda, `ascending` | `step_weight_distance` | `weight_distance` | `unit` |
+|---|---|---|---|
+| ordenada: custo (média) | 51,33 | 9,89 | 4,14 |
+| ordenada: movimentos (média) | 4,14 | 4,17 | 4,14 |
+| largura: custo (média) | 51,72 | 10,33 | 4,14 |
+| gulosa: custo (média) | 52,33 | 10,39 | 4,19 |
 
 ### Heurística
 
@@ -223,7 +227,7 @@ A segunda heurística é a de cor e distância ([color_distance.py](src/core/heu
 | objetivos resolvidos | 36 | 36 |
 | iterações (média) | 7,44 | 10,39 |
 | movimentos (média) | 4,19 | 5,17 |
-| custo real (média) | 10,39 | 12,61 |
+| custo real (média) | 52,33 | 64,28 |
 
 Em P1 as duas levam ao mesmo caminho, R4, R1, R1.
 
@@ -241,7 +245,7 @@ flowchart TD
     E --> B
 ```
 
-A estratégia só desempata irmãos de mesma heurística. Como FECHADOS impede repetir estado, a gulosa sempre encontra uma solução: resolve os 36 objetivos, com 7,44 iterações em média, contra 18,5 da ordenada e da largura. Não garante a melhor: acha o menor custo real em 30 dos 36 objetivos com `ascending` e em 27 com `descending`. Em P1: R4, R1, R1, custo 6, em 4 iterações e 9 nós gerados.
+A estratégia só desempata irmãos de mesma heurística. A poda é a da ordenada, mais o filho de estado já fechado, que aqui pode reaparecer mais barato e não é reaberto. A gulosa sempre encontra uma solução: resolve os 36 objetivos, com 7,44 iterações em média, contra 18,5 da ordenada e da largura. Não garante a melhor: acha o menor custo real em 31 dos 36 objetivos com `ascending` e em 28 com `descending`. Em P1: R4, R1, R1, custo 36, em 4 iterações e 9 nós gerados.
 
 ## Comparação em todos os objetivos
 
@@ -250,7 +254,7 @@ Uma carta só não diz qual método é melhor. `--all-goals` resolve cada um dos
 - **Resumo**: para movimentos, custo, iterações e nós gerados, a média e a mediana de cada combinação. Movimentos e custo contam só os sucessos.
 - **Melhor por critério**: o menor valor pela média e pela mediana. Só concorre quem tem o maior número de sucessos, para a irrevogável não vencer resolvendo apenas os objetivos fáceis.
 
-O resultado: a largura vence em movimentos (média 4,14; a ordenada fica em 4,17 e a gulosa em 4,19 e 4,25). A ordenada vence em custo real (média 9,89, contra 10,3 da largura e 10,4 a 10,5 da gulosa). A gulosa vence em iterações e em nós gerados: 7,44 iterações em média, contra 18,5 da largura e da ordenada. [tests/properties/test_all_goals.py](tests/properties/test_all_goals.py) verifica tudo isso.
+O resultado: a largura e a ordenada vencem em movimentos (média 4,14; a gulosa fica em 4,19 e 4,25). A ordenada vence em custo real (média 51,33, contra 51,7 da largura e 52,3 a 53,0 da gulosa). A gulosa vence em iterações e em nós gerados: 7,44 iterações em média, contra 18,5 da largura e da ordenada. [tests/properties/test_all_goals.py](tests/properties/test_all_goals.py) verifica tudo isso.
 
 ## Qualidade
 
@@ -279,7 +283,7 @@ make graphs
 Destaques:
 
 - **Tabela contra os outros algoritmos** com o vencedor de cada critério (nível da solução, iterações, nós gerados e expandidos, pico de ABERTOS, retrocessos, impasses) em verde.
-- **O custo real na busca ordenada**: a regra de peso e distância, o código de `weight_distance.py` e de `unit.py` e o custo de cada jogada na raiz.
+- **O custo real na busca ordenada**: a regra de 10 por jogada mais peso × distância, o código das três funções de custo e o custo de cada jogada na raiz.
 - **A heurística na busca gulosa**: a regra dos discos mal posicionados, o código de `misplacement.py`, a conta de h em S0 disco a disco e a h de cada filho da raiz.
 - **Comparativo nos 36 objetivos** na seção da ordenada: boxplot e quartis de nós expandidos, iterações e nós gerados, para todas as combinações de algoritmo e estratégia.
 - **Tabelas de complexidade** com o algoritmo na primeira coluna, no mesmo formato da tabela consolidada da comparação.

@@ -16,7 +16,11 @@ RULE_MODULES = (
 )
 STRATEGY_MODULES = ("core/rules/strategies/canonical.py",)
 HEURISTIC_MODULES = ("core/heuristics/misplacement.py",)
-COST_MODULES = ("core/costs/weight_distance.py", "core/costs/unit.py")
+COST_MODULES = (
+    "core/costs/weight_distance.py",
+    "core/costs/step_weight_distance.py",
+    "core/costs/unit.py",
+)
 SLIDE_STRATEGIES = (("ascending", "crescente"), ("descending", "decrescente"))
 COMPLEXITY_HEADER = ("Algoritmo", "Tempo", "Memória", "Solução", "Por quê")
 
@@ -69,10 +73,13 @@ As duas dependem só do estado atual. Não voltar a um estado do caminho depende
     "core/rules/strategies/canonical.py": """as duas estratégias de controle.
 
 `CanonicalOrder` ordena as regras válidas pela posição no catálogo: `ascending` de R1 a R6 e `descending` de R6 a R1.""",
-    "core/costs/weight_distance.py": """o custo real padrão.
+    "core/costs/weight_distance.py": """a parte de peso e distância do custo.
 
-`WEIGHTS` dá o peso de cada disco. `WeightDistance.cost` olha o disco no topo da haste de origem e multiplica o peso dele pela distância entre a origem e o destino.""",
-    "core/costs/unit.py": """a segunda função de custo real.
+`WEIGHTS` dá o peso de cada disco. `WeightDistance.cost` olha o disco no topo da haste de origem e multiplica o peso dele pela distância entre a origem e o destino. Sozinha, é a segunda função de custo, escolhida com `--cost weight_distance`.""",
+    "core/costs/step_weight_distance.py": """o custo real padrão.
+
+`StepWeightDistance.cost` soma `STEP_COST`, os 10 de toda jogada, ao peso × distância da função anterior.""",
+    "core/costs/unit.py": """a terceira função de custo real.
 
 `UnitCost.cost` devolve 1 para qualquer jogada: o custo de um caminho vira o número de movimentos. É escolhida com `--cost unit`.""",
     "core/heuristics/misplacement.py": """a heurística no código.
@@ -407,7 +414,7 @@ Largura: fila, sai o primeiro que entrou. Varre por níveis.""",
     conclusion="""## Conclusão
 
 - Em P1 as duas estratégias acham R4, R1, R1: 3 movimentos, o ótimo. A estratégia só muda a ordem dentro de um nível e, com ela, o número de iterações.
-- Nos 36 objetivos acha sempre o mínimo de movimentos (média 4,14). Menos movimentos não é menor custo: com o custo de peso e distância, a largura paga em média 10,33 e 10,28, contra 9,89 da busca ordenada.
+- Nos 36 objetivos acha sempre o mínimo de movimentos (média 4,14). Menos movimentos não é menor custo: entre os caminhos mais curtos ela fica com o primeiro que acha, e paga em média 51,72 e 51,67, contra 51,33 da busca ordenada.
 - É a referência de comprimento para os outros algoritmos. O preço é o esforço: 18,5 iterações em média, contra 7,44 da busca gulosa.""",
     flowchart="""digraph flow {
 %(style)s
@@ -475,18 +482,21 @@ Cada estado do espaço como objetivo, sempre a partir da mesma posição inicial
 
 COST_CELLS: tuple[Cell, ...] = (
     markdown(
-        """## O custo real: peso e distância
+        """## O custo real: jogada, peso e distância
 
 Cada jogada tem um **custo real**, e o custo de um nó é a soma dos custos das jogadas da raiz até ele. É esse custo acumulado que ordena ABERTOS na busca ordenada.
 
 | Parte | Vale | Por quê |
 |---|---|---|
+| por jogada | 10 | toda jogada conta, e conta mais que o esforço |
 | peso do disco | verde 1, vermelho 2, azul 3 | mover um disco pesado custa mais |
 | distância | 1 entre hastes vizinhas, 2 de H1 para H3 | ir mais longe custa mais |
 
-**custo(jogada) = peso do disco movido × distância.** Vai de 1 (o verde, uma haste) a 6 (o azul, duas hastes).
+**custo(jogada) = 10 + peso do disco movido × distância.** Vai de 11 (o verde, uma haste) a 16 (o azul, duas hastes).
 
-A função de custo é um módulo de `core/costs/`, escolhido com `--cost`. Esta é a padrão; a outra, `unit`, cobra 1 por jogada, e com ela a ordenada acha sempre o caminho de menos movimentos, como a largura.
+O peso × distância vai de 1 a 6, sempre menos que os 10 da jogada: um caminho com um movimento a mais nunca sai mais barato. O caminho de menor custo é sempre um dos de menos movimentos, e o peso × distância só desempata entre eles.
+
+A função de custo é um módulo de `core/costs/`, escolhido com `--cost`. Esta é a padrão. As outras duas são `weight_distance`, só o peso × distância, com que o caminho mais barato pode ter um movimento a mais, e `unit`, 1 por jogada.
 """
     ),
     *_writefiles(COST_MODULES),
@@ -518,16 +528,16 @@ Ordenada: fila pelo custo, sai o mais barato; no empate, o gerado primeiro. O cu
 **ABERTOS**: fila dos nós gerados que ainda não foram analisados, ordenada pelo custo acumulado (entre parênteses na tabela).
 
 **FECHADOS**: nós já expandidos. Com poda, um filho cujo estado já está aqui é descartado.""",
-    strategy_note="Na ordenada a estratégia só desempata irmãos de mesmo custo: decide quem fica na frente em ABERTOS, nunca o custo da solução. Em P1 as duas ordens fazem as mesmas 10 iterações e acham o mesmo caminho.",
-    root_note="Na raiz, R1 custa 2 (o vermelho, uma haste), R3 e R4 custam 3 (o azul, uma haste) e R2 custa 4 (o vermelho, duas hastes). R1 sai primeiro nas duas ordens; a estratégia só decide entre R3 e R4, que empatam.",
-    no_prune="""Sem a técnica de poda, estados repetidos entram de novo em ABERTOS e em FECHADOS, cada vez por outro caminho. Só uma coisa o método nunca faz: um nó não gera um estado que já está no seu próprio caminho, da raiz até ele. A busca ainda acha o caminho de menor custo, porque o objetivo só sai da fila quando nada mais barato resta, mas trabalha mais: em P1 são 13 iterações e 25 nós gerados, contra 10 e 17 com poda, e ABERTOS chega a 13 nós. Nos 36 objetivos resolve todos, com 59 iterações em média em vez de 18,5.""",
+    strategy_note="Na ordenada a estratégia só desempata irmãos de mesmo custo: decide quem fica na frente em ABERTOS, nunca o custo da solução. Em P1 as duas ordens fazem as mesmas 11 iterações e acham o mesmo caminho.",
+    root_note="Na raiz, R1 custa 12 (o vermelho, uma haste), R3 e R4 custam 13 (o azul, uma haste) e R2 custa 14 (o vermelho, duas hastes). R1 sai primeiro nas duas ordens; a estratégia só decide entre R3 e R4, que empatam.",
+    no_prune="""Sem a técnica de poda, estados repetidos entram de novo em ABERTOS e em FECHADOS, cada vez por outro caminho. Só uma coisa o método nunca faz: um nó não gera um estado que já está no seu próprio caminho, da raiz até ele. A busca ainda acha o caminho de menor custo, porque o objetivo só sai da fila quando nada mais barato resta, mas trabalha mais: em P1 são 16 iterações e 28 nós gerados, contra 11 e 18 com poda, e ABERTOS chega a 13 nós. Nos 36 objetivos resolve todos, com 69 iterações em média em vez de 18,5.""",
     prune="""Técnica de poda da busca ordenada, com o **vetor de menor custo** (o menor custo real com que cada estado já apareceu na busca). Toda vez que um nó é gerado,
 
 - se é a primeira vez que o estado aparece, ele entra no vetor com o seu custo;
 - se o estado é repetido e o custo do nó novo é maior ou igual ao do vetor, poda o nó novo;
 - se o custo é menor, atualiza o vetor, tira o nó antigo da árvore e de ABERTOS e inclui o novo.
 
-Em P1 o terceiro caso acontece 1 vez; nos 36 objetivos, 71 vezes com `ascending` e 72 com `descending`. Um estado que já saiu de ABERTOS saiu pelo menor custo, então nenhum caminho novo até ele passa pelo vetor.""",
+Em P1 o terceiro caso acontece 1 vez; nos 36 objetivos, 45 vezes com `ascending` e 46 com `descending`. Um estado que já saiu de ABERTOS saiu pelo menor custo, então nenhum caminho novo até ele passa pelo vetor.""",
     pseudocode="""busca_ordenada(problema, estratégia, poda)
     ABERTOS = fila pelo custo com a raiz (custo 0)
     MENOR_CUSTO = {raiz: 0}
@@ -556,7 +566,7 @@ Em P1 o terceiro caso acontece 1 vez; nos 36 objetivos, 71 vezes com `ascending`
 
 O terceiro caso da poda está no laço: quando o filho chega mais barato a um estado ainda aberto, `frontier.remove` tira o nó antigo.""",
     path_strategy="ascending",
-    path_note="R4, R1, R1: 3 movimentos, custo 3 + 2 + 1 = 6, o menor custo possível. As duas estratégias, com e sem poda, chegam a este mesmo caminho.",
+    path_note="R4, R1, R1: 3 movimentos, custo 13 + 12 + 11 = 36, o menor custo possível. As duas estratégias, com e sem poda, chegam a este mesmo caminho.",
     complexity=(
         (
             "Ordenada sem poda",
@@ -577,8 +587,8 @@ O terceiro caso da poda está no laço: quando o filho chega mais barato a um es
     symbols=("b", "m", "V", "E"),
     conclusion="""## Conclusão
 
-- Em P1: R4, R1, R1 (3 movimentos, custo 6) em 10 iterações e 17 nós gerados, com as duas ordens. É o caminho de menor custo e também o mais curto.
-- Nos 36 objetivos resolve todos, sempre com o menor custo real: média de 9,89, contra 10,33 e 10,28 da largura. O caminho mais barato nem sempre é o mais curto: num objetivo ela faz 4 movimentos (custo 7) onde a largura faz 3 (custo 9).
+- Em P1: R4, R1, R1 (3 movimentos, custo 36) em 11 iterações e 18 nós gerados, com as duas ordens. É o caminho de menor custo e também o mais curto.
+- Nos 36 objetivos resolve todos, sempre com o menor custo real: média de 51,33, contra 51,72 e 51,67 da largura. Com os 10 por jogada, o caminho mais barato é sempre um dos mais curtos: a média é de 4,14 movimentos, a mesma da largura.
 - Garante o menor custo, mas não olha para o objetivo: como a largura, faz 18,5 iterações em média. A busca gulosa, a seguir, troca essa garantia por velocidade.""",
     flowchart="""digraph flow {
 %(style)s
@@ -634,7 +644,7 @@ No código, a gulosa herda o laço e as duas listas da ordenada e troca só o m�
 - se o estado é repetido e o custo do nó novo é maior ou igual ao do vetor, poda o nó novo;
 - se o custo é menor, atualiza o vetor, tira o nó antigo da árvore e de ABERTOS e inclui o novo.
 
-Dois nós do mesmo estado têm a mesma heurística, então quem decide entre eles é o custo real. Há um acréscimo em relação à ordenada: aqui a fila não sai por custo, então um estado já expandido pode reaparecer mais barato. Ele não é reaberto: o filho cujo estado está em FECHADOS também é podado. Em P1 o terceiro caso não acontece; nos 36 objetivos ele aparece 7 vezes com `ascending` e 9 com `descending`.""",
+Dois nós do mesmo estado têm a mesma heurística, então quem decide entre eles é o custo real. Há um acréscimo em relação à ordenada: aqui a fila não sai por custo, então um estado já expandido pode reaparecer mais barato. Ele não é reaberto: o filho cujo estado está em FECHADOS também é podado. Em P1 o terceiro caso não acontece; nos 36 objetivos ele aparece 3 vezes com `ascending` e 5 com `descending`.""",
     pseudocode="""busca_gulosa(problema, estratégia, poda)
     ABERTOS = fila pela heurística com a raiz
     MENOR_CUSTO = {raiz: 0}
@@ -657,7 +667,7 @@ Dois nós do mesmo estado têm a mesma heurística, então quem decide entre ele
     uses_heuristic=True,
     rule_cells=HEURISTIC_CELLS,
     path_strategy="ascending",
-    path_note="R4, R1, R1: 3 movimentos, custo real 3 + 2 + 1 = 6. Em P1 é também o caminho de menor custo, o mesmo da ordenada, achado em 4 iterações em vez de 10.",
+    path_note="R4, R1, R1: 3 movimentos, custo real 13 + 12 + 11 = 36. Em P1 é também o caminho de menor custo, o mesmo da ordenada, achado em 4 iterações em vez de 11.",
     complexity=(
         (
             "Gulosa sem poda",
@@ -678,9 +688,9 @@ Dois nós do mesmo estado têm a mesma heurística, então quem decide entre ele
     symbols=("b", "m", "V", "E"),
     conclusion="""## Conclusão
 
-- Em P1: R4, R1, R1 (3 movimentos, custo 6) em 4 iterações e 9 nós gerados, com as duas ordens. A ordenada precisa de 10 iterações e a largura de 12 a 14.
+- Em P1: R4, R1, R1 (3 movimentos, custo 36) em 4 iterações e 9 nós gerados, com as duas ordens. A ordenada precisa de 11 iterações e a largura de 12 a 14.
 - Nos 36 objetivos resolve todos, com 7,44 e 7,61 iterações em média, contra 18,5 da ordenada e da largura.
-- Não garante a melhor solução: o custo médio é 10,39 e 10,50, contra 9,89 da ordenada, e ela acha o menor custo em 30 (`ascending`) e 27 (`descending`) dos 36 objetivos. A busca segue o nó que parece mais perto do objetivo, não o que custou menos.""",
+- Não garante a melhor solução: o custo médio é 52,33 e 53,00, contra 51,33 da ordenada, e ela acha o menor custo em 31 (`ascending`) e 28 (`descending`) dos 36 objetivos. A busca segue o nó que parece mais perto do objetivo, não o que custou menos.""",
     flowchart="""digraph flow {
 %(style)s
   root [label="raiz em ABERTOS", shape=oval, fillcolor="%(root)s"];

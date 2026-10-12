@@ -285,7 +285,7 @@ P1_CELLS = (
     markdown(
         f"""## A carta P1
 
-As {COMBINATIONS} execuções de P1, ordenadas pelo placar lexicográfico: desfecho, movimentos, iterações e nós gerados, nessa ordem de prioridade. O custo é o custo real do caminho, com a função de peso e distância."""
+As {COMBINATIONS} execuções de P1, ordenadas pelo placar lexicográfico: desfecho, movimentos, iterações e nós gerados, nessa ordem de prioridade. O custo é o custo real do caminho: 10 por jogada, mais peso × distância."""
     ),
     code('p1_comparison().set_index("#")'),
     markdown(
@@ -295,7 +295,7 @@ Em cima, a carta P1. Embaixo, movimentos, iterações e nós gerados de cada alg
     ),
     code("p1_chart()"),
     markdown(
-        """Em P1, largura, ordenada e gulosa acham o mesmo caminho, de 3 movimentos e custo 6, com as duas estratégias. A gulosa é a que faz menos esforço (4 iterações e 9 nós gerados), seguida da ordenada (10 iterações e 17 nós); a largura precisa de 12 a 14 iterações. O backtracking sempre chega, mas com 14 a 22 movimentos. A irrevogável, fora do gráfico, trava em `descending`. Uma carta, porém, é uma amostra de um: a próxima parte repete tudo para os 36 objetivos possíveis."""
+        """Em P1, largura, ordenada e gulosa acham o mesmo caminho, de 3 movimentos e custo 36, com as duas estratégias. A gulosa é a que faz menos esforço (4 iterações e 9 nós gerados), seguida da ordenada (11 iterações e 18 nós); a largura precisa de 12 a 14 iterações. O backtracking sempre chega, mas com 14 a 22 movimentos. A irrevogável, fora do gráfico, trava em `descending`. Uma carta, porém, é uma amostra de um: a próxima parte repete tudo para os 36 objetivos possíveis."""
     ),
 )
 
@@ -307,7 +307,7 @@ Cada estado do espaço vira o objetivo de uma carta sintética (G01 a G{GOALS}),
 
 ### Resumo consolidado
 
-O mesmo resumo de `python main.py --all-goals`: para cada combinação, média / mediana. Movimentos e custo contam só os sucessos; o custo é o custo real do caminho, com a função de peso e distância. A irrevogável resolve 18 objetivos com `ascending` e 3 com `descending`; os outros quatro algoritmos resolvem os {GOALS}."""
+O mesmo resumo de `python main.py --all-goals`: para cada combinação, média / mediana. Movimentos e custo contam só os sucessos; o custo é o custo real do caminho, 10 por jogada mais peso × distância. A irrevogável resolve 18 objetivos com `ascending` e 3 com `descending`; os outros quatro algoritmos resolvem os {GOALS}."""
     ),
     code("goals_comparison()"),
     markdown(
@@ -353,15 +353,15 @@ Os símbolos, com os valores medidos em P1:"""
 CONCLUSION = markdown(
     """## Análise
 
-**Garantias.** A largura resolve os 36 objetivos com o mínimo de movimentos, com qualquer estratégia. A ordenada resolve todos com o menor custo real, que é o que ela ordena: média de 9,89, contra 10,33 e 10,28 da largura. O caminho mais barato nem sempre é o mais curto: num dos 36 objetivos a ordenada faz um movimento a mais que a largura para gastar menos. Com o custo unitário (`--cost unit`) as duas coincidem.
+**Garantias.** A largura resolve os 36 objetivos com o mínimo de movimentos, com qualquer estratégia. A ordenada resolve todos com o menor custo real, que é o que ela ordena: média de 51,33, contra 51,72 e 51,67 da largura. Com os 10 por jogada, o caminho mais barato é sempre um dos mais curtos, então a ordenada também acha o mínimo de movimentos; entre os caminhos mais curtos, fica com o de menor peso × distância. Sem os 10 (`--cost weight_distance`), num dos 36 objetivos ela faz um movimento a mais para gastar menos.
 
 **A heurística corta o esforço.** A gulosa faz em média 7,44 e 7,61 iterações e cerca de 13,5 nós gerados, contra 18,5 iterações da largura e da ordenada. A diferença vem do argumento da permutação acima: largura e ordenada visitam os estados numa ordem que não depende do objetivo, a gulosa vai na direção dele.
 
-**Ir direto tem preço.** A gulosa resolve os 36 objetivos, porque guarda ABERTOS e FECHADOS, mas ordena só pela heurística e por isso não garante a melhor solução: acha o menor custo em 30 (`ascending`) e 27 (`descending`) dos 36 objetivos, com custo médio de 10,39 e 10,50, e passa do mínimo de movimentos em 2 e 3 deles. A irrevogável, sem lista nenhuma, resolve 18 ou 3 conforme a estratégia.
+**Ir direto tem preço.** A gulosa resolve os 36 objetivos, porque guarda ABERTOS e FECHADOS, mas ordena só pela heurística e por isso não garante a melhor solução: acha o menor custo em 31 (`ascending`) e 28 (`descending`) dos 36 objetivos, com custo médio de 52,33 e 53,00, e passa do mínimo de movimentos em 2 e 3 deles. A irrevogável, sem lista nenhuma, resolve 18 ou 3 conforme a estratégia.
 
-**O backtracking sempre resolve, mas não bem.** O espaço é conexo, então o retrocesso sempre acha um caminho. Só que é o primeiro, não o mais curto nem o mais barato: a média fica entre 12,8 e 16,5 movimentos, contra 4,14 do ótimo, e o custo entre 29,7 e 42,7, contra 9,89. O esforço é irregular: com `descending` a média de iterações é 82,9, enquanto a mediana fica em 21,5. Poucos objetivos exigem milhares de passos de ida e volta.
+**O backtracking sempre resolve, mas não bem.** O espaço é conexo, então o retrocesso sempre acha um caminho. Só que é o primeiro, não o mais curto nem o mais barato: a média fica entre 12,8 e 16,5 movimentos, contra 4,14 do ótimo, e o custo entre 157,8 e 207,7, contra 51,33. O esforço é irregular: com `descending` a média de iterações é 82,9, enquanto a mediana fica em 21,5. Poucos objetivos exigem milhares de passos de ida e volta.
 
-**Recomendação.** Quando o que importa é o custo real da solução, a busca ordenada é a escolha: é a única que o garante. Quando o que importa é o esforço da busca, a gulosa resolve tudo com menos da metade das iterações e fica perto do ótimo (custo médio 5% acima, movimentos de 4,19 a 4,25 contra 4,14). Quando o caminho precisa ter o mínimo de movimentos, a largura garante. A irrevogável e o backtracking mostram o que acontece sem memória da fronteira e sem garantia de otimalidade."""
+**Recomendação.** Quando o que importa é o custo real da solução, a busca ordenada é a escolha: é a única que o garante. Quando o que importa é o esforço da busca, a gulosa resolve tudo com menos da metade das iterações e fica perto do ótimo (custo médio 2% a 3% acima, movimentos de 4,19 a 4,25 contra 4,14). Quando o caminho precisa ter o mínimo de movimentos, a largura garante. A irrevogável e o backtracking mostram o que acontece sem memória da fronteira e sem garantia de otimalidade."""
 )
 
 
