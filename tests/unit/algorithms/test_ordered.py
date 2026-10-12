@@ -8,7 +8,9 @@ from core.algorithms.domain.registry import ALGORITHMS
 from core.algorithms.ordered.algorithm import OrderedSearch
 from core.costs.domain.base import CostFunction
 from core.costs.domain.registry import COSTS, DEFAULT_COST
+from core.costs.step_weight_distance import STEP_WEIGHT_DISTANCE
 from core.costs.unit import UNIT
+from core.costs.weight_distance import WEIGHT_DISTANCE
 from core.domain.problem import Problem
 from core.domain.state import State
 from core.domain.state_space import all_states, shortest_distance
@@ -47,9 +49,9 @@ def test_p1_matches_the_presentation(
 ) -> None:
     result = _solve(strategy_name, problems[0])
     assert result.applied_rules == ("R4", "R1", "R1")
-    assert result.solution_cost == 3 + 2 + 1
-    assert result.metrics.iterations == 10
-    assert result.metrics.nodes_generated == 17
+    assert result.solution_cost == 13 + 12 + 11
+    assert result.metrics.iterations == 11
+    assert result.metrics.nodes_generated == 18
 
 
 def test_with_unit_cost_the_solution_cost_is_the_number_of_moves(
@@ -95,13 +97,25 @@ def test_nodes_leave_the_open_list_in_order_of_cost(initial_state: State) -> Non
         assert visited == sorted(visited)
 
 
-def test_the_cheapest_path_can_have_more_moves_than_the_shortest(
+def test_with_ten_per_move_the_cheapest_path_is_one_of_the_shortest(
+    initial_state: State,
+) -> None:
+    for goal in all_states():
+        problem = Problem("SYNTHETIC", goal, initial=initial_state)
+        for name in STRATEGIES:
+            found = _solve(name, problem, cost=STEP_WEIGHT_DISTANCE).solution_length
+            assert found == shortest_distance(initial_state, goal)
+
+
+def test_without_the_ten_the_cheapest_path_can_have_more_moves(
     initial_state: State,
 ) -> None:
     longer = [
         goal
         for goal in all_states()
-        if _solve("ascending", Problem("SYNTHETIC", goal)).solution_length
+        if _solve(
+            "ascending", Problem("SYNTHETIC", goal), cost=WEIGHT_DISTANCE
+        ).solution_length
         != shortest_distance(initial_state, goal)
     ]
     assert longer

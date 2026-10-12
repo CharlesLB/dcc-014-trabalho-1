@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from types import MappingProxyType
 
 from core.costs.domain.base import CostFunction
+from core.costs.step_weight_distance import STEP_WEIGHT_DISTANCE
 from core.costs.unit import UNIT
 from core.costs.weight_distance import WEIGHT_DISTANCE
 
@@ -16,6 +17,7 @@ class UnknownCostError(Exception):
 
 COSTS: Mapping[str, CostFunction] = MappingProxyType(
     {
+        STEP_WEIGHT_DISTANCE.name: STEP_WEIGHT_DISTANCE,
         WEIGHT_DISTANCE.name: WEIGHT_DISTANCE,
         UNIT.name: UNIT,
     }
@@ -23,7 +25,7 @@ COSTS: Mapping[str, CostFunction] = MappingProxyType(
 
 COST_NAMES: tuple[str, ...] = tuple(COSTS)
 
-DEFAULT_COST: CostFunction = WEIGHT_DISTANCE
+DEFAULT_COST: CostFunction = STEP_WEIGHT_DISTANCE
 
 
 def get_cost(name: str) -> CostFunction:

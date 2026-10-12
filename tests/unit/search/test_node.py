@@ -36,7 +36,7 @@ def test_child_accumulates_the_cost_of_the_path(initial_state: State) -> None:
     grandchild = tree.expand(child, R5)
     assert child.cost == tree.step_cost(R2, initial_state)
     assert grandchild.cost == child.cost + tree.step_cost(R5, child.state)
-    assert grandchild.cost == 2 * 2 + 2 * 2
+    assert grandchild.cost == (10 + 2 * 2) + (10 + 2 * 2)
 
 
 def test_node_is_immutable(initial_state: State) -> None:

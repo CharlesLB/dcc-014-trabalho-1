@@ -9,6 +9,7 @@ from core.costs.domain.registry import (
     UnknownCostError,
     get_cost,
 )
+from core.costs.step_weight_distance import STEP_WEIGHT_DISTANCE
 from core.costs.unit import UNIT
 from core.costs.weight_distance import WEIGHT_DISTANCE
 from core.domain.state import State
@@ -17,9 +18,28 @@ from core.rules.moves import R1, R2, R4
 from core.search_tree.tree import SearchTree
 
 
-def test_lists_the_two_costs_with_weight_distance_as_default() -> None:
-    assert COST_NAMES == ("weight_distance", "unit")
-    assert DEFAULT_COST is COSTS["weight_distance"]
+def test_lists_the_three_costs_with_ten_per_move_as_default() -> None:
+    assert COST_NAMES == ("step_weight_distance", "weight_distance", "unit")
+    assert DEFAULT_COST is COSTS["step_weight_distance"]
+
+
+def test_step_weight_distance_adds_ten_to_every_move(
+    states: tuple[State, ...], rules: tuple[TransitionRule, ...]
+) -> None:
+    for state in states:
+        for rule in rules:
+            if rule.is_applicable(state):
+                assert STEP_WEIGHT_DISTANCE.cost(rule, state) == 10 + (
+                    WEIGHT_DISTANCE.cost(rule, state)
+                )
+
+
+def test_step_weight_distance_examples_from_the_docstring(
+    initial_state: State,
+) -> None:
+    assert STEP_WEIGHT_DISTANCE.cost(R1, initial_state) == 12
+    assert STEP_WEIGHT_DISTANCE.cost(R2, initial_state) == 14
+    assert STEP_WEIGHT_DISTANCE.cost(R4, initial_state) == 13
 
 
 def test_each_entry_is_registered_under_its_own_name() -> None:

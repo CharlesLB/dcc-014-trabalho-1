@@ -40,7 +40,7 @@ def test_p1_matches_the_presentation(
     result = _solve(strategy_name, problems[0])
     assert result.outcome is Outcome.SUCCESS
     assert result.applied_rules == ("R4", "R1", "R1")
-    assert result.solution_cost == 3 + 2 + 1
+    assert result.solution_cost == 13 + 12 + 11
     assert result.metrics.iterations == 4
     assert result.metrics.nodes_generated == 9
     assert result.metrics.nodes_visited == 3

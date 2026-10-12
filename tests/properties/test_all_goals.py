@@ -104,9 +104,9 @@ def test_only_ordered_wins_on_cost(summary: Summary) -> None:
     assert _algorithms(highlight.by_mean) == {"ordered"}
 
 
-def test_only_breadth_first_wins_on_moves(summary: Summary) -> None:
+def test_breadth_first_and_ordered_win_on_moves(summary: Summary) -> None:
     highlight = _highlight(summary, "moves")
-    assert _algorithms(highlight.by_mean) == {"breadth_first"}
+    assert _algorithms(highlight.by_mean) == {"breadth_first", "ordered"}
 
 
 @pytest.mark.parametrize("algorithm", ["ordered", "greedy"])
@@ -119,7 +119,8 @@ def test_ordered_and_greedy_stay_close_to_the_fewest_moves(
     )
     moves = _row(summary, algorithm, strategy).moves
     assert moves is not None
-    assert optimum < moves.mean < optimum + 0.2
+    assert optimum <= moves.mean < optimum + 0.2
+    assert (moves.mean == pytest.approx(optimum)) == (algorithm == "ordered")
 
 
 def test_greedy_wins_on_iterations(summary: Summary) -> None:

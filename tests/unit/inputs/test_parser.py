@@ -121,6 +121,6 @@ def test_heuristic_defaults_to_misplacement_and_is_normalised() -> None:
     assert parse(["--heuristic", "Color_Distance"]).heuristic_name == "color_distance"
 
 
-def test_cost_defaults_to_weight_distance_and_is_normalised() -> None:
-    assert parse([]).cost_name == "weight_distance"
+def test_cost_defaults_to_ten_per_move_and_is_normalised() -> None:
+    assert parse([]).cost_name == "step_weight_distance"
     assert parse(["--cost", "UNIT"]).cost_name == "unit"

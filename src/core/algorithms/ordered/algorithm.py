@@ -9,11 +9,14 @@
     Cada jogada tem um custo real, dado pela função de custo escolhida. O
     custo de um nó é a soma dos custos das jogadas da raiz até ele.
 
-    Padrão, peso e distância (core/costs/weight_distance.py): peso do disco
-    movido (verde 1, vermelho 2, azul 3) x distância em hastes. Em S0, R4
-    leva o azul de H2 para H3: 3 x 1 = 3.
+    Padrão, jogada, peso e distância (core/costs/step_weight_distance.py):
+    10 por jogada, mais o peso do disco movido (verde 1, vermelho 2, azul 3)
+    x distância em hastes. Em S0, R4 leva o azul de H2 para H3:
+    10 + 3 x 1 = 13. Com ela, o caminho de menor custo é sempre um dos de
+    menos movimentos.
 
-    Alternativa, unitário (core/costs/unit.py): toda jogada custa 1.
+    Alternativas: só peso x distância (core/costs/weight_distance.py) e
+    unitário, 1 por jogada (core/costs/unit.py).
 
 3. Critério
 
