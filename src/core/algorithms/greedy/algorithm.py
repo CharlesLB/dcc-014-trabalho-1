@@ -28,9 +28,14 @@
     solução, da raiz até o objetivo, e dá o custo da solução, que por isso
     não é garantidamente o menor.
 
-    Poda: a mesma da busca ordenada. O filho cujo estado já foi expandido
-    (FECHADOS) é descartado; entre dois nós abertos do mesmo estado, fica o
-    de menor custo real.
+    Como na ordenada, um nó nunca gera um estado do seu próprio caminho.
+
+4. Técnica de poda
+
+    A da busca ordenada, com o vetor de menor custo: entre dois nós do mesmo
+    estado, fica o de menor custo real. Como aqui a fila não sai por custo,
+    um estado já expandido pode reaparecer mais barato; ele não é reaberto:
+    o filho cujo estado está em FECHADOS também é podado.
 """
 
 from __future__ import annotations
@@ -39,6 +44,8 @@ from typing import ClassVar
 
 from core.algorithms.ordered.algorithm import OrderedSearch
 from core.domain.problem import Problem
+from core.domain.state import State
+from core.rules.domain.base import TransitionRule
 from core.search_tree.node import Node
 
 
@@ -48,3 +55,11 @@ class GreedySearch(OrderedSearch):
     def _priority(self, node: Node, problem: Problem) -> int:
         """A heurística do nó: só ela ordena ABERTOS."""
         return self._heuristic.estimate(node.state, problem.goal)
+
+    def _is_repetition(
+        self, node: Node, rule: TransitionRule, successor: State
+    ) -> bool:
+        """A poda da ordenada, mais o filho de estado já fechado."""
+        return successor in self._closed or super()._is_repetition(
+            node, rule, successor
+        )

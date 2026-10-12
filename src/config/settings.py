@@ -49,7 +49,8 @@ HELP_ALL_GOALS: Final = (
 )
 HELP_NO_PRUNE: Final = (
     "Desliga a poda: a árvore aceita estados repetidos. A irrevogável e o "
-    "backtracking podem então girar em ciclo até o limite de iterações."
+    "backtracking podem então girar em ciclo até o limite de iterações. A "
+    "ordenada e a gulosa ainda não voltam a um estado do próprio caminho."
 )
 HELP_SHOW_TREE: Final = "Renderiza a árvore de busca de cada execução."
 HELP_SHOW_TRACE: Final = (

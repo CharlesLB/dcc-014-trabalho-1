@@ -163,7 +163,7 @@ RULES_LIST = "\n".join(
     )
 )
 
-PRUNE_FLAG = "**poda** vem de `--no-prune`: desligada, a linha da poda não roda. A **estratégia** só muda a ordem do *para cada*."
+PRUNE_FLAG = "**poda** vem de `--no-prune`: desligada, a linha da poda não roda (na ordenada e na gulosa, um nó ainda não gera um estado do próprio caminho). A **estratégia** só muda a ordem do *para cada*."
 
 IRREVOCABLE_SECTION = AlgorithmSection(
     title="Busca irrevogável",
@@ -520,14 +520,14 @@ Ordenada: fila pelo custo, sai o mais barato; no empate, o gerado primeiro. O cu
 **FECHADOS**: nós já expandidos. Com poda, um filho cujo estado já está aqui é descartado.""",
     strategy_note="Na ordenada a estratégia só desempata irmãos de mesmo custo: decide quem fica na frente em ABERTOS, nunca o custo da solução. Em P1 as duas ordens fazem as mesmas 10 iterações e acham o mesmo caminho.",
     root_note="Na raiz, R1 custa 2 (o vermelho, uma haste), R3 e R4 custam 3 (o azul, uma haste) e R2 custa 4 (o vermelho, duas hastes). R1 sai primeiro nas duas ordens; a estratégia só decide entre R3 e R4, que empatam.",
-    no_prune="""Sem poda, estados repetidos entram de novo em ABERTOS, cada vez por um caminho mais caro. A busca ainda acha o caminho de menor custo, porque o objetivo só sai da fila quando nada mais barato resta, mas paga caro por isso: em P1 são 19 iterações e 59 nós gerados, contra 10 e 17 com poda, e ABERTOS chega a 41 nós.""",
-    prune="""Técnica de poda da busca ordenada, com FECHADOS e o **vetor de menor custo** (o menor custo real já gerado até cada estado). Toda vez que um nó é gerado,
+    no_prune="""Sem a técnica de poda, estados repetidos entram de novo em ABERTOS e em FECHADOS, cada vez por outro caminho. Só uma coisa o método nunca faz: um nó não gera um estado que já está no seu próprio caminho, da raiz até ele. A busca ainda acha o caminho de menor custo, porque o objetivo só sai da fila quando nada mais barato resta, mas trabalha mais: em P1 são 13 iterações e 25 nós gerados, contra 10 e 17 com poda, e ABERTOS chega a 13 nós. Nos 36 objetivos resolve todos, com 59 iterações em média em vez de 18,5.""",
+    prune="""Técnica de poda da busca ordenada, com o **vetor de menor custo** (o menor custo real com que cada estado já apareceu na busca). Toda vez que um nó é gerado,
 
-- se o estado já foi expandido (está em FECHADOS), poda o nó;
-- se o estado já está em ABERTOS por um caminho de custo igual ou menor, poda o nó;
-- se o novo caminho é mais barato, tira o nó antigo de ABERTOS e da árvore e inclui o novo.
+- se é a primeira vez que o estado aparece, ele entra no vetor com o seu custo;
+- se o estado é repetido e o custo do nó novo é maior ou igual ao do vetor, poda o nó novo;
+- se o custo é menor, atualiza o vetor, tira o nó antigo da árvore e de ABERTOS e inclui o novo.
 
-Em P1 o terceiro caso acontece 1 vez; nos 36 objetivos, 71 vezes com `ascending` e 72 com `descending`.""",
+Em P1 o terceiro caso acontece 1 vez; nos 36 objetivos, 71 vezes com `ascending` e 72 com `descending`. Um estado que já saiu de ABERTOS saiu pelo menor custo, então nenhum caminho novo até ele passa pelo vetor.""",
     pseudocode="""busca_ordenada(problema, estratégia, poda)
     ABERTOS = fila pelo custo com a raiz (custo 0)
     MENOR_CUSTO = {raiz: 0}
@@ -537,11 +537,12 @@ Em P1 o terceiro caso acontece 1 vez; nos 36 objetivos, 71 vezes com `ascending`
         se nó é o objetivo: SUCESSO
         coloca nó em FECHADOS
         para cada regra válida, na ordem da estratégia:
+            se o filho já está no caminho da raiz até nó: não gera
             custo = custo(nó) + custo_real(regra, nó)
-            se poda e (filho está em FECHADOS ou custo >= MENOR_CUSTO[filho]):
+            se poda e custo >= MENOR_CUSTO[filho]:
                 descarta a regra
             senão:
-                se o estado do filho está em ABERTOS: tira o nó antigo
+                se poda e o estado do filho está em ABERTOS: tira o nó antigo
                 MENOR_CUSTO[estado do filho] = custo
                 põe o filho em ABERTOS, na posição do custo
     FRACASSO""",
@@ -549,7 +550,8 @@ Em P1 o terceiro caso acontece 1 vez; nos 36 objetivos, 71 vezes com `ascending`
 - **`_best_cost`**: o vetor de menor custo, com o menor custo real já gerado até cada estado.
 - **`_open`**: o nó de cada estado que está em ABERTOS, para poder tirá-lo de lá quando um caminho mais barato aparece.
 - **`_closed`**: os estados de FECHADOS.
-- **`_is_repetition`**: os dois primeiros casos da poda. Descarta o filho de estado já fechado e o que não barateia o caminho conhecido.
+- **`_is_never_generated`**: o que vale com ou sem poda. Um nó não gera um estado do seu próprio caminho.
+- **`_is_repetition`**: a técnica de poda. Descarta o filho que não barateia o custo guardado no vetor.
 - **`_discard`**: registra como poda o nó que foi trocado.
 
 O terceiro caso da poda está no laço: quando o filho chega mais barato a um estado ainda aberto, `frontier.remove` tira o nó antigo.""",
@@ -561,7 +563,7 @@ O terceiro caso da poda está no laço: quando o filho chega mais barato a um es
             "exponencial",
             "exponencial",
             "menor custo",
-            "sem FECHADOS, o mesmo estado entra em ABERTOS por todo caminho mais barato que o objetivo",
+            "o mesmo estado entra em ABERTOS por todo caminho sem repetição mais barato que o objetivo",
         ),
         (
             "Ordenada com poda",
@@ -625,14 +627,14 @@ No código, a gulosa herda o laço e as duas listas da ordenada e troca só o m�
 **FECHADOS**: nós já expandidos. Com poda, um filho cujo estado já está aqui é descartado.""",
     strategy_note="Na gulosa a estratégia só desempata irmãos de mesma heurística: decide quem fica na frente em ABERTOS. Em P1 as duas ordens fazem as mesmas 4 iterações e acham o mesmo caminho.",
     root_note="Em S0 a heurística vale 3. Na raiz, R4 leva a h = 2, R2 e R3 a h = 3 e R1 a h = 4. R4 sai primeiro nas duas ordens; a estratégia só decide entre R2 e R3, que empatam. A ordenada, pelo custo, tiraria R1 primeiro.",
-    no_prune="""Sem poda, estados repetidos entram de novo em ABERTOS. Em P1 a heurística leva direto ao objetivo: 4 iterações, com 12 nós gerados em vez de 9. Nos 36 objetivos, porém, ordenar só pela heurística, sem poda, faz a busca girar entre estados de mesma h: 10 deles chegam ao limite de iterações.""",
-    prune="""A poda é a da busca ordenada, com FECHADOS e o **vetor de menor custo** (o menor custo real já gerado até cada estado). Toda vez que um nó é gerado,
+    no_prune="""Sem a técnica de poda, estados repetidos entram de novo em ABERTOS; como na ordenada, um nó só não gera um estado do seu próprio caminho. Em P1 a heurística leva direto ao objetivo: as mesmas 4 iterações, com 10 nós gerados em vez de 9. Nos 36 objetivos resolve todos, mas a mesma heurística volta a atrair a busca para estados já expandidos: 13,2 e 13,8 iterações em média, contra 7,44 e 7,61 com poda.""",
+    prune="""A poda é a técnica da busca ordenada, com o **vetor de menor custo** (o menor custo real com que cada estado já apareceu). Toda vez que um nó é gerado,
 
-- se o estado já foi expandido (está em FECHADOS), poda o nó;
-- se o estado já está em ABERTOS por um caminho de custo igual ou menor, poda o nó;
-- se o novo caminho é mais barato, tira o nó antigo de ABERTOS e da árvore e inclui o novo.
+- se é a primeira vez que o estado aparece, ele entra no vetor com o seu custo;
+- se o estado é repetido e o custo do nó novo é maior ou igual ao do vetor, poda o nó novo;
+- se o custo é menor, atualiza o vetor, tira o nó antigo da árvore e de ABERTOS e inclui o novo.
 
-Dois nós do mesmo estado têm a mesma heurística, então quem decide entre eles é o custo real. Em P1 o terceiro caso não acontece; nos 36 objetivos ele aparece 7 vezes com `ascending` e 9 com `descending`. Como FECHADOS impede repetir estado, a gulosa com poda sempre termina e sempre acha uma solução.""",
+Dois nós do mesmo estado têm a mesma heurística, então quem decide entre eles é o custo real. Há um acréscimo em relação à ordenada: aqui a fila não sai por custo, então um estado já expandido pode reaparecer mais barato. Ele não é reaberto: o filho cujo estado está em FECHADOS também é podado. Em P1 o terceiro caso não acontece; nos 36 objetivos ele aparece 7 vezes com `ascending` e 9 com `descending`.""",
     pseudocode="""busca_gulosa(problema, estratégia, poda)
     ABERTOS = fila pela heurística com a raiz
     MENOR_CUSTO = {raiz: 0}
@@ -642,15 +644,16 @@ Dois nós do mesmo estado têm a mesma heurística, então quem decide entre ele
         se nó é o objetivo: SUCESSO
         coloca nó em FECHADOS
         para cada regra válida, na ordem da estratégia:
+            se o filho já está no caminho da raiz até nó: não gera
             custo = custo(nó) + custo_real(regra, nó)
             se poda e (filho está em FECHADOS ou custo >= MENOR_CUSTO[filho]):
                 descarta a regra
             senão:
-                se o estado do filho está em ABERTOS: tira o nó antigo
+                se poda e o estado do filho está em ABERTOS: tira o nó antigo
                 MENOR_CUSTO[estado do filho] = custo
                 põe o filho em ABERTOS, na posição de h(filho)
     FRACASSO""",
-    code_note="""A classe herda o laço da ordenada e troca só o `_priority`: ele devolve a heurística do nó em vez do custo acumulado. A heurística chega pelo motor (`self._heuristic`), escolhida no registro de `core/heuristics/`.""",
+    code_note="""A classe herda o laço da ordenada e troca o `_priority`: ele devolve a heurística do nó em vez do custo acumulado. O `_is_repetition` soma à poda da ordenada o filho de estado já fechado. A heurística chega pelo motor (`self._heuristic`), escolhida no registro de `core/heuristics/`.""",
     uses_heuristic=True,
     rule_cells=HEURISTIC_CELLS,
     path_strategy="ascending",
@@ -658,10 +661,10 @@ Dois nós do mesmo estado têm a mesma heurística, então quem decide entre ele
     complexity=(
         (
             "Gulosa sem poda",
-            "pode não terminar",
-            "cresce sem limite",
-            "pode não achar",
-            "sem FECHADOS, gira entre estados de mesma heurística",
+            "exponencial",
+            "exponencial",
+            "não garante a de menor custo",
+            "o mesmo estado entra em ABERTOS por todo caminho sem repetição",
         ),
         (
             "Gulosa com poda",

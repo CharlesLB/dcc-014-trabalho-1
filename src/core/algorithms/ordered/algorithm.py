@@ -23,10 +23,22 @@
     o objetivo vira o estado atual, não quando ele é gerado: por isso a
     solução encontrada é a de menor custo.
 
-    Poda: o filho cujo estado já foi expandido (FECHADOS) é descartado; o
-    filho cujo estado já está em ABERTOS por um caminho de custo igual ou
-    menor também. Se o novo caminho for mais barato, o nó antigo sai de
-    ABERTOS e da árvore e o novo entra no lugar.
+    Um nó nunca gera um estado que já está no seu próprio caminho, da raiz
+    até ele. Fora isso, sem a técnica de poda, estados repetidos entram de
+    novo em ABERTOS e em FECHADOS.
+
+    Um nó em impasse, sem filhos, vai para FECHADOS e a busca segue com o
+    próximo de ABERTOS.
+
+4. Técnica de poda
+
+    O vetor de menor custo guarda, para cada estado já gerado, o menor custo
+    com que ele apareceu. Toda vez que um nó é gerado:
+
+        primeira vez do estado    entra no vetor com o seu custo
+        repetido, custo >=        o nó novo é podado
+        repetido, custo <         o vetor é atualizado, o nó antigo sai da
+                                  árvore e de ABERTOS e o novo entra
 """
 
 from __future__ import annotations
@@ -38,6 +50,7 @@ from core.algorithms.ordered.frontier import PriorityFrontier
 from core.domain.problem import Problem
 from core.domain.state import State
 from core.rules.domain.base import TransitionRule
+from core.search_tree import path
 from core.search_tree.node import Node
 from core.search_tree.outcome import Outcome
 
@@ -66,7 +79,7 @@ class OrderedSearch(SearchAlgorithm):
         # O nó de cada estado que ainda espera em ABERTOS, para poder tirá-lo
         # de lá quando um caminho mais barato até o mesmo estado aparecer.
         self._open = {context.root.state: context.root}
-        # FECHADOS: os estados já expandidos. Nenhum deles é reaberto.
+        # FECHADOS: os estados já expandidos.
         self._closed = set()
         self._observe_frontier(len(frontier))
 
@@ -111,14 +124,20 @@ class OrderedSearch(SearchAlgorithm):
     def _is_repetition(
         self, node: Node, rule: TransitionRule, successor: State
     ) -> bool:
-        """Poda o filho já fechado ou que não barateia o caminho conhecido."""
-        if successor in self._closed:
-            return True
+        """A técnica de poda: o filho que não barateia o custo do vetor.
+
+        Um estado já expandido saiu de ABERTOS pelo menor custo, então nenhum
+        caminho novo até ele é mais barato: o vetor sozinho já o barra.
+        """
         best = self._best_cost.get(successor)
         return (
             best is not None
             and node.cost + self._tree.step_cost(rule, node.state) >= best
         )
+
+    def _is_never_generated(self, node: Node, successor: State) -> bool:
+        """Um nó não gera um estado do seu próprio caminho, com ou sem poda."""
+        return path.contains_state(node, successor)
 
     def _discard(self, node: Node) -> None:
         """Só contabilidade: registra o nó substituído como poda do pai."""

@@ -117,7 +117,8 @@ class SearchAlgorithm(ABC):
 
         Faz os três passos em ordem: testa quais são aplicáveis, ordena pela
         estratégia e poda as que repetiriam um estado. Sem poda, o terceiro
-        passo não roda e a árvore aceita estados repetidos.
+        passo não roda e a árvore aceita estados repetidos, menos os que o
+        próprio método nunca gera (`_is_never_generated`).
         """
         context = self._require_context()
         applicable: list[TransitionRule] = []
@@ -129,8 +130,11 @@ class SearchAlgorithm(ABC):
         allowed: list[TransitionRule] = []
         for rule in self._strategy.order(tuple(applicable)):
             successor = rule.apply(node.state)
-            if self._prune and self._is_repetition(node, rule, successor):
-                self._record_prune(node, rule.id, successor)
+            if self._prune:
+                if self._is_repetition(node, rule, successor):
+                    self._record_prune(node, rule.id, successor)
+                    continue
+            elif self._is_never_generated(node, successor):
                 continue
             allowed.append(rule)
         return tuple(allowed)
@@ -145,6 +149,14 @@ class SearchAlgorithm(ABC):
         para comparar o custo do novo caminho com o menor já conhecido.
         """
         return path.contains_state(node, successor)
+
+    def _is_never_generated(self, node: Node, successor: State) -> bool:
+        """O que o método não gera nem com a poda desligada: aqui, nada.
+
+        A ordenada e a gulosa sobrescrevem: nelas um nó nunca gera um estado
+        do seu próprio caminho, e a poda é uma técnica a mais.
+        """
+        return False
 
     def _require_context(self) -> _RunContext:
         """O contexto da execução. Só existe durante o `solve`."""
