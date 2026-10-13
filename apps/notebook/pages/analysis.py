@@ -34,6 +34,7 @@ GOAL_COLUMNS = {
     "iterations": ("Iterações", 120),
     "generated": ("Nós gerados", 80),
     "expanded": ("Nós expandidos", 120),
+    "cost": ("Custo real da solução", 500),
 }
 
 
@@ -134,6 +135,7 @@ def goals_runs():
                     "strategy": result.strategy,
                     "success": result.outcome.is_success,
                     "moves": result.solution_length,
+                    "cost": result.solution_cost,
                     "iterations": result.metrics.iterations,
                     "generated": result.metrics.nodes_generated,
                     "expanded": result.metrics.nodes_visited,
@@ -214,6 +216,22 @@ def goals_boxplot(algorithm, column):
             ax.annotate(text, xy=(limit, position), xytext=(-4, 0), textcoords="offset points", ha="right", va="center", fontsize=9, color=INK)
     ax.invert_yaxis()
     ax.set_title(f"{title} nos {len(all_states())} objetivos", loc="left")
+    ax.grid(axis="y", visible=False)
+    plt.show()
+
+
+def cost_chart(algorithm):
+    \"\"\"O custo real da solução de P1, por algoritmo e estratégia.\"\"\"
+    names = [algorithm, *(name for name in ALGORITHMS if name != algorithm)]
+    bars = [(label(name, strategy, short=False), solve(name, strategy), name) for name in names for strategy in STRATEGIES]
+    bars = sorted((bar for bar in bars if bar[1].outcome.is_success), key=lambda bar: bar[1].solution_cost)
+    fig, ax = plt.subplots(figsize=(9, 0.45 * len(bars) + 1))
+    shown = ax.barh([text for text, _, _ in bars], [result.solution_cost for _, result, _ in bars], color=[ALGORITHM_COLORS[name] for _, _, name in bars], height=0.7)
+    ax.bar_label(shown, fontsize=9, color=INK, padding=3)
+    for tick, (_, _, name) in zip(ax.get_yticklabels(), bars):
+        tick.set_fontweight("bold" if name == algorithm else "normal")
+    ax.invert_yaxis()
+    ax.set_title("custo real da solução em P1", loc="left")
     ax.grid(axis="y", visible=False)
     plt.show()
 

@@ -13,6 +13,8 @@ A apresentação é feita pelo próprio Colab. Todo o código de apoio fica no t
 
 A seção da busca ordenada tem, logo depois das regras, o custo real de 10 por jogada mais peso × distância: a tabela das três partes, o código das três funções de custo e o custo de cada jogada válida na raiz. A seção da gulosa tem, no mesmo lugar, a heurística de discos mal posicionados: a tabela das contribuições (0, 1 ou 2 por disco), o código de `misplacement.py`, a conta de h em S0 disco a disco e a h de cada filho da raiz.
 
+A seção da gulosa traz tudo o que está nos slides dela, gerado por código: os exemplos de quanto cada disco soma em h, a comparação das duas heurísticas, o custo de cada jogada, os objetivos em que ela paga mais que a ordenada (com o pior caso desenhado), o custo real em P1 em barras e os boxplots dos 36 objetivos (nós expandidos, iterações, nós gerados e custo). A da ordenada compara as três funções de custo. A tabela de regras mostra o custo de cada regra por disco, e o caminho solução mostra o custo de cada movimento e o total.
+
 Depois dos comparativos, a seção da ordenada tem ainda os 36 objetivos: boxplot e quartis de nós expandidos, iterações e nós gerados para todas as combinações, da menor para a maior média.
 
 A primeira seção (busca irrevogável) mostra os módulos compartilhados: legenda e cartas no slide do problema, o motor no slide do laço, as regras e as estratégias nos slides delas. O contrato da fronteira aparece no slide da ideia do backtracking, o primeiro algoritmo que usa uma; cada algoritmo com fronteira própria mostra a sua (pilha, fila ou fila de prioridade) no próprio slide da ideia; a gulosa reaproveita a da ordenada.

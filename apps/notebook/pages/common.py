@@ -168,11 +168,12 @@ from IPython.display import SVG, display
 
 from config import settings
 from core.algorithms.domain.registry import ALGORITHM_NAMES
-from core.costs.domain.registry import DEFAULT_COST
+from core.costs.domain.registry import COST_NAMES, COSTS, DEFAULT_COST
+from core.heuristics.domain.registry import DEFAULT_HEURISTIC, HEURISTIC_NAMES
 from core.heuristics.misplacement import contributions, misplacement
 from core.domain.problem import INITIAL_STATE, get_problem
 from core.domain.state_space import all_states, applicable_rules, successors
-from core.rules.domain.base import Peg
+from core.rules.domain.base import Disk, Peg
 from core.rules.domain.catalog import INVERSE_RULE_ID, RULE_BY_ID, RULES
 from core.rules.strategies.domain.registry import STRATEGIES as STRATEGY_REGISTRY
 from core.rules.strategies.domain.registry import STRATEGY_NAMES
@@ -231,7 +232,7 @@ def moved_disk(state, rule):
     return theme.disk_name(state[rule.origin][-1]).lower()
 
 
-def run(problem_ids=("P1",), algorithms=ALGORITHM_NAMES, strategies=STRATEGY_NAMES, *, all_goals=False, prune=True, max_iterations=settings.MAX_ITERATIONS):
+def run(problem_ids=("P1",), algorithms=ALGORITHM_NAMES, strategies=STRATEGY_NAMES, *, all_goals=False, prune=True, max_iterations=settings.MAX_ITERATIONS, cost=DEFAULT_COST.name, heuristic=DEFAULT_HEURISTIC.name):
     return build_report(
         ExecutionRequest(
             problem_ids=tuple(problem_ids),
@@ -240,6 +241,8 @@ def run(problem_ids=("P1",), algorithms=ALGORITHM_NAMES, strategies=STRATEGY_NAM
             all_goals=all_goals,
             prune=prune,
             max_iterations=max_iterations,
+            cost_name=cost,
+            heuristic_name=heuristic,
         )
     )
 
@@ -255,8 +258,8 @@ def p1_report():
 
 
 @cache
-def goals_report():
-    return run((), all_goals=True)
+def goals_report(cost=DEFAULT_COST.name, heuristic=DEFAULT_HEURISTIC.name):
+    return run((), all_goals=True, cost=cost, heuristic=heuristic)
 
 
 def side_by_side(blocks, gap="      "):
@@ -287,6 +290,11 @@ def show_problem(problem=P1):
     show_transition(problem.initial, problem.goal, before_title="INICIAL", after_title=f"OBJETIVO {problem.id}")
 
 
+def _alone(disk, peg):
+    \"\"\"Um estado só com o disco na haste, para perguntar o custo de movê-lo.\"\"\"
+    return tuple((disk,) if other is peg else () for other in Peg)
+
+
 def rules_table():
     return pd.DataFrame(
         [
@@ -296,6 +304,7 @@ def rules_table():
                 "Para": rule.destination.name,
                 "Inversa": INVERSE_RULE_ID[rule.id],
                 "Distância": abs(rule.destination - rule.origin),
+                **{f"Custo movendo o {theme.disk_name(disk).lower()}": DEFAULT_COST.cost(rule, _alone(disk, rule.origin)) for disk in Disk},
             }
             for rule in RULES
         ]
@@ -334,6 +343,112 @@ def children_costs(state=INITIAL_STATE):
             for rule in applicable_rules(state)
         ]
     ).set_index("Regra")
+
+
+def heuristic_examples(goal=P1.goal):
+    \"\"\"Quanto cada disco soma em h, nos estados do caminho de P1 e em dois casos de haste certa, lugar errado.\"\"\"
+    r1, r4 = RULE_BY_ID["R1"], RULE_BY_ID["R4"]
+    second = r4.apply(INITIAL_STATE)
+    examples = (
+        (INITIAL_STATE, "os três em outra haste"),
+        (second, "o azul chegou à H3"),
+        (r1.apply(second), "o vermelho é a base da H2"),
+        (goal, "tudo bem posicionado"),
+        (r1.apply(INITIAL_STATE), "vermelho na H2, mas sobre o azul"),
+        (((), (Disk.GREEN, Disk.RED), (Disk.BLUE,)), "verde e vermelho na H2, trocados"),
+    )
+    rows = []
+    for state, why in examples:
+        shares = contributions(state, goal)
+        rows.append({"Estado": compact(state), **{theme.disk_name(disk): shares[disk] for disk in Disk}, "h": heuristic(state, goal), "Por quê": why})
+    return pd.DataFrame(rows).set_index("Estado")
+
+
+def _goal_means(report, algorithm, strategy="ascending"):
+    return next(row for row in report.summary.rows if row.algorithm == algorithm and row.strategy == strategy)
+
+
+def _cheapest_count(report, algorithm, strategy="ascending"):
+    \"\"\"Em quantos objetivos o algoritmo acha o mesmo custo da ordenada, que é o menor.\"\"\"
+    count = 0
+    for entry in report.problems:
+        costs = {result.algorithm: result.solution_cost for result in entry.results if result.strategy == strategy}
+        count += costs[algorithm] == costs["ordered"]
+    return count
+
+
+def costs_comparison(strategy="ascending"):
+    \"\"\"As funções de custo real lado a lado: P1 e a média dos 36 objetivos.\"\"\"
+    rows = []
+    for name in COST_NAMES:
+        p1 = run(("P1",), ("ordered",), (strategy,), cost=name).problems[0].results[0]
+        report = goals_report(cost=name)
+        ordered, breadth, greedy = (_goal_means(report, algorithm, strategy) for algorithm in ("ordered", "breadth_first", "greedy"))
+        rows.append(
+            {
+                "Função de custo": name,
+                "P1: caminho da ordenada": " ".join(p1.applied_rules),
+                "P1: custo": p1.solution_cost,
+                "P1: iterações": p1.metrics.iterations,
+                "36: custo da ordenada": br(ordered.cost.mean, 2),
+                "36: movimentos da ordenada": br(ordered.moves.mean, 2),
+                "36: custo da largura": br(breadth.cost.mean, 2),
+                "36: custo da gulosa": br(greedy.cost.mean, 2),
+            }
+        )
+    return pd.DataFrame(rows).set_index("Função de custo")
+
+
+def heuristics_comparison():
+    \"\"\"A gulosa com cada heurística: P1 e a média dos 36 objetivos, nas duas estratégias.\"\"\"
+    rows = []
+    for name in HEURISTIC_NAMES:
+        report = goals_report(heuristic=name)
+        for strategy in SLIDE_STRATEGIES:
+            p1 = run(("P1",), ("greedy",), (strategy,), heuristic=name).problems[0].results[0]
+            row = _goal_means(report, "greedy", strategy)
+            rows.append(
+                {
+                    "Heurística": name,
+                    "Estratégia": STRATEGY_LABELS[strategy],
+                    "P1: caminho": " ".join(p1.applied_rules),
+                    "P1: iterações": p1.metrics.iterations,
+                    "36: resolvidos": f"{row.successes}/{row.runs}",
+                    "36: iterações": br(row.iterations.mean, 2),
+                    "36: nós gerados": br(row.nodes_generated.mean, 2),
+                    "36: movimentos": br(row.moves.mean, 2),
+                    "36: custo real": br(row.cost.mean, 2),
+                    "36: acha o menor custo em": _cheapest_count(report, "greedy", strategy),
+                }
+            )
+    return pd.DataFrame(rows).set_index(["Heurística", "Estratégia"])
+
+
+def dearer_than_ordered(strategy="ascending"):
+    \"\"\"Os objetivos em que a gulosa paga mais que a ordenada, com o pior caso desenhado.\"\"\"
+    rows = []
+    for entry in goals_report().problems:
+        found = {result.algorithm: result for result in entry.results if result.strategy == strategy}
+        greedy, ordered = found["greedy"], found["ordered"]
+        if greedy.solution_cost > ordered.solution_cost:
+            rows.append(
+                {
+                    "Objetivo": compact(entry.goal_state),
+                    "Gulosa": " ".join(greedy.applied_rules),
+                    "Mov. gulosa": greedy.solution_length,
+                    "Custo gulosa": greedy.solution_cost,
+                    "Ordenada": " ".join(ordered.applied_rules),
+                    "Mov. ordenada": ordered.solution_length,
+                    "Custo ordenada": ordered.solution_cost,
+                    "A mais": greedy.solution_cost - ordered.solution_cost,
+                    "_goal": entry.goal_state,
+                }
+            )
+    worst = max(rows, key=lambda row: row["A mais"])
+    show_transition(INITIAL_STATE, worst["_goal"], before_title="INICIAL", after_title="OBJETIVO")
+    print(f"\\nNo objetivo {worst['Objetivo']} a gulosa paga {worst['Custo gulosa']} em {worst['Mov. gulosa']} movimentos; a ordenada, {worst['Custo ordenada']} em {worst['Mov. ordenada']}.")
+    print(f"A gulosa paga mais que a ordenada em {len(rows)} dos {len(goals_report().problems)} objetivos.\\n")
+    return pd.DataFrame(rows).drop(columns="_goal").set_index("Objetivo")
 
 
 def children_heuristics(state=INITIAL_STATE, goal=P1.goal):
@@ -525,7 +640,8 @@ def _describe(node, algorithm):
 def frontier_demo(algorithm):
     module, name = FRONTIERS[algorithm]
     frontier_class = getattr(import_module(module), name)
-    frontier = frontier_class(lambda node: node.cost) if LIST_MODES[algorithm] == "priority" else frontier_class()
+    priority = (lambda node: heuristic(node.state)) if algorithm in HEURISTIC_ALGORITHMS else (lambda node: node.cost)
+    frontier = frontier_class(priority) if LIST_MODES[algorithm] == "priority" else frontier_class()
     tree = SearchTree()
     root = tree.root(INITIAL_STATE)
     children = [tree.expand(root, rule) for rule in applicable_rules(INITIAL_STATE)]
@@ -616,8 +732,8 @@ def show_path(result):
         print()
     for parent, child in zip(path, path[1:]):
         rule = child.rule
-        print(f"{rule.id}: {moved_disk(parent.state, rule)} de {rule.origin.name} para {rule.destination.name}")
-    print(f"\\n{result.solution_length} movimentos.")
+        print(f"{rule.id}: {moved_disk(parent.state, rule)} de {rule.origin.name} para {rule.destination.name}, custo {child.cost - parent.cost} (total {child.cost})")
+    print(f"\\n{result.solution_length} movimentos, custo real {result.solution_cost}.")
 
 
 def _charted(algorithm):

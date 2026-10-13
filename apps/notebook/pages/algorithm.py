@@ -453,7 +453,24 @@ A heurística é um módulo de `core/heuristics/`, escolhido com `--heuristic`. 
     ),
     *_writefiles(HEURISTIC_MODULES),
     code("explain_heuristic()"),
+    markdown(
+        "### Quanto cada disco soma em h\n\nOs quatro primeiros estados são o caminho de P1: h cai de 3 para 2, 1 e 0. Os dois últimos mostram a haste certa no lugar errado, que vale 2."
+    ),
+    code("heuristic_examples()"),
+    markdown("### A heurística de cada filho da raiz"),
     code("children_heuristics()"),
+    markdown(
+        """### As duas heurísticas comparadas
+
+A gulosa com cada heurística do registro, em P1 e nos 36 objetivos. A de cor e distância só olha a haste, não a altura: resolve todos os objetivos, mas com mais iterações, mais movimentos e mais custo."""
+    ),
+    code("heuristics_comparison()"),
+    markdown(
+        """## O custo real: jogada, peso e distância
+
+A gulosa não usa o custo real para escolher o próximo nó. Ele é somado nas arestas do caminho solução, da raiz até o objetivo, e dá o custo real da solução. É a mesma função da busca ordenada: **10 + peso do disco movido × distância**."""
+    ),
+    code("children_costs()"),
 )
 
 GOALS_CELLS: tuple[Cell, ...] = (
@@ -478,6 +495,47 @@ Cada estado do espaço como objetivo, sempre a partir da mesma posição inicial
     markdown("### Nós gerados nos 36 objetivos"),
     code('goals_boxplot("ordered", "generated")'),
     code('goals_stats("ordered", "generated")'),
+    markdown("### Custo real da solução em P1"),
+    code('cost_chart("ordered")'),
+    markdown(
+        "### Custo real da solução nos 36 objetivos\n\nA ordenada tem sempre o menor custo real: é o que ela ordena."
+    ),
+    code('goals_boxplot("ordered", "cost")'),
+    code('goals_stats("ordered", "cost")'),
+)
+
+GREEDY_GOALS_CELLS: tuple[Cell, ...] = (
+    markdown(
+        """## A gulosa não garante a melhor solução
+
+A heurística olha o que parece faltar, não o que o caminho já custou. Abaixo, os objetivos em que a gulosa paga mais que a ordenada, com o pior caso desenhado."""
+    ),
+    code("dearer_than_ordered()"),
+    markdown("## Comparativo: custo real da solução em P1"),
+    code('cost_chart("greedy")'),
+    markdown(
+        """## Comparativo: os 36 objetivos
+
+Cada estado do espaço como objetivo, sempre a partir da mesma posição inicial, nas duas estratégias, da menor para a maior média.
+
+### Nós expandidos nos 36 objetivos"""
+    ),
+    code('goals_boxplot("greedy", "expanded")'),
+    code('goals_stats("greedy", "expanded")'),
+    markdown("### Iterações nos 36 objetivos"),
+    code('goals_boxplot("greedy", "iterations")'),
+    markdown(
+        "Na largura e na ordenada as iterações são sempre 1, 2, …, 36, só embaralhadas. Na gulosa a ordem em que os estados saem de ABERTOS depende do objetivo, e a busca vai mais direto: a caixa dela fica à esquerda das outras."
+    ),
+    code('goals_stats("greedy", "iterations")'),
+    markdown("### Nós gerados nos 36 objetivos"),
+    code('goals_boxplot("greedy", "generated")'),
+    code('goals_stats("greedy", "generated")'),
+    markdown(
+        "### Custo real da solução nos 36 objetivos\n\nAqui a gulosa não lidera: a ordenada tem o menor custo real."
+    ),
+    code('goals_boxplot("greedy", "cost")'),
+    code('goals_stats("greedy", "cost")'),
 )
 
 COST_CELLS: tuple[Cell, ...] = (
@@ -501,6 +559,12 @@ A função de custo é um módulo de `core/costs/`, escolhido com `--cost`. Esta
     ),
     *_writefiles(COST_MODULES),
     code("children_costs()"),
+    markdown(
+        """### As três funções de custo comparadas
+
+A ordenada com cada função de custo do registro, em P1 e nos 36 objetivos. Com os 10 por jogada e com o custo unitário ela acha sempre o mínimo de movimentos; só com peso × distância, sem os 10, a média de movimentos sobe."""
+    ),
+    code("costs_comparison()"),
 )
 
 ORDERED_SECTION = AlgorithmSection(
@@ -618,6 +682,10 @@ GREEDY_SECTION = AlgorithmSection(
     list_mode="priority",
     complete=True,
     module="core/algorithms/greedy/algorithm.py",
+    frontier="core/algorithms/ordered/frontier.py",
+    frontier_class="PriorityFrontier",
+    frontier_demo=True,
+    goals_cells=GREEDY_GOALS_CELLS,
     subtitle="ABERTOS vira uma fila ordenada pela heurística: sai primeiro o nó que parece mais perto do objetivo.",
     idea="""**Expanda sempre o nó aberto de menor heurística.**
 
