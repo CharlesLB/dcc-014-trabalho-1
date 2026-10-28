@@ -108,6 +108,9 @@ def view_helpers(sections: Sequence[AlgorithmSection]) -> Cell:
         "HEURISTIC_ALGORITHMS": tuple(
             spec.name for spec in sections if spec.uses_heuristic
         ),
+        "EVALUATION_ALGORITHMS": tuple(
+            spec.name for spec in sections if spec.uses_evaluation
+        ),
         "CHART_ALGORITHMS": tuple(spec.name for spec in sections if spec.complete),
     }
     assignments = "\n".join(f"{name} = {value!r}" for name, value in data.items())
@@ -182,8 +185,10 @@ from IPython.display import SVG, display
 from config import settings
 from core.algorithms.domain.registry import ALGORITHM_NAMES
 from core.costs.domain.registry import COST_NAMES, COSTS, DEFAULT_COST
-from core.heuristics.domain.registry import DEFAULT_HEURISTIC, HEURISTIC_NAMES
+from core.heuristics.domain.registry import HEURISTIC_NAMES
 from core.heuristics.misplacement import contributions, misplacement
+from core.heuristics.misplacement_cost import cheapest_move, misplacement_cost
+from core.heuristics.misplacement_cost import contributions as cost_contributions
 from core.domain.problem import INITIAL_STATE, get_problem
 from core.domain.state_space import all_states, applicable_rules, successors
 from core.rules.domain.base import Disk, Peg
@@ -240,12 +245,17 @@ def heuristic(state, goal=P1.goal):
     return misplacement(state, goal)
 
 
+def evaluation_heuristic(state, goal=P1.goal):
+    \"\"\"A h da A*, na unidade do custo real.\"\"\"
+    return misplacement_cost(state, goal)
+
+
 def moved_disk(state, rule):
     \"\"\"O disco que a regra tira do topo da origem, por extenso.\"\"\"
     return theme.disk_name(state[rule.origin][-1]).lower()
 
 
-def run(problem_ids=("P1",), algorithms=ALGORITHM_NAMES, strategies=STRATEGY_NAMES, *, all_goals=False, prune=True, max_iterations=settings.MAX_ITERATIONS, cost=DEFAULT_COST.name, heuristic=DEFAULT_HEURISTIC.name):
+def run(problem_ids=("P1",), algorithms=ALGORITHM_NAMES, strategies=STRATEGY_NAMES, *, all_goals=False, prune=True, max_iterations=settings.MAX_ITERATIONS, cost=DEFAULT_COST.name, heuristic=None):
     return build_report(
         ExecutionRequest(
             problem_ids=tuple(problem_ids),
@@ -271,7 +281,7 @@ def p1_report():
 
 
 @cache
-def goals_report(cost=DEFAULT_COST.name, heuristic=DEFAULT_HEURISTIC.name):
+def goals_report(cost=DEFAULT_COST.name, heuristic=None):
     return run((), all_goals=True, cost=cost, heuristic=heuristic)
 
 
@@ -348,6 +358,46 @@ def explain_heuristic(state=INITIAL_STATE, goal=P1.goal):
     return pd.DataFrame(rows).set_index("Disco")
 
 
+def explain_cost_heuristic(state=INITIAL_STATE, goal=P1.goal):
+    \"\"\"A h da A* disco a disco: movimentos que faltam vezes a jogada mais barata.\"\"\"
+    show_transition(state, goal, before_title="ESTADO", after_title="OBJETIVO")
+    moves, shares = contributions(state, goal), cost_contributions(state, goal)
+    rows = [
+        {
+            "Disco": theme.disk_name(disk).lower(),
+            "Está em": f"{peg.name}, altura {height + 1}",
+            "Situação": SITUATIONS[moves[disk]],
+            "Movimentos que faltam": moves[disk],
+            "Jogada mais barata": cheapest_move(disk),
+            "Contribui": shares[disk],
+        }
+        for peg in Peg
+        for height, disk in enumerate(state[peg])
+    ]
+    terms = " + ".join(f"{row['Movimentos que faltam']} × {row['Jogada mais barata']}" for row in rows)
+    print(f"\\nh = {terms} = {evaluation_heuristic(state, goal)}")
+    return pd.DataFrame(rows).set_index("Disco")
+
+
+def children_evaluations(state=INITIAL_STATE, goal=P1.goal):
+    \"\"\"g, h e f de cada filho do estado, como a A* os vê.\"\"\"
+    rows = []
+    for rule in applicable_rules(state):
+        child = rule.apply(state)
+        g, h = DEFAULT_COST.cost(rule, state), evaluation_heuristic(child, goal)
+        rows.append({"Regra": rule.id, "Filho": compact(child), "Disco": moved_disk(state, rule), "g": g, "h": h, "f = g + h": g + h})
+    return pd.DataFrame(rows).set_index("Regra")
+
+
+def evaluation_path(result, goal=P1.goal):
+    \"\"\"g, h e f de cada nó do caminho solução.\"\"\"
+    rows = []
+    for node in result.solution_path:
+        h = evaluation_heuristic(node.state, goal)
+        rows.append({"Nível": node.depth, "Regra": node.rule.id if node.rule else theme.ABSENT, "Estado": compact(node.state), "g": node.cost, "h": h, "f = g + h": node.cost + h})
+    return pd.DataFrame(rows).set_index("Nível")
+
+
 def children_costs(state=INITIAL_STATE):
     \"\"\"O custo real de cada jogada válida no estado, com o disco que ela move.\"\"\"
     return pd.DataFrame(
@@ -412,14 +462,14 @@ def costs_comparison(strategy="ascending"):
     return pd.DataFrame(rows).set_index("Função de custo")
 
 
-def heuristics_comparison():
-    \"\"\"A gulosa com cada heurística: P1 e a média dos 36 objetivos, nas duas estratégias.\"\"\"
+def heuristics_comparison(algorithm="greedy"):
+    \"\"\"A busca com cada heurística: P1 e a média dos 36 objetivos, nas duas estratégias.\"\"\"
     rows = []
     for name in HEURISTIC_NAMES:
         report = goals_report(heuristic=name)
         for strategy in SLIDE_STRATEGIES:
-            p1 = run(("P1",), ("greedy",), (strategy,), heuristic=name).problems[0].results[0]
-            row = _goal_means(report, "greedy", strategy)
+            p1 = run(("P1",), (algorithm,), (strategy,), heuristic=name).problems[0].results[0]
+            row = _goal_means(report, algorithm, strategy)
             rows.append(
                 {
                     "Heurística": name,
@@ -431,7 +481,7 @@ def heuristics_comparison():
                     "36: nós gerados": br(row.nodes_generated.mean, 2),
                     "36: movimentos": br(row.moves.mean, 2),
                     "36: custo real": br(row.cost.mean, 2),
-                    "36: acha o menor custo em": _cheapest_count(report, "greedy", strategy),
+                    "36: acha o menor custo em": _cheapest_count(report, algorithm, strategy),
                 }
             )
     return pd.DataFrame(rows).set_index(["Heurística", "Estratégia"])
@@ -567,10 +617,8 @@ def _made(events, swaps):
     return made
 
 
-def _priorities(algorithm, nodes):
-    \"\"\"O número que ordena ABERTOS: a heurística na gulosa, o custo real acumulado na ordenada.\"\"\"
-    if algorithm in HEURISTIC_ALGORITHMS:
-        return {order: heuristic(step.state) for order, step in nodes.items()}
+def _costs(nodes):
+    \"\"\"O custo real acumulado, g, de cada nó da árvore.\"\"\"
     costs = {}
     for order in sorted(nodes):
         step = nodes[order]
@@ -578,6 +626,16 @@ def _priorities(algorithm, nodes):
             costs[order] = 0
         else:
             costs[order] = costs[step.parent_order] + DEFAULT_COST.cost(RULE_BY_ID[step.rule_id], nodes[step.parent_order].state)
+    return costs
+
+
+def _priorities(algorithm, nodes):
+    \"\"\"O número que ordena ABERTOS: a heurística na gulosa, g + h na A*, o custo real acumulado na ordenada.\"\"\"
+    if algorithm in HEURISTIC_ALGORITHMS:
+        return {order: heuristic(step.state) for order, step in nodes.items()}
+    costs = _costs(nodes)
+    if algorithm in EVALUATION_ALGORITHMS:
+        return {order: costs[order] + evaluation_heuristic(step.state) for order, step in nodes.items()}
     return costs
 
 
@@ -642,9 +700,21 @@ def summary_line(result):
     return " · ".join(parts)
 
 
+def node_priority(algorithm, node):
+    \"\"\"O que a fila de prioridade usa para ordenar o nó: h, g + h ou g.\"\"\"
+    if algorithm in HEURISTIC_ALGORITHMS:
+        return heuristic(node.state)
+    if algorithm in EVALUATION_ALGORITHMS:
+        return node.cost + evaluation_heuristic(node.state)
+    return node.cost
+
+
 def _describe(node, algorithm):
     if algorithm in HEURISTIC_ALGORITHMS:
-        return f"S{node.order} ({node.rule.id}, h {heuristic(node.state)})"
+        return f"S{node.order} ({node.rule.id}, h {node_priority(algorithm, node)})"
+    if algorithm in EVALUATION_ALGORITHMS:
+        f = node_priority(algorithm, node)
+        return f"S{node.order} ({node.rule.id}, f {node.cost} + {f - node.cost} = {f})"
     if LIST_MODES[algorithm] == "priority":
         return f"S{node.order} ({node.rule.id}, custo {node.cost})"
     return f"S{node.order} ({node.rule.id})"
@@ -653,8 +723,7 @@ def _describe(node, algorithm):
 def frontier_demo(algorithm):
     module, name = FRONTIERS[algorithm]
     frontier_class = getattr(import_module(module), name)
-    priority = (lambda node: heuristic(node.state)) if algorithm in HEURISTIC_ALGORITHMS else (lambda node: node.cost)
-    frontier = frontier_class(priority) if LIST_MODES[algorithm] == "priority" else frontier_class()
+    frontier = frontier_class(lambda node: node_priority(algorithm, node)) if LIST_MODES[algorithm] == "priority" else frontier_class()
     tree = SearchTree()
     root = tree.root(INITIAL_STATE)
     children = [tree.expand(root, rule) for rule in applicable_rules(INITIAL_STATE)]
@@ -664,19 +733,26 @@ def frontier_demo(algorithm):
     print("saem, nesta ordem:  ", "  ".join(f"S{frontier.pop().order}" for _ in children))
 
 
+def _child_note(algorithm, rule, state=INITIAL_STATE):
+    \"\"\"O número que o filho leva para ABERTOS: h na gulosa, g + h na A*, o custo na ordenada.\"\"\"
+    child, g = rule.apply(state), DEFAULT_COST.cost(rule, state)
+    if algorithm in HEURISTIC_ALGORITHMS:
+        return f" (h {heuristic(child)})"
+    if algorithm in EVALUATION_ALGORITHMS:
+        h = evaluation_heuristic(child)
+        return f" (f {g} + {h} = {g + h})"
+    if LIST_MODES[algorithm] == "priority":
+        return f" (custo {g})"
+    return ""
+
+
 def root_children(algorithm):
     opened_title = LIST_TITLES[LIST_MODES[algorithm]][1]
-    shows_h = algorithm in HEURISTIC_ALGORITHMS
-    shows_cost = not shows_h and LIST_MODES[algorithm] == "priority"
     rows = []
     for strategy in SLIDE_STRATEGIES:
         ordered = STRATEGY_REGISTRY[strategy].order(applicable_rules(INITIAL_STATE))
         first = lists_table(solve(algorithm, strategy)).loc[1]
-        children = []
-        for rule in ordered:
-            child = rule.apply(INITIAL_STATE)
-            note = f" (h {heuristic(child)})" if shows_h else f" (custo {DEFAULT_COST.cost(rule, INITIAL_STATE)})" if shows_cost else ""
-            children.append(f"{rule.id} → {compact(child)}{note}")
+        children = [f"{rule.id} → {compact(rule.apply(INITIAL_STATE))}{_child_note(algorithm, rule)}" for rule in ordered]
         rows.append(
             {
                 "Estratégia": STRATEGY_LABELS[strategy],
@@ -978,13 +1054,21 @@ TREE_STYLES = {
     "highlight": ("#d2e3fc", "#1a73e8", 2.5),
     "goal": ("#ceead6", "#1e8e3e", 2.5),
 }
-HEURISTIC_LABELS = {"misplacement": "discos mal posicionados", "color_distance": "cor e distância"}
+HEURISTIC_LABELS = {"misplacement": "discos mal posicionados", "color_distance": "cor e distância", "misplacement_cost": "custo dos mal posicionados"}
 COMPLEXITY_COLUMNS = ("Tempo", "Memória", "Solução")
+P1_ITERATIONS = "Iterações em P1"
 GOAL_MEANS = (("Movimentos", "moves"), ("Custo real", "cost"), ("Iterações", "iterations"), ("Nós gerados", "nodes_generated"))
 
 
 def _measure_name(algorithm):
-    return "h" if algorithm in HEURISTIC_ALGORITHMS else "custo"
+    return "h" if algorithm in HEURISTIC_ALGORITHMS else "f" if algorithm in EVALUATION_ALGORITHMS else "custo"
+
+
+def _measure_text(algorithm, g_values, priorities, order):
+    if algorithm in EVALUATION_ALGORITHMS:
+        g, f = g_values[order], priorities[order]
+        return f"f = {g} + {f - g} = {f}"
+    return f"{_measure_name(algorithm)} = {priorities[order]}"
 
 
 def _lists_line(result, iteration):
@@ -1003,6 +1087,7 @@ def tree_at(algorithm, strategy="ascending", iteration=None, *, highlight="curre
     last = result.metrics.iterations if iteration is None else iteration
     nodes = _nodes(result)
     priorities = _priorities(algorithm, nodes)
+    g_values = _costs(nodes)
     steps = [step for step in result.trace if step.iteration <= last]
     born = [step for step in steps if step.event in (TraceEvent.ROOT, TraceEvent.GENERATE)]
     closed = {step.node_order for step in steps if step.event is TraceEvent.VISIT}
@@ -1011,7 +1096,6 @@ def tree_at(algorithm, strategy="ascending", iteration=None, *, highlight="curre
     opened = [step.node_order for step in born if step.node_order not in closed and step.node_order not in goals]
     marked = current if highlight == "current" else min(opened, key=lambda order: (priorities[order], order), default=None)
     path = {node.order for node in result.solution_path} if goals else set()
-    measure = _measure_name(algorithm)
     lines = [
         "digraph tree {",
         '  rankdir=LR; bgcolor="transparent"; nodesep=0.12; ranksep=0.45;',
@@ -1022,7 +1106,7 @@ def tree_at(algorithm, strategy="ascending", iteration=None, *, highlight="curre
         order = step.node_order
         status = "goal" if order in goals else "highlight" if order == marked else "closed" if order in closed else "open"
         fill, line, width = TREE_STYLES[status]
-        lines.append(f'  n{order} [label="S{order}  {compact(step.state)}\\n{measure} = {priorities[order]}", fillcolor="{fill}", color="{line}", penwidth={width}];')
+        lines.append(f'  n{order} [label="S{order}  {compact(step.state)}\\n{_measure_text(algorithm, g_values, priorities, order)}", fillcolor="{fill}", color="{line}", penwidth={width}];')
         if step.parent_order is not None:
             text = step.rule_id
             if costs:
@@ -1070,9 +1154,14 @@ def compare_paths(goal_id, strategy="ascending", algorithms=("greedy", "ordered"
             if k == len(result.solution_path) - 1:
                 ax.add_patch(plt.Rectangle((left - 0.65, bottom - 1.3), 3.0, 3.6, color=GOAL_COLOR, alpha=0.15, zorder=0))
             mini_state(ax, node.state, left, bottom)
-            h = heuristic(node.state, entry.goal_state)
+            if result.algorithm in EVALUATION_ALGORITHMS:
+                h = evaluation_heuristic(node.state, entry.goal_state)
+                value = f"f = {node.cost} + {h} = {node.cost + h}"
+            else:
+                h = heuristic(node.state, entry.goal_state)
+                value = f"h = {h}"
             ax.text(left + 0.9, bottom - 0.45, compact(node.state), ha="center", va="center", fontsize=9, color=BLACK)
-            ax.text(left + 0.9, bottom - 0.95, f"h = {h}", ha="center", va="center", fontsize=9, color=WIN_COLOR if h == 0 else STRATEGY_COLORS["ascending"])
+            ax.text(left + 0.9, bottom - 0.95, value, ha="center", va="center", fontsize=9, color=WIN_COLOR if h == 0 else STRATEGY_COLORS["ascending"])
             if k:
                 ax.annotate("", xy=(left - 0.55, bottom + 0.9), xytext=(left - pitch + 2.35, bottom + 0.9), arrowprops={"arrowstyle": "-|>", "color": MUTED, "linewidth": 1.2})
                 ax.text(left - (pitch - 2.9) / 2 - 0.55, bottom + 1.35, node.rule.id, ha="center", va="center", fontsize=9, fontweight="bold", color=STRATEGY_COLORS["ascending"])
@@ -1134,24 +1223,27 @@ def _paint_best(row, *, higher=False, ignore=()):
     return [f"color: {WIN_COLOR}; font-weight: bold" if column not in ignore and value == best else "" for column, value in row.items()]
 
 
-def heuristics_table(strategy="ascending"):
+def heuristics_table(strategy="ascending", algorithm="greedy", names=HEURISTIC_NAMES, *, with_p1=False):
     columns = {}
-    for name in HEURISTIC_NAMES:
+    for name in names:
         report = goals_report(heuristic=name)
-        row = _goal_means(report, "greedy", strategy)
+        row = _goal_means(report, algorithm, strategy)
+        p1 = {P1_ITERATIONS: run(("P1",), (algorithm,), (strategy,), heuristic=name).problems[0].results[0].metrics.iterations} if with_p1 else {}
         columns[HEURISTIC_LABELS.get(name, name)] = {
             "Objetivos resolvidos": row.successes,
+            **p1,
             "Iterações (média)": row.iterations.mean,
             "Nós gerados (média)": row.nodes_generated.mean,
             "Movimentos (média)": row.moves.mean,
             "Custo real (média)": row.cost.mean,
-            "Acha o menor custo real em": _cheapest_count(report, "greedy", strategy),
+            "Acha o menor custo real em": _cheapest_count(report, algorithm, strategy),
         }
     frame = pd.DataFrame(columns)
     higher = {"Objetivos resolvidos", "Acha o menor custo real em"}
+    whole = higher | {P1_ITERATIONS}
     styled = frame.style.apply(lambda row: _paint_best(row, higher=row.name in higher), axis=1)
-    counts = pd.IndexSlice[list(higher), :]
-    means = pd.IndexSlice[[name for name in frame.index if name not in higher], :]
+    counts = pd.IndexSlice[[name for name in frame.index if name in whole], :]
+    means = pd.IndexSlice[[name for name in frame.index if name not in whole], :]
     return styled.format(lambda value: f"{value:.0f}", subset=counts).format(lambda value: br(value, 2), subset=means)
 
 

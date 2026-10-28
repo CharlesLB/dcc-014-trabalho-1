@@ -28,6 +28,7 @@ FOLDERS: tuple[str, ...] = (
     "core/algorithms/breadth_first",
     "core/algorithms/ordered",
     "core/algorithms/greedy",
+    "core/algorithms/astar",
     "libs/inputs",
     "libs/outputs",
     "libs/ranking",
