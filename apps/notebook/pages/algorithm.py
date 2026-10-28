@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from itertools import permutations
 
@@ -25,6 +26,8 @@ SLIDE_STRATEGIES = (("ascending", "crescente"), ("descending", "decrescente"))
 COMPLEXITY_HEADER = ("Algoritmo", "Tempo", "Memória", "Solução", "Por quê")
 
 ComplexityRow = tuple[str, str, str, str, str]
+MarkedCell = tuple[str, str]
+MarkedRow = tuple[str, tuple[MarkedCell, MarkedCell, MarkedCell], str]
 
 MODULE_NOTES = {
     "core/rules/domain/base.py": """a legenda do problema.
@@ -156,6 +159,8 @@ class AlgorithmSection:
     compared_with: tuple[str, ...] = ()
     rule_cells: tuple[Cell, ...] = ()
     goals_cells: tuple[Cell, ...] = ()
+    marked_complexity: tuple[MarkedRow, ...] = ()
+    deck: Callable[[AlgorithmSection, int], tuple[Cell, ...]] | None = None
 
 
 # Os fluxogramas usam a fonte e as cores de `theme`, preenchidas no notebook.
@@ -674,6 +679,272 @@ O terceiro caso da poda está no laço: quando o filho chega mais barato a um es
     goals_cells=GOALS_CELLS,
 )
 
+
+GREEDY_MARKED_COMPLEXITY: tuple[MarkedRow, ...] = (
+    (
+        "Gulosa sem poda",
+        (
+            ("exponencial", "worst"),
+            ("exponencial", "worst"),
+            ("sempre acha; não garante o menor custo", "worst"),
+        ),
+        "o mesmo estado volta a ABERTOS por todo caminho sem repetição",
+    ),
+    (
+        "Gulosa com poda",
+        (
+            ("O((V + E) log V)", ""),
+            ("O(V)", "best"),
+            ("sempre acha; não garante o menor custo", "worst"),
+        ),
+        "cada estado é expandido uma vez; a fila custa log V",
+    ),
+    (
+        "Ordenada com poda",
+        (("O((V + E) log V)", ""), ("O(V)", "best"), ("menor custo real", "best")),
+        "a mesma fila, ordenada pelo custo acumulado",
+    ),
+    (
+        "Largura com poda",
+        (("O(V + E)", "best"), ("O(V)", "best"), ("menos movimentos", "")),
+        "cada estado entra uma vez, por níveis",
+    ),
+)
+
+GREEDY_STEPS = (
+    "A raiz é o estado atual e vai para FECHADOS. As quatro regras válidas geram quatro filhos, e cada um entra em ABERTOS na posição da sua heurística, entre parênteses. S2 e S3 empatam em 3: fica na frente o que foi gerado primeiro.",
+    "S4 tem a menor heurística e vira o estado atual. R6 voltaria ao estado inicial, que já está em FECHADOS. R5 levaria a VRA/–/–, que já está em ABERTOS como S3 por um caminho mais barato. Sobra R1, que gera S5 com h = 1.",
+    "S5 gera três filhos; R3 voltaria ao estado de S4 e é podada. S6 é o objetivo e entra na frente de ABERTOS com h = 0, mas a busca ainda não terminou: ele só encerra a busca quando virar o estado atual, na próxima iteração. ABERTOS chega ao seu maior tamanho, 6 nós.",
+    "O objetivo vira o estado atual e a busca encerra: 4 iterações, 9 nós gerados. O caminho, em verde, é reconstruído do nó objetivo até a raiz: S6, S5, S4, S0. Somando o custo real das três arestas: o azul uma haste, 13; o vermelho uma haste, 12; o verde uma haste, 11. Total 36. Cinco nós ficaram em ABERTOS sem nunca ser expandidos.",
+)
+
+
+def _greedy_deck(spec: AlgorithmSection, index: int) -> tuple[Cell, ...]:
+    """A seção da gulosa na ordem e com o texto dos slides: cada slide vira um
+    título, o texto que o apresentador fala e a célula que desenha o slide."""
+    name = spec.name
+    steps = tuple(
+        cell
+        for number, text in enumerate(GREEDY_STEPS, start=1)
+        for cell in (
+            markdown(f"### Iteração {number} de {len(GREEDY_STEPS)}\n\n{text}"),
+            code(f'tree_at("{name}", "ascending", {number})'),
+        )
+    )
+    return (
+        markdown(f"# {index}. {spec.title}\n\n{spec.subtitle}"),
+        markdown(
+            """## O problema: carta P1, do estado inicial ao objetivo
+
+Três hastes, com capacidades 3, 2 e 1, e três discos: verde, vermelho e azul. Cada haste é escrita de baixo para cima: VR / A / – quer dizer verde embaixo e vermelho em cima na H1, azul na H2 e H3 vazia. A carta P1 pede – / RV / A."""
+        ),
+        code("show_problem()"),
+        markdown(
+            """## A ideia da busca gulosa
+
+**Expanda sempre o nó aberto de menor heurística.**
+
+A árvore abaixo é P1 depois da primeira iteração: a raiz S0 gera quatro filhos, um por regra válida, e cada um recebe a sua heurística h. Sai primeiro S4, com h = 2, o que parece mais perto do objetivo. S2 e S3 empatam em 3; fica na frente o gerado primeiro.
+
+- **Ordenada:** fila pelo custo real, sai o nó mais barato de alcançar.
+- **Gulosa:** fila pela heurística, sai o de menor h; no empate, o gerado primeiro.
+
+A gulosa avalia o nó usando apenas a heurística, e isso não garante a melhor solução. A estrutura é a da busca ordenada: a mesma fila de ABERTOS, com outra chave de ordenação."""
+        ),
+        code(f'tree_at("{name}", "ascending", 1, highlight="next")'),
+        markdown(
+            """## Heurística
+
+h = soma dos discos mal posicionados. Cada disco contribui com o mínimo de movimentos que ainda precisa fazer:
+
+| Situação do disco | Contribui | Por quê |
+|---|---|---|
+| bem posicionado | 0 | haste e altura do objetivo, e tudo abaixo dele também: não precisa sair dali |
+| em outra haste | 1 | pode chegar ao destino com um movimento |
+| haste certa, lugar errado | 2 | precisa sair e voltar: o disco de baixo só sai depois que ele sair |
+
+A heurística estima quanto falta do estado até o objetivo; é ela, e só ela, que ordena ABERTOS na gulosa. Estar na haste certa fora do lugar é pior que estar na haste errada. A admissibilidade foi conferida por força bruta: 36 estados vezes 36 objetivos, nenhuma violação. No código é um módulo de `core/heuristics/`, escolhido com `--heuristic`."""
+        ),
+        *_writefiles(HEURISTIC_MODULES),
+        code("explain_heuristic()"),
+        markdown(
+            """## O laço e as duas listas
+
+1. Tira de ABERTOS o nó de menor heurística; no empate, o gerado primeiro.
+2. É o objetivo? **SUCESSO**. O custo da solução é a soma dos custos reais das arestas do caminho.
+3. Não é: coloca o nó em FECHADOS.
+4. Aplica todas as regras válidas, na ordem da estratégia, e calcula a heurística de cada filho.
+5. Os filhos entram em ABERTOS na posição da sua heurística. Volta ao passo 1.
+
+**ABERTOS**: gerados, ainda não analisados, em ordem de h. **FECHADOS**: já expandidos; com poda, um filho de estado fechado é descartado.
+
+Exemplo: P1 depois da iteração 2. S0 e S4 já saíram de ABERTOS e foram expandidos (cinza). S1, S2, S3 e S5 esperam em ABERTOS (branco), e S5, com h = 1, é o próximo a sair (azul). É o laço da busca ordenada com uma troca: a fila é ordenada pela heurística, não pelo custo real. O objetivo só encerra a busca quando vira o estado atual, não quando é gerado."""
+        ),
+        code(f'tree_at("{name}", "ascending", 2, highlight="next")'),
+        markdown(
+            """## O custo real: custo = 10 + peso do disco × distância
+
+| Por jogada | Peso do disco | Distância | R4 em VR/A/– |
+|---|---|---|---|
+| 10: toda jogada conta | 1 · 2 · 3: verde, vermelho, azul | 1 ou 2: 2 só entre H1 e H3 | 13 = 10 + 3 × 1: o azul |
+
+A gulosa **não usa o custo para escolher**. Na árvore abaixo, a raiz de P1 com o custo de cada aresta: a ordenada tiraria primeiro S1, o filho mais barato (12); a gulosa tira S4, o de menor h, mesmo custando 13. O custo real só é somado nas arestas do caminho solução.
+
+O peso × distância vai de 1 a 6, sempre menos que os 10 da jogada: o caminho de menor custo é sempre um dos de menos movimentos, e é por esse custo que a busca ordenada ordena ABERTOS. No código a função de custo é um módulo de `core/costs/`, escolhido com `--cost`. Trocar a função de custo não muda o caminho da gulosa, só o número que ela reporta como custo da solução."""
+        ),
+        code(f'tree_at("{name}", "ascending", 1, highlight="next", costs=True)'),
+        markdown(
+            """## As regras: seis regras, cada uma com seu custo real
+
+Cada regra move o disco do topo de uma haste para outra, se a haste de destino tiver espaço. As últimas colunas dão o custo real da jogada conforme o disco que ela move. As regras e as inversas são as mesmas das outras buscas."""
+        ),
+        code("rules_table()"),
+        markdown(
+            """## Estratégia de controle: a ordem em que as regras são aplicadas
+
+Na gulosa a estratégia é o critério de desempate: irmãos de mesma heurística entram em ABERTOS na ordem em que foram gerados. Em P1 ela só troca V/A/R e VRA/–/–, que empatam em h = 3; VR/–/A, o menor h, sai primeiro nas duas e o caminho não muda.
+
+As duas árvores abaixo são a raiz de P1 expandida em cada ordem. Os filhos são os mesmos; muda a ordem em que são gerados, e por isso a numeração. O material pede um critério de desempate definido pelo usuário para nós de mesma heurística. Aqui são dois níveis: sai primeiro o nó gerado antes, e entre irmãos quem define a ordem de geração é a estratégia de controle."""
+        ),
+        code("strategies_table()"),
+        markdown("### Ascending"),
+        code(f'tree_at("{name}", "ascending", 1, highlight="next")'),
+        markdown("### Descending"),
+        code(f'tree_at("{name}", "descending", 1, highlight="next")'),
+        markdown(
+            """## Árvore com poda, passo a passo
+
+P1, ordem crescente, com poda. Em azul, o nó que saiu de ABERTOS na iteração; em cinza, os nós em FECHADOS; em branco, os que esperam em ABERTOS; entre parênteses na linha de ABERTOS, a heurística."""
+        ),
+        *steps,
+        markdown("### ABERTOS e FECHADOS, iteração a iteração"),
+        code(f'lists_table(solve("{name}", "ascending"))'),
+        markdown(
+            f"""## Pseudocódigo da busca gulosa
+
+```text
+{spec.pseudocode}
+```
+
+A diferença para a busca ordenada está em três linhas: ABERTOS é uma fila pela heurística, sai o nó de menor h e o filho entra na posição de h(filho). A ordenada usa o custo real acumulado no lugar de h. Na poda, a gulosa soma o teste de FECHADOS. O custo real continua sendo calculado, para a poda e para o custo da solução."""
+        ),
+        markdown(f"**`{SOURCE_DIR}/{spec.module}`**: {spec.code_note}"),
+        writefile_cell(find(f"{SOURCE_DIR}/{spec.module}")),
+        markdown(
+            """## Caminho solução: custo real 36
+
+3 movimentos, custo real 13 + 12 + 11 = 36: o azul, o vermelho e o verde, cada um por uma haste. As duas estratégias, com e sem poda, chegam a este caminho.
+
+O custo da solução é a soma do custo real das arestas do caminho, da raiz ao objetivo. Em P1 a gulosa acerta em cheio: 36 é também o menor custo possível, o mesmo que a busca ordenada encontra, e 3 é o mínimo de movimentos. Isso não é garantido, como mostra o caso a seguir."""
+        ),
+        code(f'show_path(solve("{name}", "ascending"))'),
+        markdown(
+            """## O caso dos 8 movimentos: a gulosa não garante a melhor solução
+
+Objetivo G07, –/VA/R, a partir da posição inicial VR/A/–, ordem crescente, com poda. Aqui h é medida em relação a este objetivo.
+
+A gulosa segue o ramo de R4 e, em 3 movimentos, monta R e V na H2 (h volta a 4). Para chegar ao objetivo ela desfaz a montagem: **R5 e R3** levam o azul e o verde para a H1 e liberam a H2. Paga 1 movimento e 12 de custo a mais que a ordenada: 8 movimentos e custo 99, contra 7 e 87.
+
+É a mesma conclusão do exemplo das cidades no material: a gulosa chega, mas o custo real do caminho não é necessariamente o menor. Neste objetivo nenhum caminho baixa h a cada passo, e a gulosa se perde: primeiro segue VA/–/R, que tem h = 2 e parece perto, mas é um beco; depois atravessa um platô de nós com h = 4 e sai dele pelo ramo de R4. Nos 36 objetivos a gulosa acha o menor custo real em 31 com ascending e em 28 com descending; o custo médio é 52,33, contra 51,33 da ordenada."""
+        ),
+        code('compare_paths("G07", "ascending")'),
+        markdown(
+            """## Duas heurísticas, a mesma busca
+
+A gulosa com cada heurística nos 36 objetivos, ordem crescente, com poda. Em verde, o melhor valor de cada linha.
+
+**Discos mal posicionados:** 0, 1 ou 2 por disco, olhando a haste e a altura. É a heurística da apresentação. **Cor e distância:** peso do disco × hastes até a do objetivo. Só olha a haste: um disco na haste certa, fora de ordem, soma 0. Em P1 as duas heurísticas levam ao mesmo caminho, R4 R1 R1, em 4 iterações. A diferença aparece nos objetivos em que a ordem dentro da haste importa: a de cor e distância vale zero em estados que ainda não são o objetivo e a busca perde o rumo."""
+        ),
+        code("heuristics_table()"),
+        markdown(
+            """## Gulosa: ascending contra descending
+
+Em P1 a estratégia não muda nada: o menor h é único a cada passo, então as duas ordens tiram os mesmos estados de ABERTOS. A poda só economiza um nó, o repetido VRA/–/–. Em verde, o melhor valor de cada linha. Nos 36 objetivos a poda pesa mais: 7,4 iterações em média com poda, 13,2 sem."""
+        ),
+        code(f'strategy_table("{name}")'),
+        markdown(
+            """## Os caminhos encontrados
+
+Cada ponto é um movimento; o verde é o objetivo. Gulosa, ordenada e largura acham o mesmo caminho de 3 movimentos e custo real 36, com as duas estratégias. O backtracking acha o primeiro caminho que aparece: 14 movimentos na ordem crescente, 22 na decrescente."""
+        ),
+        code(f'paths_plot("{name}")'),
+        markdown(
+            """## Gulosa × Ordenada × Largura × Backtracking
+
+P1, com poda. Em verde, o melhor valor de cada linha. A gulosa acha o mesmo caminho da ordenada e da largura com menos da metade das iterações. Pico de ABERTOS: nós em ABERTOS; no backtracking, o tamanho do caminho. A irrevogável faz o caminho de 14 movimentos do backtracking com a ordem crescente e termina em impasse com a decrescente."""
+        ),
+        code(f'algorithms_table("{name}")'),
+        markdown(
+            """## Quem explorou menos nós
+
+Nós expandidos são os que saíram de ABERTOS e geraram filhos. A gulosa expande só os 3 nós do caminho, com ou sem poda: em P1 a heurística cai um ponto a cada passo, então ela não abre nenhum nó fora do caminho solução. A ordenada, que segue o custo, abre 10; a largura, de 11 a 13. Sem poda a largura dispara porque a regra inversa gera de volta o pai."""
+        ),
+        code(f'expanded_chart("{name}")'),
+        markdown(
+            """## Nós expandidos nos 36 objetivos
+
+Cada caixa resume as 36 execuções de uma combinação: vai do primeiro ao terceiro quartil, a barra preta é a mediana, o losango é a média e as hastes vão do mínimo ao máximo sem contar os pontos fora da curva. A primeira linha, em verde, não é um algoritmo: para cada objetivo pega o melhor valor que alguma das oito combinações conseguiu e resume esses 36 melhores.
+
+A gulosa expande em média 6,4 a 6,6 nós por objetivo e chega ao melhor em 24 objetivos (crescente) e 26 (decrescente); ordenada, largura e backtracking crescente ficam em 17,5. Na ordenada e na largura os valores são sempre 0, 1, …, 35: a ordem em que os estados saem de ABERTOS não depende do objetivo. O backtracking decrescente chega a 1.044 nós expandidos num objetivo, fora da escala."""
+        ),
+        code(f'best_boxplot("{name}", "expanded", limit=50)'),
+        markdown(
+            """## Iterações nos 36 objetivos
+
+A gulosa faz 7,4 a 7,6 iterações em média, nunca passa de 19 e chega ao melhor de cada objetivo em 24 (crescente) e 26 (decrescente). Ordenada e largura fazem 18,5: com poda, cada estado sai de ABERTOS uma vez, numa ordem fixa, então as iterações são sempre 1, 2, …, 36, só embaralhadas. O backtracking decrescente tem média 82,9, fora da escala, puxada por dois objetivos que passam de cem iterações, um deles com 2.078; a mediana dele é 21,5."""
+        ),
+        code(f'best_boxplot("{name}", "iterations", limit=80)'),
+        markdown(
+            """## Custo real da solução: só P1
+
+Em P1 a gulosa, a ordenada e a largura acham o mesmo caminho, R4 R1 R1, de custo 13 + 12 + 11 = 36. O backtracking chega com 14 e 22 movimentos e paga 5 e quase 8 vezes mais. Em P1 não dá para separar gulosa de ordenada pelo custo: as duas chegam ao ótimo. A diferença aparece nos 36 objetivos."""
+        ),
+        code(f'cost_chart("{name}")'),
+        markdown(
+            """## Custo real da solução: os 36 objetivos
+
+Em verde, o menor custo de cada objetivo entre todas as combinações (média 51,33). Aqui a gulosa não lidera: a ordenada tem o menor custo real, porque é o que ela ordena, e acha esse melhor em todos os 36. A gulosa acha em 31 (crescente) e 28 (decrescente), 2% a 3% acima na média; a largura, em 33 e 30. É o preço da velocidade: a gulosa escolhe pelo que parece faltar, não pelo que já gastou. O backtracking paga de três a quatro vezes mais."""
+        ),
+        code(f'best_boxplot("{name}", "cost", limit=500)'),
+        markdown(
+            """## Menos esforço, quase o mesmo custo
+
+Médias nos 36 objetivos, com poda. Em verde, o melhor de cada linha entre quem resolve todos; em vermelho, quem deixa objetivos sem solução. A gulosa resolve todos e fica perto do ótimo: custo médio 2% acima da ordenada. Largura e ordenada fazem sempre 18,5 iterações em média, porque a ordem em que tiram os nós de ABERTOS não depende do objetivo; a da gulosa depende, porque a heurística é medida em relação a ele."""
+        ),
+        code(f'goals_means_table("{name}")'),
+        markdown(
+            """## Complexidade
+
+No pior caso a gulosa com poda custa o mesmo que a ordenada: as duas usam a mesma fila de prioridade e expandem cada estado no máximo uma vez. A diferença é prática: uma boa heurística faz a gulosa expandir muito menos estados antes de chegar ao objetivo. O preço é a garantia de menor custo, que só a ordenada tem."""
+        ),
+        code(f'marked_complexity("{name}")'),
+        code(f'complexity_values("{name}", {spec.symbols!r})'),
+        *_greedy_extras(spec),
+    )
+
+
+def _greedy_extras(spec: AlgorithmSection) -> tuple[Cell, ...]:
+    name = spec.name
+    return (
+        markdown(
+            f"## Extras de {spec.title.lower()}\n\nO que não está nos slides: a busca sem poda, o fluxograma, o trace e as tabelas completas."
+        ),
+        markdown(spec.conclusion.replace("## Conclusão", "### Resumo")),
+        markdown(f"### Sem poda\n\n{spec.no_prune}"),
+        code(f'sem_poda_crescente = case("{name}", "ascending", prune=False)'),
+        code("lists_table(sem_poda_crescente)"),
+        markdown("### Os objetivos em que a gulosa paga mais que a ordenada"),
+        code("dearer_than_ordered()"),
+        markdown("### Quanto cada disco soma em h"),
+        code("heuristic_examples()"),
+        markdown("### Quartis nos 36 objetivos"),
+        code(f'goals_stats("{name}", "expanded")'),
+        code(f'goals_stats("{name}", "iterations")'),
+        code(f'goals_stats("{name}", "cost")'),
+        *_extras(spec)[1:],
+    )
+
+
 GREEDY_SECTION = AlgorithmSection(
     title="Busca gulosa",
     name="greedy",
@@ -753,6 +1024,8 @@ Dois nós do mesmo estado têm a mesma heurística, então quem decide entre ele
         ),
     ),
     compared_with=("ordered", "breadth_first"),
+    marked_complexity=GREEDY_MARKED_COMPLEXITY,
+    deck=_greedy_deck,
     symbols=("b", "m", "V", "E"),
     conclusion="""## Conclusão
 
@@ -842,6 +1115,8 @@ def _runs(spec: AlgorithmSection, *, prune: bool) -> tuple[Cell, ...]:
 
 
 def section(spec: AlgorithmSection, index: int, *, first: bool) -> tuple[Cell, ...]:
+    if spec.deck is not None:
+        return spec.deck(spec, index)
     cells: list[Cell] = [
         markdown(f"# {index}. {spec.title}\n\n{spec.subtitle}"),
         markdown(

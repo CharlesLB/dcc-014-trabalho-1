@@ -78,6 +78,19 @@ def style_cell(sections: Sequence[AlgorithmSection]) -> Cell:
     )
 
 
+def deck_helpers(sections: Sequence[AlgorithmSection]) -> Cell:
+    """As funções que desenham o que os slides mostram: a árvore em cada
+    iteração, dois caminhos lado a lado, os boxplots com o melhor de cada
+    objetivo e as tabelas coloridas."""
+    marked = {
+        spec.name: spec.marked_complexity for spec in sections if spec.marked_complexity
+    }
+    return code(
+        f"#@title Funções dos slides\nMARKED_COMPLEXITY = {marked!r}\n{DECK_BODY}",
+        hidden=True,
+    )
+
+
 def view_helpers(sections: Sequence[AlgorithmSection]) -> Cell:
     """As funções de apresentação, com os dados de cada algoritmo vindos das
     seções: rótulo, modo das listas, fronteira e quem entra nos gráficos."""
@@ -750,6 +763,7 @@ def _metrics_column(result):
     return {
         "Desfecho": theme.outcome_label(result.outcome),
         "Nível da solução": result.solution_length,
+        "Custo real": result.solution_cost,
         "Caminho": " ".join(result.applied_rules) or theme.ABSENT,
         "Iterações": metrics.iterations,
         "Nós gerados": metrics.nodes_generated,
@@ -762,21 +776,26 @@ def _metrics_column(result):
 
 
 def strategy_table(algorithm):
-    columns = {
-        f"{SHORT[strategy]} {prune_label(prune)}": _metrics_column(solve(algorithm, strategy, prune))
+    results = {
+        f"{SHORT[strategy]} {prune_label(prune)}": solve(algorithm, strategy, prune)
         for prune in (False, True)
         for strategy in SLIDE_STRATEGIES
     }
-    return pd.DataFrame(columns).style.format(na_rep=theme.ABSENT)
+    styled = pd.DataFrame({name: _metrics_column(result) for name, result in results.items()}).style
+    contenders = [name for name, result in results.items() if result.outcome.is_success]
+    if contenders:
+        styled = styled.apply(_champions, subset=contenders, axis=1)
+    return styled.format(na_rep=theme.ABSENT)
 
 
-CHAMPION_ROWS = ("Nível da solução", "Iterações", "Nós gerados", "Nós expandidos", "Pico de ABERTOS", "Retrocessos", "Impasses")
+CHAMPION_ROWS = ("Nível da solução", "Custo real", "Iterações", "Nós gerados", "Nós expandidos", "Pico de ABERTOS", "Retrocessos", "Impasses")
 
 
 def _champions(row):
-    if row.name not in CHAMPION_ROWS:
+    values = [value for value in row if not pd.isna(value)]
+    if row.name not in CHAMPION_ROWS or len(set(values)) < 2:
         return ["" for _ in row]
-    best = min(value for value in row if not pd.isna(value))
+    best = min(values)
     return [f"color: {WIN_COLOR}; font-weight: bold" if value == best else "" for value in row]
 
 
@@ -947,4 +966,229 @@ def show_dot(source):
 
 def show_trace(result):
     print(trace_render.render_trace(result.trace))
+"""
+
+
+DECK_BODY = r"""
+LOSS_COLOR = "#b3261e"
+BEST_LABEL = "Melhor de cada objetivo"
+TREE_STYLES = {
+    "closed": ("#e8eaed", "#5f6368", 1),
+    "open": ("#ffffff", "#5f6368", 1),
+    "highlight": ("#d2e3fc", "#1a73e8", 2.5),
+    "goal": ("#ceead6", "#1e8e3e", 2.5),
+}
+HEURISTIC_LABELS = {"misplacement": "discos mal posicionados", "color_distance": "cor e distância"}
+COMPLEXITY_COLUMNS = ("Tempo", "Memória", "Solução")
+GOAL_MEANS = (("Movimentos", "moves"), ("Custo real", "cost"), ("Iterações", "iterations"), ("Nós gerados", "nodes_generated"))
+
+
+def _measure_name(algorithm):
+    return "h" if algorithm in HEURISTIC_ALGORITHMS else "custo"
+
+
+def _lists_line(result, iteration):
+    current_title, opened_title, closed_title = LIST_TITLES[LIST_MODES[result.algorithm]]
+    row = lists_table(result).loc[iteration]
+    line = f"Sai {row[current_title]} · gera {row['GERA']}"
+    if row["PODA"]:
+        line += f" · poda {row['PODA']}"
+    print(line)
+    if row[opened_title] or row[closed_title]:
+        print(f"ABERTOS {row[opened_title] or '—'} · FECHADOS {row[closed_title] or '—'}")
+
+
+def tree_at(algorithm, strategy="ascending", iteration=None, *, highlight="current", costs=False, pruned=False):
+    result = solve(algorithm, strategy)
+    last = result.metrics.iterations if iteration is None else iteration
+    nodes = _nodes(result)
+    priorities = _priorities(algorithm, nodes)
+    steps = [step for step in result.trace if step.iteration <= last]
+    born = [step for step in steps if step.event in (TraceEvent.ROOT, TraceEvent.GENERATE)]
+    closed = {step.node_order for step in steps if step.event is TraceEvent.VISIT}
+    goals = {step.node_order for step in steps if step.event is TraceEvent.GOAL}
+    current = _current([step for step in steps if step.iteration == last])
+    opened = [step.node_order for step in born if step.node_order not in closed and step.node_order not in goals]
+    marked = current if highlight == "current" else min(opened, key=lambda order: (priorities[order], order), default=None)
+    path = {node.order for node in result.solution_path} if goals else set()
+    measure = _measure_name(algorithm)
+    lines = [
+        "digraph tree {",
+        '  rankdir=LR; bgcolor="transparent"; nodesep=0.12; ranksep=0.45;',
+        f'  node [shape=box, style="rounded,filled", fontname="{theme.GRAPH_FONT}", fontsize=11];',
+        f'  edge [fontname="{theme.GRAPH_FONT}", fontsize=10, color="#9aa0a6", fontcolor="#5f6368"];',
+    ]
+    for step in born:
+        order = step.node_order
+        status = "goal" if order in goals else "highlight" if order == marked else "closed" if order in closed else "open"
+        fill, line, width = TREE_STYLES[status]
+        lines.append(f'  n{order} [label="S{order}  {compact(step.state)}\\n{measure} = {priorities[order]}", fillcolor="{fill}", color="{line}", penwidth={width}];')
+        if step.parent_order is not None:
+            text = step.rule_id
+            if costs:
+                text += f" · custo {DEFAULT_COST.cost(RULE_BY_ID[step.rule_id], nodes[step.parent_order].state)}"
+            style = f', color="{WIN_COLOR}", fontcolor="{WIN_COLOR}", penwidth=2.5' if order in path else ""
+            lines.append(f'  n{step.parent_order} -> n{order} [label="{text}"{style}];')
+    if pruned:
+        for step in steps:
+            if step.event is TraceEvent.PRUNE:
+                ghost = f"p{step.node_order}_{step.rule_id}"
+                lines.append(f'  {ghost} [label="{step.rule_id} podada", shape=plaintext, style=solid, fontcolor="{LOSS_COLOR}", fontsize=9];')
+                lines.append(f'  n{step.node_order} -> {ghost} [style=dotted, color="{LOSS_COLOR}", arrowhead=none];')
+    lines.append("}")
+    show_dot("\n".join(lines))
+    if last:
+        _lists_line(result, last)
+    if goals:
+        print(f"Caminho {' '.join(result.applied_rules)}, custo real {result.solution_cost}.")
+
+
+def mini_state(ax, state, left, bottom):
+    for peg in Peg:
+        x = left + 0.9 * peg.value
+        for slot in range(CAPACITIES[peg]):
+            y = bottom + 0.42 + 0.62 * slot
+            if slot < len(state[peg]):
+                ax.add_patch(plt.Circle((x, y), 0.27, color=DISK_COLORS[state[peg][slot]], zorder=2))
+            else:
+                ax.add_patch(plt.Circle((x, y), 0.27, fill=False, edgecolor=LINE_GRAY, linestyle="--", linewidth=1, zorder=1))
+    ax.plot([left - 0.45, left + 2.25], [bottom, bottom], color=INK, linewidth=2)
+
+
+def compare_paths(goal_id, strategy="ascending", algorithms=("greedy", "ordered")):
+    entry = next(entry for entry in goals_report().problems if entry.problem_id == goal_id)
+    found = {result.algorithm: result for result in entry.results if result.strategy == strategy}
+    results = [found[name] for name in algorithms]
+    pitch, height = 3.6, 4.8
+    longest = max(len(result.solution_path) for result in results)
+    fig, ax = plt.subplots(figsize=(16, 2.4 * len(results) + 0.2))
+    for row, result in enumerate(results):
+        bottom = -row * height
+        ax.text(-0.5, bottom + 2.75, f"{ALGORITHM_LABELS[result.algorithm]} · {result.solution_length} movimentos · custo real {result.solution_cost} · {result.metrics.iterations} iterações", fontsize=11, fontweight="bold", color=BLACK)
+        for k, node in enumerate(result.solution_path):
+            left = k * pitch
+            if k == len(result.solution_path) - 1:
+                ax.add_patch(plt.Rectangle((left - 0.65, bottom - 1.3), 3.0, 3.6, color=GOAL_COLOR, alpha=0.15, zorder=0))
+            mini_state(ax, node.state, left, bottom)
+            h = heuristic(node.state, entry.goal_state)
+            ax.text(left + 0.9, bottom - 0.45, compact(node.state), ha="center", va="center", fontsize=9, color=BLACK)
+            ax.text(left + 0.9, bottom - 0.95, f"h = {h}", ha="center", va="center", fontsize=9, color=WIN_COLOR if h == 0 else STRATEGY_COLORS["ascending"])
+            if k:
+                ax.annotate("", xy=(left - 0.55, bottom + 0.9), xytext=(left - pitch + 2.35, bottom + 0.9), arrowprops={"arrowstyle": "-|>", "color": MUTED, "linewidth": 1.2})
+                ax.text(left - (pitch - 2.9) / 2 - 0.55, bottom + 1.35, node.rule.id, ha="center", va="center", fontsize=9, fontweight="bold", color=STRATEGY_COLORS["ascending"])
+    ax.set_xlim(-0.8, longest * pitch - 0.6)
+    ax.set_ylim(-(len(results) - 1) * height - 1.5, 3.2)
+    ax.set_aspect("equal")
+    ax.axis("off")
+    plt.show()
+    print(f"Objetivo {goal_id}: {compact(entry.goal_state)}, a partir de {compact(entry.initial_state)}; h é medida em relação a este objetivo.")
+
+
+def best_values(column):
+    runs = goals_runs()
+    chosen = runs[runs.algorithm.isin(ALGORITHMS)].dropna(subset=[column])
+    return chosen.groupby("goal")[column].min()
+
+
+def best_boxplot(algorithm, column, limit=None):
+    title, default_limit = GOAL_COLUMNS[column]
+    limit = default_limit if limit is None else limit
+    runs = goals_runs()
+    rows = _goal_rows(algorithm, column)
+    best = best_values(column)
+    data = [best.to_numpy()] + [_values(runs, name, strategy, column) for name, strategy in rows]
+    names = [BEST_LABEL] + [label(name, strategy, short=False) for name, strategy in rows]
+    names = [f"{text} · média {br(values.mean(), 1)}" for text, values in zip(names, data)]
+    fig, ax = plt.subplots(figsize=(11, 4.6))
+    paint(ax.boxplot(data, **HORIZONTAL, widths=0.6, **BOX_STYLE), [WIN_COLOR] + [ALGORITHM_COLORS[name] for name, _ in rows])
+    ax.axhspan(0.5, 1.5, color=WIN_COLOR, alpha=0.08, zorder=0)
+    ax.axhline(1.5, color=MUTED, linestyle="--", linewidth=1)
+    ax.set_yticks(range(1, len(names) + 1), names)
+    ticks = ax.get_yticklabels()
+    ticks[0].set_color(WIN_COLOR)
+    ticks[0].set_fontweight("bold")
+    for tick, (name, _) in zip(ticks[1:], rows):
+        tick.set_fontweight("bold" if name == algorithm else "normal")
+    ax.set_xlim(0, limit)
+    for position, values in enumerate(data, start=1):
+        beyond = sorted(value for value in values if value > limit)
+        if beyond:
+            text = "fora da escala: " + " e ".join(br(value) for value in beyond) + " →"
+            ax.annotate(text, xy=(limit, position), xytext=(-4, 10), textcoords="offset points", ha="right", va="bottom", fontsize=8, color=INK)
+    ax.invert_yaxis()
+    ax.set_title(f"{title} nos {len(all_states())} objetivos", loc="left")
+    ax.grid(axis="y", visible=False)
+    plt.show()
+    print(f"{BEST_LABEL}: o menor valor que alguma combinação conseguiu em cada objetivo, média {br(best.mean(), 2)}.")
+    for strategy in STRATEGIES:
+        values = runs[(runs.algorithm == algorithm) & (runs.strategy == strategy)].set_index("goal")[column]
+        hits = int((values == best.reindex(values.index)).sum())
+        print(f"{label(algorithm, strategy, short=False)} chega ao melhor em {hits} dos {len(best)} objetivos.")
+
+
+def _paint_best(row, *, higher=False, ignore=()):
+    values = [value for column, value in row.items() if column not in ignore and not pd.isna(value)]
+    if len(set(values)) < 2:
+        return ["" for _ in row]
+    best = max(values) if higher else min(values)
+    return [f"color: {WIN_COLOR}; font-weight: bold" if column not in ignore and value == best else "" for column, value in row.items()]
+
+
+def heuristics_table(strategy="ascending"):
+    columns = {}
+    for name in HEURISTIC_NAMES:
+        report = goals_report(heuristic=name)
+        row = _goal_means(report, "greedy", strategy)
+        columns[HEURISTIC_LABELS.get(name, name)] = {
+            "Objetivos resolvidos": row.successes,
+            "Iterações (média)": row.iterations.mean,
+            "Nós gerados (média)": row.nodes_generated.mean,
+            "Movimentos (média)": row.moves.mean,
+            "Custo real (média)": row.cost.mean,
+            "Acha o menor custo real em": _cheapest_count(report, "greedy", strategy),
+        }
+    frame = pd.DataFrame(columns)
+    higher = {"Objetivos resolvidos", "Acha o menor custo real em"}
+    styled = frame.style.apply(lambda row: _paint_best(row, higher=row.name in higher), axis=1)
+    counts = pd.IndexSlice[list(higher), :]
+    means = pd.IndexSlice[[name for name in frame.index if name not in higher], :]
+    return styled.format(lambda value: f"{value:.0f}", subset=counts).format(lambda value: br(value, 2), subset=means)
+
+
+def goals_means_table(algorithm):
+    order = [algorithm, *(name for name in ALGORITHM_NAMES if name != algorithm)]
+    summary = {(row.algorithm, row.strategy): row for row in goals_report().summary.rows}
+    columns = [(name, strategy) for name in order for strategy in SLIDE_STRATEGIES]
+    most = max(summary[column].successes for column in columns)
+    frame = pd.DataFrame(
+        {
+            label(*column): {"Resolvidos": summary[column].successes, **{title: getattr(summary[column], field).mean for title, field in GOAL_MEANS}}
+            for column in columns
+        }
+    )
+    left_out = [label(*column) for column in columns if summary[column].successes < most]
+
+    def paint(row):
+        if row.name == "Resolvidos":
+            return [f"color: {LOSS_COLOR}; font-weight: bold" if value < most else "" for value in row]
+        return _paint_best(row, ignore=left_out)
+
+    styled = _bold_columns(frame, algorithm).apply(paint, axis=1)
+    means = pd.IndexSlice[[title for title, _ in GOAL_MEANS], :]
+    return styled.format(lambda value: f"{value:.0f}", subset=pd.IndexSlice[["Resolvidos"], :]).format(lambda value: br(value, 2), subset=means)
+
+
+def marked_complexity(algorithm):
+    rows = MARKED_COMPLEXITY[algorithm]
+    frame = pd.DataFrame(
+        [{"Algoritmo": name, **{column: text for column, (text, _) in zip(COMPLEXITY_COLUMNS, cells)}, "Por quê": why} for name, cells, why in rows]
+    ).set_index("Algoritmo")
+    colors = {"best": WIN_COLOR, "worst": LOSS_COLOR}
+    styles = pd.DataFrame("", index=frame.index, columns=frame.columns)
+    for name, cells, _ in rows:
+        for column, (_, mark) in zip(COMPLEXITY_COLUMNS, cells):
+            if mark in colors:
+                styles.loc[name, column] = f"color: {colors[mark]}; font-weight: bold"
+    print("Em verde, o melhor de cada coluna; em vermelho, o pior.")
+    return frame.style.apply(lambda _: styles, axis=None)
 """
