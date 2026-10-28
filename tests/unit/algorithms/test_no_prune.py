@@ -87,7 +87,8 @@ def test_peak_frontier_is_at_least_one(
 
 
 @pytest.mark.parametrize(
-    ("algorithm", "iterations", "generated"), [("ordered", 16, 28), ("greedy", 4, 10)]
+    ("algorithm", "iterations", "generated"),
+    [("ordered", 16, 28), ("greedy", 4, 10), ("astar", 4, 10)],
 )
 def test_queue_methods_on_p1_without_pruning_match_the_presentation(
     problems: tuple[Problem, ...], algorithm: str, iterations: int, generated: int
@@ -100,7 +101,7 @@ def test_queue_methods_on_p1_without_pruning_match_the_presentation(
         assert result.metrics.nodes_generated == generated
 
 
-@pytest.mark.parametrize("algorithm", ["ordered", "greedy"])
+@pytest.mark.parametrize("algorithm", ["ordered", "greedy", "astar"])
 def test_queue_methods_never_return_to_a_state_of_their_own_path(
     algorithm: str,
 ) -> None:

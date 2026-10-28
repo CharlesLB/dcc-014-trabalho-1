@@ -13,13 +13,15 @@ from libs.inputs.selection import ExecutionRequest
 def run_problem(
     problem: Problem, request: ExecutionRequest
 ) -> tuple[SearchResult, ...]:
+    name = request.heuristic_name
+    heuristic = None if name is None else get_heuristic(name)
     return tuple(
         get_algorithm(algorithm_name)(
             SearchTree(cost=get_cost(request.cost_name)),
             get_strategy(strategy_name),
             max_iterations=request.max_iterations,
             prune=request.prune,
-            heuristic=get_heuristic(request.heuristic_name),
+            heuristic=heuristic,
         ).solve(problem)
         for algorithm_name in request.algorithm_names
         for strategy_name in request.strategy_names

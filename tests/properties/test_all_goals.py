@@ -12,7 +12,7 @@ from core.search_tree.result import SearchResult
 from core.search_tree.tree import SearchTree
 from libs.ranking.leaderboard import Highlight, Summary, SummaryRow, build_summary
 
-COMPLETE_METHODS = ("backtracking", "breadth_first", "ordered", "greedy")
+COMPLETE_METHODS = ("backtracking", "breadth_first", "ordered", "greedy", "astar")
 
 
 @pytest.fixture(scope="module")
@@ -99,19 +99,19 @@ def test_cost_is_never_below_the_number_of_moves(summary: Summary) -> None:
         assert row.cost.mean >= row.moves.mean
 
 
-def test_only_ordered_wins_on_cost(summary: Summary) -> None:
+def test_ordered_and_astar_win_on_cost(summary: Summary) -> None:
     highlight = _highlight(summary, "cost")
-    assert _algorithms(highlight.by_mean) == {"ordered"}
+    assert _algorithms(highlight.by_mean) == {"ordered", "astar"}
 
 
-def test_breadth_first_and_ordered_win_on_moves(summary: Summary) -> None:
+def test_breadth_first_ordered_and_astar_win_on_moves(summary: Summary) -> None:
     highlight = _highlight(summary, "moves")
-    assert _algorithms(highlight.by_mean) == {"breadth_first", "ordered"}
+    assert _algorithms(highlight.by_mean) == {"breadth_first", "ordered", "astar"}
 
 
-@pytest.mark.parametrize("algorithm", ["ordered", "greedy"])
+@pytest.mark.parametrize("algorithm", ["ordered", "greedy", "astar"])
 @pytest.mark.parametrize("strategy", sorted(STRATEGIES))
-def test_ordered_and_greedy_stay_close_to_the_fewest_moves(
+def test_queue_methods_stay_close_to_the_fewest_moves(
     summary: Summary, algorithm: str, strategy: str
 ) -> None:
     optimum = fmean(
@@ -120,12 +120,25 @@ def test_ordered_and_greedy_stay_close_to_the_fewest_moves(
     moves = _row(summary, algorithm, strategy).moves
     assert moves is not None
     assert optimum <= moves.mean < optimum + 0.2
-    assert (moves.mean == pytest.approx(optimum)) == (algorithm == "ordered")
+    assert (moves.mean == pytest.approx(optimum)) == (algorithm != "greedy")
 
 
 def test_greedy_wins_on_iterations(summary: Summary) -> None:
     highlight = _highlight(summary, "iterations")
     assert _algorithms(highlight.by_mean) == {"greedy"}
+
+
+@pytest.mark.parametrize("strategy", sorted(STRATEGIES))
+def test_astar_keeps_the_ordered_cost_with_less_than_half_the_iterations(
+    summary: Summary, strategy: str
+) -> None:
+    astar = _row(summary, "astar", strategy)
+    ordered = _row(summary, "ordered", strategy)
+    greedy = _row(summary, "greedy", strategy)
+    assert astar.cost is not None and ordered.cost is not None
+    assert astar.cost.mean == pytest.approx(ordered.cost.mean)
+    assert greedy.iterations.mean < astar.iterations.mean
+    assert astar.iterations.mean < ordered.iterations.mean / 2
 
 
 def test_backtracking_and_irrevocable_never_beat_the_optimal_methods(

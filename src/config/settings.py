@@ -19,8 +19,8 @@ PROGRAM_NAME: Final = "main.py"
 
 DESCRIPTION: Final = (
     "Resolvedor da Torre de Londres: executa busca irrevogável, backtracking, "
-    "busca em largura, busca ordenada e busca gulosa sobre as cartas do problema, variando a "
-    "estratégia de controle, e ranqueia os resultados."
+    "busca em largura, busca ordenada, busca gulosa e busca A* sobre as cartas do "
+    "problema, variando a estratégia de controle, e ranqueia os resultados."
 )
 
 EPILOG: Final = (
@@ -34,11 +34,12 @@ HELP_PROBLEM: Final = "Cartas a resolver (repetível ou separado por vírgula)."
 HELP_ALGORITHM: Final = "Algoritmos a executar (repetível ou separado por vírgula)."
 HELP_STRATEGY: Final = "Estratégias de controle (repetível ou separado por vírgula)."
 HELP_HEURISTIC: Final = (
-    "Heurística usada pela busca gulosa; as outras buscas a ignoram."
+    "Heurística usada pela busca gulosa e pela A*; as outras buscas a ignoram. "
+    "Sem ela, a gulosa usa misplacement e a A* misplacement_cost."
 )
 HELP_COST: Final = (
-    "Função de custo real das jogadas. Ordena a busca ordenada e dá o custo da "
-    "solução de todas as buscas."
+    "Função de custo real das jogadas. Ordena a busca ordenada, entra no f = g + h "
+    "da A* e dá o custo da solução de todas as buscas."
 )
 HELP_ALL: Final = (
     "Produto cartesiano completo: todas as cartas, algoritmos e estratégias."
@@ -50,7 +51,7 @@ HELP_ALL_GOALS: Final = (
 HELP_NO_PRUNE: Final = (
     "Desliga a poda: a árvore aceita estados repetidos. A irrevogável e o "
     "backtracking podem então girar em ciclo até o limite de iterações. A "
-    "ordenada e a gulosa ainda não voltam a um estado do próprio caminho."
+    "ordenada, a gulosa e a A* ainda não voltam a um estado do próprio caminho."
 )
 HELP_SHOW_TREE: Final = "Renderiza a árvore de busca de cada execução."
 HELP_SHOW_TRACE: Final = (

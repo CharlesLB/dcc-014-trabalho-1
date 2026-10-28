@@ -80,7 +80,7 @@ def test_json_output_is_written_to_a_file(tmp_path: Path) -> None:
 
 
 def test_unknown_algorithm_fails_with_a_portuguese_message() -> None:
-    completed = _run("--algorithm", "astar")
+    completed = _run("--algorithm", "dijkstra")
     assert completed.returncode == settings.EXIT_INVALID_INPUT
     assert settings.KIND_LABELS["algorithm"] in completed.stderr
     assert settings.ERROR_HINT in completed.stderr

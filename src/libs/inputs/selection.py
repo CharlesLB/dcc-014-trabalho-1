@@ -5,7 +5,6 @@ from pathlib import Path
 
 from config import settings
 from core.costs.domain.registry import DEFAULT_COST
-from core.heuristics.domain.registry import DEFAULT_HEURISTIC
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,7 +25,7 @@ class ExecutionRequest:
     verbose: bool = False
     all_goals: bool = False
     prune: bool = True
-    heuristic_name: str = DEFAULT_HEURISTIC.name
+    heuristic_name: str | None = None
     cost_name: str = DEFAULT_COST.name
 
     @property

@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from types import MappingProxyType
 
+from core.algorithms.astar.algorithm import AStarSearch
 from core.algorithms.backtracking.algorithm import BacktrackingSearch
 from core.algorithms.breadth_first.algorithm import BreadthFirstSearch
 from core.algorithms.domain.base import SearchAlgorithm
@@ -24,6 +25,7 @@ ALGORITHMS: Mapping[str, type[SearchAlgorithm]] = MappingProxyType(
         BreadthFirstSearch.name: BreadthFirstSearch,
         OrderedSearch.name: OrderedSearch,
         GreedySearch.name: GreedySearch,
+        AStarSearch.name: AStarSearch,
     }
 )
 

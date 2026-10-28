@@ -12,8 +12,8 @@ Contagem:
 Propriedades:
     - Grafo não dirigido: toda regra tem inversa exata.
     - Grafo conexo: todo objetivo é alcançável de qualquer inicial. Logo
-      backtracking, largura e ordenada sempre terminam em SUCESSO neste
-      problema; só a irrevogável e a gulosa podem terminar em IMPASSE.
+      backtracking, largura, ordenada, gulosa e A* sempre terminam em
+      SUCESSO neste problema; só a irrevogável pode terminar em IMPASSE.
     - Fator de ramificação: 2 a 4 regras aplicáveis por estado.
     - Profundidade máxima de um caminho sem repetição: 36.
 

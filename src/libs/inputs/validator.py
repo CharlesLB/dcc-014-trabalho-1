@@ -16,7 +16,8 @@ def validate(request: ExecutionRequest) -> ExecutionRequest:
     _require_known("problem", request.problem_ids, PROBLEM_IDS)
     _require_known("algorithm", request.algorithm_names, ALGORITHM_NAMES)
     _require_known("strategy", request.strategy_names, STRATEGY_NAMES)
-    _require_known("heuristic", (request.heuristic_name,), HEURISTIC_NAMES)
+    if request.heuristic_name is not None:
+        _require_known("heuristic", (request.heuristic_name,), HEURISTIC_NAMES)
     _require_known("cost", (request.cost_name,), COST_NAMES)
     _require_known("format", (request.output_format,), settings.OUTPUT_FORMATS)
     _require_known("rank_mode", (request.rank_mode,), settings.RANK_MODES)

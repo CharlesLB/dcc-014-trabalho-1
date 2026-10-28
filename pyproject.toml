@@ -1,7 +1,7 @@
 [project]
 name = "torre-de-londres"
 version = "1.0.0"
-description = "Resolvedor do problema da Torre de Londres com busca irrevogavel, backtracking, busca em largura e busca ordenada"
+description = "Resolvedor do problema da Torre de Londres com busca irrevogavel, backtracking, busca em largura, busca ordenada, busca gulosa e busca A*"
 requires-python = ">=3.12"
 dependencies = []
 

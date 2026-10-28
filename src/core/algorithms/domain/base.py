@@ -42,6 +42,9 @@ class SearchAlgorithm(ABC):
     """
 
     name: ClassVar[str] = "abstract"
+    # A heurística usada quando nenhuma é passada. A A* troca pela que está
+    # na unidade do custo real.
+    default_heuristic: ClassVar[Heuristic] = DEFAULT_HEURISTIC
 
     def __init__(
         self,
@@ -50,13 +53,13 @@ class SearchAlgorithm(ABC):
         *,
         max_iterations: int = settings.MAX_ITERATIONS,
         prune: bool = True,
-        heuristic: Heuristic = DEFAULT_HEURISTIC,
+        heuristic: Heuristic | None = None,
     ) -> None:
         self._tree = tree
         self._strategy = strategy
         self._max_iterations = max_iterations
         self._prune = prune
-        self._heuristic = heuristic
+        self._heuristic = self.default_heuristic if heuristic is None else heuristic
         self._context: _RunContext | None = None
 
     @property
@@ -145,16 +148,17 @@ class SearchAlgorithm(ABC):
         """A política de repetição: aqui, um estado já presente no caminho.
 
         A busca em largura sobrescreve para usar o conjunto global de
-        fechados, que é uma poda mais forte. A ordenada e a gulosa sobrescrevem
-        para comparar o custo do novo caminho com o menor já conhecido.
+        fechados, que é uma poda mais forte. A ordenada, a gulosa e a A*
+        sobrescrevem para comparar o custo do novo caminho com o menor já
+        conhecido.
         """
         return path.contains_state(node, successor)
 
     def _is_never_generated(self, node: Node, successor: State) -> bool:
         """O que o método não gera nem com a poda desligada: aqui, nada.
 
-        A ordenada e a gulosa sobrescrevem: nelas um nó nunca gera um estado
-        do seu próprio caminho, e a poda é uma técnica a mais.
+        A ordenada, a gulosa e a A* sobrescrevem: nelas um nó nunca gera um
+        estado do seu próprio caminho, e a poda é uma técnica a mais.
         """
         return False
 

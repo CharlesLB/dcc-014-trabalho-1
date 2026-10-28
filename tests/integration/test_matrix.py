@@ -64,3 +64,23 @@ def test_each_execution_uses_a_fresh_tree() -> None:
             root_steps = [step for step in result.trace if step.node_order == 0]
             assert root_steps
             assert root_steps[0].parent_order is None
+
+
+@pytest.mark.parametrize(
+    ("arguments", "astar_iterations", "greedy_iterations"),
+    [
+        ([], 4, 4),
+        (["--heuristic", "misplacement"], 10, 4),
+        (["--heuristic", "misplacement_cost"], 4, 4),
+    ],
+)
+def test_without_a_heuristic_each_algorithm_uses_its_own(
+    arguments: list[str], astar_iterations: int, greedy_iterations: int
+) -> None:
+    request = validate(
+        parse(["--problem", "P1", "--strategy", "ascending", *arguments])
+    )
+    ((_, results),) = run_matrix(request)
+    iterations = {result.algorithm: result.metrics.iterations for result in results}
+    assert iterations["astar"] == astar_iterations
+    assert iterations["greedy"] == greedy_iterations
