@@ -12,10 +12,11 @@ from core.heuristics.domain.registry import (
     get_heuristic,
 )
 from core.heuristics.misplacement import misplacement
+from core.heuristics.misplacement_cost import misplacement_cost
 
 
-def test_lists_the_two_heuristics_with_misplacement_as_default() -> None:
-    assert HEURISTIC_NAMES == ("misplacement", "color_distance")
+def test_lists_the_three_heuristics_with_misplacement_as_default() -> None:
+    assert HEURISTIC_NAMES == ("misplacement", "color_distance", "misplacement_cost")
     assert DEFAULT_HEURISTIC is HEURISTICS["misplacement"]
 
 
@@ -35,6 +36,9 @@ def test_estimate_delegates_to_the_module_function(
         assert get_heuristic("color_distance").estimate(
             initial_state, goal
         ) == color_distance(initial_state, goal)
+        assert get_heuristic("misplacement_cost").estimate(
+            initial_state, goal
+        ) == misplacement_cost(initial_state, goal)
 
 
 def test_unknown_name_is_an_error() -> None:

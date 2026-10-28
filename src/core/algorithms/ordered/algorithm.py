@@ -120,7 +120,8 @@ class OrderedSearch(SearchAlgorithm):
     def _priority(self, node: Node, problem: Problem) -> int:
         """O que ordena ABERTOS: aqui, o custo real acumulado até o nó.
 
-        A gulosa sobrescreve para ordenar pela heurística.
+        A gulosa sobrescreve para ordenar pela heurística, e a A* pela soma do
+        custo com a heurística.
         """
         return node.cost
 

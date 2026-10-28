@@ -1,6 +1,6 @@
 # Torre de Londres
 
-Resolvedor do problema da Torre de Londres (3 hastes, 3 discos) com busca irrevogável, backtracking, busca em largura, busca ordenada e busca gulosa sobre uma mesma abstração de árvore de busca, com estratégia de controle parametrizável, métricas instrumentadas e placar comparativo.
+Resolvedor do problema da Torre de Londres (3 hastes, 3 discos) com busca irrevogável, backtracking, busca em largura, busca ordenada, busca gulosa e busca A* sobre uma mesma abstração de árvore de busca, com estratégia de controle parametrizável, métricas instrumentadas e placar comparativo.
 
 Python 3.12+, zero dependências de runtime.
 
@@ -36,12 +36,13 @@ python main.py --list               # cartas, algoritmos e estratégias disponí
 python main.py --problem P1
 python main.py --algorithm backtracking --strategy descending
 python main.py --algorithm backtracking --show-tree --show-trace
+python main.py --algorithm astar --problem P1 --show-tree   # A*: f = g + h
 python main.py --show-states
 python main.py --rank-mode score
 python main.py --all-goals             # os 36 estados finais; só o resumo, com média e mediana
-python main.py --heuristic color_distance  # troca a heurística da busca gulosa
+python main.py --heuristic color_distance  # troca a heurística da gulosa e da A* (sem ela, cada uma usa a sua)
 python main.py --cost unit             # troca a função de custo real (padrão: step_weight_distance)
-python main.py --no-prune              # sem poda: a árvore aceita estados repetidos (na ordenada e na gulosa, menos os do próprio caminho)
+python main.py --no-prune              # sem poda: a árvore aceita estados repetidos (na ordenada, na gulosa e na A*, menos os do próprio caminho)
 python main.py --format json --output resultados.json
 python main.py --svg-dir data          # árvore de cada execução em data/<carta>/<algoritmo>_<estratégia>.svg
 python main.py --help
@@ -67,7 +68,8 @@ src/
 │   ├── heuristics/
 │   │   ├── domain/            contrato e registro
 │   │   ├── misplacement.py    discos mal posicionados (padrão)
-│   │   └── color_distance.py  peso da cor × distância
+│   │   ├── color_distance.py  peso da cor × distância
+│   │   └── misplacement_cost.py  custo dos discos mal posicionados (padrão da A*)
 │   ├── search_tree/           nó, árvore, contrato da fronteira, caminho, métricas, trace
 │   └── algorithms/
 │       ├── domain/            contrato e registro
@@ -75,7 +77,8 @@ src/
 │       ├── backtracking/      algorithm.py + frontier.py (pilha)
 │       ├── breadth_first/     algorithm.py + frontier.py (fila)
 │       ├── ordered/           algorithm.py + frontier.py (fila de prioridade, pelo custo real)
-│       └── greedy/            algorithm.py (a fila da ordenada, pela heurística)
+│       ├── greedy/            algorithm.py (a fila da ordenada, pela heurística)
+│       └── astar/             algorithm.py (a fila da ordenada, por custo + heurística)
 ├── libs/                      bibliotecas de borda
 │   ├── inputs/                linha de comando → requisição validada
 │   ├── outputs/               única camada que escreve no terminal e em disco
@@ -107,13 +110,13 @@ Tudo isso é verificado na AST por [tests/architecture/test_dependencies.py](tes
 
 - Código inteiramente em inglês.
 - **Sem comentários e sem docstrings de função.** O contrato de cada função é a assinatura tipada, garantida por `mypy --strict`. Só diretivas de ferramenta (`# noqa`, `# type:`) aparecem no meio do código.
-- **A modelagem do problema é documentada no topo dos módulos que a carregam**, e só neles: [problem.py](src/core/domain/problem.py) (posição inicial e catálogo de cartas), [state_space.py](src/core/domain/state_space.py) (os 36 estados, conexidade, o oráculo) [step_weight_distance.py](src/core/costs/step_weight_distance.py), [weight_distance.py](src/core/costs/weight_distance.py) e [unit.py](src/core/costs/unit.py) (as funções de custo real), [misplacement.py](src/core/heuristics/misplacement.py) e [color_distance.py](src/core/heuristics/color_distance.py) (as heurísticas) e os cinco algoritmos, cada um com a carta P1 e o critério de busca.
+- **A modelagem do problema é documentada no topo dos módulos que a carregam**, e só neles: [problem.py](src/core/domain/problem.py) (posição inicial e catálogo de cartas), [state_space.py](src/core/domain/state_space.py) (os 36 estados, conexidade, o oráculo) [step_weight_distance.py](src/core/costs/step_weight_distance.py), [weight_distance.py](src/core/costs/weight_distance.py) e [unit.py](src/core/costs/unit.py) (as funções de custo real), [misplacement.py](src/core/heuristics/misplacement.py), [color_distance.py](src/core/heuristics/color_distance.py) e [misplacement_cost.py](src/core/heuristics/misplacement_cost.py) (as heurísticas) e os seis algoritmos, cada um com a carta P1 e o critério de busca.
 - Estado imutável em todo lugar: `tuple`, frozen dataclass, enum.
 - Texto apresentado ao usuário só em `libs/outputs/theme.py` e `config/settings.py`.
 
 ## Algoritmos
 
-Os cinco compartilham o motor: `visita` conta e registra o vértice, `gera` cria um filho pela regra, `poda` descarta a regra cujo sucessor repetiria um estado. Estourar o limite de iterações encerra qualquer um deles com LIMITE. O que muda é a fronteira e a decisão em cada vértice.
+Os seis compartilham o motor: `visita` conta e registra o vértice, `gera` cria um filho pela regra, `poda` descarta a regra cujo sucessor repetiria um estado. Estourar o limite de iterações encerra qualquer um deles com LIMITE. O que muda é a fronteira e a decisão em cada vértice.
 
 ### Busca irrevogável
 
@@ -181,7 +184,7 @@ Cada jogada tem um custo real, e o custo de um nó é a soma dos custos das joga
 | `weight_distance` | peso do disco movido × distância em hastes, sem os 10 |
 | `unit` | 1 |
 
-O custo real ordena a busca ordenada e dá o custo da solução de todas as buscas. Em P1, o caminho R4, R1, R1 custa 13 + 12 + 11 = 36 com `step_weight_distance`, 6 com `weight_distance` e 3 com `unit`.
+O custo real ordena a busca ordenada, entra no f = g + h da A* e dá o custo da solução de todas as buscas. Em P1, o caminho R4, R1, R1 custa 13 + 12 + 11 = 36 com `step_weight_distance`, 6 com `weight_distance` e 3 com `unit`.
 
 Os 10 por jogada pesam mais que o peso × distância, que vai de 1 a 6: um caminho com um movimento a mais nunca sai mais barato. Com a função padrão, o caminho de menor custo é sempre um dos de menos movimentos, e o peso × distância só desempata entre eles.
 
@@ -204,13 +207,14 @@ O objetivo só encerra a busca quando vira o estado atual, não quando é gerado
 | 36 objetivos, com poda, `ascending` | `step_weight_distance` | `weight_distance` | `unit` |
 |---|---|---|---|
 | ordenada: custo (média) | 51,33 | 9,89 | 4,14 |
+| A*: custo (média) | 51,33 | 10,17 | 4,19 |
 | ordenada: movimentos (média) | 4,14 | 4,17 | 4,14 |
 | largura: custo (média) | 51,72 | 10,33 | 4,14 |
 | gulosa: custo (média) | 52,33 | 10,39 | 4,19 |
 
 ### Heurística
 
-A busca gulosa recebe a heurística por parâmetro: cada uma é um módulo de [core/heuristics/](src/core/heuristics/), registrado pelo nome e escolhido com `--heuristic`. O padrão é a de discos mal posicionados ([misplacement.py](src/core/heuristics/misplacement.py)). Cada disco contribui com o mínimo de movimentos que ainda precisa fazer:
+A busca gulosa e a A* recebem a heurística por parâmetro: cada uma é um módulo de [core/heuristics/](src/core/heuristics/), registrado pelo nome e escolhido com `--heuristic`. Sem `--heuristic`, cada busca usa a sua: a gulosa, a de discos mal posicionados ([misplacement.py](src/core/heuristics/misplacement.py)); a A*, a do custo dos discos mal posicionados ([misplacement_cost.py](src/core/heuristics/misplacement_cost.py)). Cada disco contribui com o mínimo de movimentos que ainda precisa fazer:
 
 | disco | contribui |
 |---|---|
@@ -231,6 +235,8 @@ A segunda heurística é a de cor e distância ([color_distance.py](src/core/heu
 
 Em P1 as duas levam ao mesmo caminho, R4, R1, R1.
 
+A terceira é a do custo dos discos mal posicionados ([misplacement_cost.py](src/core/heuristics/misplacement_cost.py)), a padrão da A*. É a mesma contagem de movimentos, convertida em custo real: cada movimento que falta a um disco custa no mínimo a jogada mais barata dele, uma haste só, 10 + peso (verde 11, vermelho 12, azul 13). Em S0 de P1 vale 11 + 12 + 13 = 36, exatamente o custo da solução ótima. Com a função de custo padrão ela é admissível e consistente: os testes conferem as duas coisas nos 1.296 pares de estados contra um Dijkstra escrito à parte.
+
 ### Busca gulosa
 
 O laço e as duas listas da busca ordenada, mas ABERTOS é ordenada pela menor heurística, não pelo custo real. O custo real não entra na escolha: ele é somado nas arestas do caminho solução e dá o custo da solução.
@@ -247,6 +253,33 @@ flowchart TD
 
 A estratégia só desempata irmãos de mesma heurística. A poda é a da ordenada, mais o filho de estado já fechado, que aqui pode reaparecer mais barato e não é reaberto. A gulosa sempre encontra uma solução: resolve os 36 objetivos, com 7,44 iterações em média, contra 18,5 da ordenada e da largura. Não garante a melhor: acha o menor custo real em 31 dos 36 objetivos com `ascending` e em 28 com `descending`. Em P1: R4, R1, R1, custo 36, em 4 iterações e 9 nós gerados.
 
+### Busca A*
+
+O laço e as duas listas da busca ordenada, com ABERTOS ordenada pela menor função de avaliação **f(n) = g(n) + h(n)**: g é o custo real da raiz até o nó, o que ordena a ordenada; h é a heurística, o custo estimado do nó até o objetivo, o que ordena a gulosa. f estima o custo da solução mais barata que passa pelo nó.
+
+```mermaid
+flowchart TD
+    A([raiz em ABERTOS]) --> B[tira o de menor f = g + h; no empate, o gerado primeiro]
+    B --> C{é o objetivo?}
+    C -- sim --> S([SUCESSO])
+    C -- não --> V[visita: regras aplicáveis na ordem da estratégia, menos as que voltam a um estado do próprio caminho e as que não barateiam o custo do vetor de menor custo]
+    V --> E[aplica todas e põe os filhos em ABERTOS na posição da sua f]
+    E --> B
+```
+
+Como f soma h com g, h precisa estar na unidade do custo: por isso a padrão da A* é a do custo dos discos mal posicionados, não a contagem de movimentos da gulosa. Com h admissível, o primeiro objetivo a sair de ABERTOS é o de menor custo real; com h consistente, um estado já expandido nunca reaparece mais barato, e a poda da ordenada basta. A estratégia só desempata irmãos de mesma f.
+
+Em P1: R4, R1, R1, custo 36, em 4 iterações e 9 nós gerados, os mesmos números da gulosa. f vale 36 em todo o caminho e todo nó fora dele tem f maior. Nos 36 objetivos a A* acha sempre o menor custo real, como a ordenada (média 51,33), com 8,78 iterações em média, contra 18,5 da ordenada e 7,44 da gulosa. No objetivo G07, em que a gulosa faz 8 movimentos e paga 99, a A* acha o caminho de 7 movimentos e custo 87 com as mesmas 18 iterações; a ordenada precisa de 34.
+
+| A*, 36 objetivos, com poda, `ascending` | custo dos mal posicionados | discos mal posicionados | cor e distância |
+|---|---|---|---|
+| iterações em P1 | 4 | 10 | 10 |
+| iterações (média) | 8,78 | 17,06 | 16,89 |
+| nós gerados (média) | 14,53 | 21,97 | 21,28 |
+| custo real (média) | 51,33 | 51,33 | 51,33 |
+
+As três são admissíveis com o custo padrão, e a A* acha sempre o menor custo com qualquer uma; o que muda é o esforço. Em movimentos, de 0 a 6, a heurística quase não pesa perto de g, de 11 a 16 por jogada, e a A* fica perto da ordenada. Com `--cost weight_distance` ou `--cost unit` a heurística padrão superestima o que falta (as jogadas custam menos que 10 + peso) e a A* perde a garantia: custo médio 10,17 e 4,19, contra 9,89 e 4,14 da ordenada. Com `--heuristic misplacement`, admissível nas três funções de custo, ela volta ao ótimo.
+
 ## Comparação em todos os objetivos
 
 Uma carta só não diz qual método é melhor. `--all-goals` resolve cada um dos 36 estados do espaço como objetivo, sempre a partir da mesma posição inicial (cartas G01 a G36), com todo algoritmo e toda estratégia. A saída é só o resumo consolidado:
@@ -254,7 +287,7 @@ Uma carta só não diz qual método é melhor. `--all-goals` resolve cada um dos
 - **Resumo**: para movimentos, custo, iterações e nós gerados, a média e a mediana de cada combinação. Movimentos e custo contam só os sucessos.
 - **Melhor por critério**: o menor valor pela média e pela mediana. Só concorre quem tem o maior número de sucessos, para a irrevogável não vencer resolvendo apenas os objetivos fáceis.
 
-O resultado: a largura e a ordenada vencem em movimentos (média 4,14; a gulosa fica em 4,19 e 4,25). A ordenada vence em custo real (média 51,33, contra 51,7 da largura e 52,3 a 53,0 da gulosa). A gulosa vence em iterações e em nós gerados: 7,44 iterações em média, contra 18,5 da largura e da ordenada. [tests/properties/test_all_goals.py](tests/properties/test_all_goals.py) verifica tudo isso.
+O resultado: a largura, a ordenada e a A* vencem em movimentos (média 4,14; a gulosa fica em 4,19 e 4,25). A ordenada e a A* vencem em custo real (média 51,33, contra 51,7 da largura e 52,3 a 53,0 da gulosa). A gulosa vence em iterações e em nós gerados: 7,44 iterações em média, contra 8,78 da A* e 18,5 da largura e da ordenada. A A* fica com o custo da ordenada e menos da metade das iterações. [tests/properties/test_all_goals.py](tests/properties/test_all_goals.py) verifica tudo isso.
 
 ## Qualidade
 
@@ -285,6 +318,7 @@ Destaques:
 - **Tabela contra os outros algoritmos** com o vencedor de cada critério (nível da solução, iterações, nós gerados e expandidos, pico de ABERTOS, retrocessos, impasses) em verde.
 - **O custo real na busca ordenada**: a regra de 10 por jogada mais peso × distância, o código das três funções de custo e o custo de cada jogada na raiz.
 - **A heurística na busca gulosa**: a regra dos discos mal posicionados, o código de `misplacement.py`, a conta de h em S0 disco a disco e a h de cada filho da raiz.
+- **f = g + h na busca A\***: a heurística na unidade do custo, o código de `misplacement_cost.py`, g, h e f de cada filho da raiz e de cada nível do caminho, e o caso G07, em que a A* acha o custo 87 com as iterações da gulosa.
 - **Comparativo nos 36 objetivos** na seção da ordenada: boxplot e quartis de nós expandidos, iterações e nós gerados, para todas as combinações de algoritmo e estratégia.
 - **Tabelas de complexidade** com o algoritmo na primeira coluna, no mesmo formato da tabela consolidada da comparação.
 

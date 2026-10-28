@@ -116,8 +116,8 @@ def test_no_prune_turns_pruning_off() -> None:
     assert parse(["--no-prune"]).prune is False
 
 
-def test_heuristic_defaults_to_misplacement_and_is_normalised() -> None:
-    assert parse([]).heuristic_name == "misplacement"
+def test_heuristic_defaults_to_each_algorithm_and_is_normalised() -> None:
+    assert parse([]).heuristic_name is None
     assert parse(["--heuristic", "Color_Distance"]).heuristic_name == "color_distance"
 
 

@@ -20,7 +20,7 @@ def test_default_request_is_valid() -> None:
     ("mutate", "kind"),
     [
         (lambda r: replace(r, problem_ids=("P999",)), "problem"),
-        (lambda r: replace(r, algorithm_names=("astar",)), "algorithm"),
+        (lambda r: replace(r, algorithm_names=("dijkstra",)), "algorithm"),
         (lambda r: replace(r, strategy_names=("random",)), "strategy"),
         (lambda r: replace(r, heuristic_name="manhattan"), "heuristic"),
         (lambda r: replace(r, cost_name="free"), "cost"),

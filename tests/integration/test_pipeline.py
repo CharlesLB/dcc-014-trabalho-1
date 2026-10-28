@@ -78,7 +78,7 @@ def test_cli_writes_a_file_and_reports_the_path(
 @pytest.mark.parametrize(
     "arguments",
     [
-        ["--algorithm", "astar"],
+        ["--algorithm", "dijkstra"],
         ["--strategy", "aleatoria"],
         ["--problem", "P999"],
         ["--format", "xml"],

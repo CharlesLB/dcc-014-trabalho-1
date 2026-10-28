@@ -6,6 +6,7 @@ from types import MappingProxyType
 from core.heuristics.color_distance import COLOR_DISTANCE
 from core.heuristics.domain.base import Heuristic
 from core.heuristics.misplacement import MISPLACEMENT
+from core.heuristics.misplacement_cost import MISPLACEMENT_COST
 
 
 class UnknownHeuristicError(Exception):
@@ -18,6 +19,7 @@ HEURISTICS: Mapping[str, Heuristic] = MappingProxyType(
     {
         MISPLACEMENT.name: MISPLACEMENT,
         COLOR_DISTANCE.name: COLOR_DISTANCE,
+        MISPLACEMENT_COST.name: MISPLACEMENT_COST,
     }
 )
 
